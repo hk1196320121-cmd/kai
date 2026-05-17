@@ -40,6 +40,10 @@ const RULES: Rule[] = [
   },
 ];
 
+const VALID_LLM_DIMENSIONS = new Set(RULES.map((r) => r.dimension).concat([
+  "scope_appetite", "risk_tolerance", "autonomy", "detail_oriented",
+]));
+
 export interface DerivedTrait {
   dimension: string;
   value: number;
@@ -99,6 +103,7 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
       const traits = (response as { traits: Array<{ dimension: string; value: number; confidence: number; reasoning: string }> }).traits;
       const results: DerivedTrait[] = [];
       for (const t of traits) {
+        if (!VALID_LLM_DIMENSIONS.has(t.dimension)) continue;
         const derived: DerivedTrait = {
           dimension: t.dimension,
           value: Math.round(Math.max(0, Math.min(1, t.value)) * 100) / 100,

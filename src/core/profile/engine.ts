@@ -189,14 +189,19 @@ export class ProfileEngine {
     const identity = this.getIdentity();
     const traits = this.getTraits();
     const preferences = this.getPreferences();
-    const allObs = this.getObservations();
+    const countRow = this.db.query("SELECT COUNT(*) as cnt FROM observations").get() as { cnt: number };
+    const recentObs = this.db.query("SELECT * FROM observations ORDER BY ts DESC LIMIT 20").all() as Observation[];
     return {
       identity,
       traits,
       preferences,
-      observationCount: allObs.length,
-      recentObservations: allObs.slice(0, 20),
+      observationCount: countRow.cnt,
+      recentObservations: recentObs,
     };
+  }
+
+  getObservationById(id: number): Observation | null {
+    return this.db.query("SELECT * FROM observations WHERE id = ?").get(id) as Observation | null;
   }
 
   removeTrait(dimension: string): boolean {

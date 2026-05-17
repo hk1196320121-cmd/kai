@@ -62,8 +62,7 @@ export class ProvenanceEngine {
   }
 
   getProvenanceChain(observationId: number): ProvenanceChain | null {
-    const obs = this.engine.getObservations();
-    const observation = obs.find((o) => o.id === observationId);
+    const observation = this.engine.getObservationById(observationId);
     if (!observation) return null;
 
     try {

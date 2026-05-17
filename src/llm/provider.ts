@@ -63,7 +63,7 @@ export class LLMProvider {
         }
 
         if (!response.ok) {
-          throw new Error(`LLM API error: ${response.status} ${await response.text()}`);
+          throw new Error(`LLM API error: ${response.status}`);
         }
 
         const data = await response.json() as ChatResponse;
@@ -84,7 +84,7 @@ export class LLMProvider {
     try {
       return JSON.parse(content) as Record<string, unknown>;
     } catch {
-      throw new Error(`Invalid JSON in LLM response: ${content.slice(0, 100)}`);
+      throw new Error("Invalid JSON in LLM response");
     }
   }
 
