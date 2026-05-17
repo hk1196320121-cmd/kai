@@ -44,7 +44,7 @@ export function registerProfileCommands(program: Command): void {
       const snapshot = engine.getProfile();
       db.close();
 
-      if (!snapshot.identity) {
+      if (!snapshot.identity && snapshot.traits.length === 0 && snapshot.observationCount === 0) {
         console.log("No profile found. Run `kai profile bootstrap` first.");
         return;
       }
@@ -60,10 +60,14 @@ export function registerProfileCommands(program: Command): void {
         return;
       }
 
-      console.log(`\n=== ${snapshot.identity.name} (${snapshot.identity.role}) ===`);
-      console.log(`Goals: ${snapshot.identity.goals}`);
-      console.log(`Expertise: ${snapshot.identity.expertise_areas}`);
-      console.log(`Interests: ${snapshot.identity.learning_interests}`);
+      if (snapshot.identity) {
+        console.log(`\n=== ${snapshot.identity.name} (${snapshot.identity.role}) ===`);
+        console.log(`Goals: ${snapshot.identity.goals}`);
+        console.log(`Expertise: ${snapshot.identity.expertise_areas}`);
+        console.log(`Interests: ${snapshot.identity.learning_interests}`);
+      } else {
+        console.log("\n=== Profile (no identity set) ===");
+      }
       console.log(`\nTraits (${snapshot.traits.length}):`);
       for (const t of snapshot.traits) {
         console.log(`  ${t.dimension}: ${t.value.toFixed(2)} (confidence: ${t.confidence}/10, source: ${t.source})`);
