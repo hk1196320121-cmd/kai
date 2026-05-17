@@ -1,9 +1,7 @@
 import { Command } from "commander";
-import { KaiDB } from "../db/client";
-import { ProfileEngine } from "../core/profile/engine";
 import { ProfileCollector } from "../core/profile/collector";
 import { HermesBridge } from "../bridge/hermes";
-import { getDbPath, getHermesDir } from "./utils";
+import { getEngine, getHermesDir } from "./utils";
 import { readFileSync, existsSync } from "fs";
 
 export function registerObserveCommands(program: Command): void {
@@ -21,8 +19,7 @@ export function registerObserveCommands(program: Command): void {
         process.exit(1);
       }
       const content = readFileSync(file, "utf-8");
-      const db = new KaiDB(getDbPath());
-      const engine = new ProfileEngine(db);
+      const { db, engine } = getEngine();
       const bridge = new HermesBridge(getHermesDir());
       const collector = new ProfileCollector(engine, bridge);
       const count = collector.collectFromCronOutput("manual", content);
@@ -33,8 +30,7 @@ export function registerObserveCommands(program: Command): void {
   observe.command("daily")
     .description("Scan all Hermes cron outputs and collect observations")
     .action(() => {
-      const db = new KaiDB(getDbPath());
-      const engine = new ProfileEngine(db);
+      const { db, engine } = getEngine();
       const bridge = new HermesBridge(getHermesDir());
       const collector = new ProfileCollector(engine, bridge);
       const count = collector.collectDaily();
