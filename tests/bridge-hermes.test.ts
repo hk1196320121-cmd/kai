@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { HermesBridge } from "../src/bridge/hermes";
-import { mkdirSync, writeFileSync, rmSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 

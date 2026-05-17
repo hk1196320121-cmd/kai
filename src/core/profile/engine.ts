@@ -51,6 +51,10 @@ export class ProfileEngine {
   }
 
   createIdentity(input: CreateIdentityInput): string {
+    const existing = this.getIdentity();
+    if (existing) {
+      throw new Error("Identity already exists. Use `kai profile update` to modify it.");
+    }
     const id = randomUUID();
     this.db.query(
       `INSERT INTO identity (id, name, role, goals, expertise_areas, learning_interests, work_context, communication_style)

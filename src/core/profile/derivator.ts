@@ -1,4 +1,4 @@
-import { ProfileEngine, SetTraitInput } from "./engine";
+import { ProfileEngine } from "./engine";
 
 interface Rule {
   dimension: string;
