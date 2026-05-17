@@ -26,7 +26,7 @@ export class ProvenanceEngine {
     const relatedObs = allObs.filter((obs) => {
       try {
         const prov = JSON.parse(obs.provenance) as Record<string, unknown>;
-        return obs.key.includes(dimension) || prov.related_traits?.includes(dimension);
+        return obs.key.includes(dimension) || Array.isArray(prov.related_traits) && prov.related_traits.includes(dimension);
       } catch {
         return false;
       }

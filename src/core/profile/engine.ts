@@ -76,14 +76,14 @@ export class ProfileEngine {
     const identity = this.getIdentity();
     if (!identity) throw new Error("No identity found. Run bootstrap first.");
     const sets: string[] = [];
-    const params: Record<string, unknown> = { $id: identity.id };
+    const params: Record<string, string | number | null> = { $id: identity.id };
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined) {
         if (!ALLOWED_IDENTITY_FIELDS.has(key)) {
           throw new Error(`Unknown identity field: ${key}`);
         }
         sets.push(`${key} = $${key}`);
-        params[`$${key}`] = value;
+        params[`$${key}`] = value as string | number | null;
       }
     }
     if (sets.length === 0) return;
@@ -108,7 +108,7 @@ export class ProfileEngine {
 
   getObservations(filter?: { type?: string; since?: string; key?: string }): Observation[] {
     let sql = "SELECT * FROM observations WHERE 1=1";
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string> = {};
     if (filter?.type) { sql += " AND type = $type"; params.$type = filter.type; }
     if (filter?.since) { sql += " AND ts >= $since"; params.$since = filter.since; }
     if (filter?.key) { sql += " AND key = $key"; params.$key = filter.key; }
