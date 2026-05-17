@@ -44,12 +44,12 @@ describe("Derivator", () => {
       expect(earlyRiser!.value).toBeGreaterThan(0.5);
     });
 
-    test("derives tinkerer from frequent cron prompt edits", () => {
+    test("derives tinkerer from distinct cron output entries", () => {
       for (let i = 0; i < 8; i++) {
         engine.addObservation({
           type: "behavior",
-          key: `cron:edit:${i}`,
-          value: JSON.stringify({ action: "edited cron prompt", edits: i }),
+          key: `cron:daily_summary:hash${i}`,
+          value: JSON.stringify({ jobId: "daily_summary", contentPreview: `output ${i}`, contentLength: 100 + i }),
           confidence: 6,
           source: "cron_output",
           provenance: '{}',

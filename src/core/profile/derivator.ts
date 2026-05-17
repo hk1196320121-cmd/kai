@@ -21,12 +21,15 @@ const RULES: Rule[] = [
   {
     dimension: "tinkerer",
     match: (key, value) => {
-      try { const v = JSON.parse(value); return v.action === "edited cron prompt"; } catch { return false; }
+      try {
+        const v = JSON.parse(value);
+        return key.startsWith("cron:") && typeof v.contentLength === "number" && v.contentLength > 0;
+      } catch { return false; }
     },
     derive: (count) => ({
       value: Math.min(1.0, count * 0.12),
       confidence: Math.min(10, count),
-      reasoning: `Edited cron prompts ${count} times`,
+      reasoning: `Has ${count} distinct cron output entries (frequent task tinkerer)`,
     }),
   },
   {

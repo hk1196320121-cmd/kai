@@ -50,6 +50,10 @@ export function registerProfileCommands(program: Command): void {
       }
 
       if (opts.field) {
+        if (!snapshot.identity) {
+          console.log(`Field '${opts.field}' not found (no identity set). Run \`kai profile bootstrap\` first.`);
+          return;
+        }
         const value = (snapshot.identity as unknown as Record<string, unknown>)[opts.field];
         console.log(value ?? `Field '${opts.field}' not found.`);
         return;

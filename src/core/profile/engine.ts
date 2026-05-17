@@ -114,7 +114,10 @@ export class ProfileEngine {
     let sql = "SELECT * FROM observations WHERE 1=1";
     const params: Record<string, string> = {};
     if (filter?.type) { sql += " AND type = $type"; params.$type = filter.type; }
-    if (filter?.since) { sql += " AND ts >= $since"; params.$since = filter.since; }
+    if (filter?.since) {
+      sql += " AND replace(ts, ' ', 'T') >= $since";
+      params.$since = filter.since.includes("T") ? filter.since : filter.since.replace(" ", "T");
+    }
     if (filter?.key) { sql += " AND key = $key"; params.$key = filter.key; }
     sql += " ORDER BY ts DESC";
     return this.db.query(sql).all(params) as Observation[];
