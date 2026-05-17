@@ -15,6 +15,7 @@ export class DecayEngine {
   }
 
   apply(): DecayResult {
+    const today = new Date().toISOString().slice(0, 10);
     const traits = this.engine.getTraits();
     let decayed = 0;
     let skipped = 0;
@@ -30,13 +31,18 @@ export class DecayEngine {
         continue;
       }
 
+      if (trait.reasoning.includes(`; decayed ${today}`)) {
+        skipped++;
+        continue;
+      }
+
       const newConfidence = Math.max(this.MIN_CONFIDENCE, trait.confidence - this.DECAY_AMOUNT);
       this.engine.setTrait({
         dimension: trait.dimension,
         value: trait.value,
         confidence: newConfidence,
         source: trait.source,
-        reasoning: trait.reasoning.replace(/; decayed(\s*\d{4}-\d{2}-\d{2})?$/, "") + `; decayed ${new Date().toISOString().slice(0, 10)}`,
+        reasoning: trait.reasoning.replace(/(; decayed(\s*\d{4}-\d{2}-\d{2})?)+$/, "") + `; decayed ${today}`,
       });
       decayed++;
     }

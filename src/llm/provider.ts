@@ -70,6 +70,10 @@ export class LLMProvider {
         return await this.parseResponse(data);
       } catch (error) {
         if (attempt === retries) throw error;
+        if (error instanceof Error && error.message.startsWith("LLM API error:")) {
+          const status = parseInt(error.message.replace("LLM API error: ", ""), 10);
+          if (status !== 429 && status < 500) throw error;
+        }
         const delay = Math.pow(2, attempt) * 1000;
         await new Promise((r) => setTimeout(r, delay));
       }
