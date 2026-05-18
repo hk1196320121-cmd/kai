@@ -3,8 +3,8 @@ import { KaiDB } from "../db/client";
 import { ProfileEngine } from "../core/profile/engine";
 import { internalToMcp } from "../core/profile/mcp-scale";
 
-function safeJsonParse(str: string): unknown {
-  try { return JSON.parse(str); } catch { return str; }
+function safeJsonParse(str: string, fallback: unknown = []): unknown {
+  try { return JSON.parse(str); } catch { return fallback; }
 }
 
 export function registerResources(server: McpServer, db: KaiDB): void {
@@ -63,7 +63,7 @@ export function registerResources(server: McpServer, db: KaiDB): void {
     "profile-traits-dimension",
     traitsDimensionTemplate,
     async (uri, variables) => {
-      const dimension = variables.dimension;
+      const dimension = Array.isArray(variables.dimension) ? variables.dimension[0] : variables.dimension;
       const traits = engine.getTraits({ dimension }).map((t) => ({
         dimension: t.dimension,
         value: t.value,
@@ -85,12 +85,16 @@ export function registerResources(server: McpServer, db: KaiDB): void {
     "kai://profile/observations/recent",
     async (uri) => {
       const obs = engine.getObservations().slice(0, 50).map((o) => {
+        let text = o.value;
         let tags: string[] = [];
+        let context = "";
         try {
           const v = JSON.parse(o.value);
+          if (typeof v.text === "string") text = v.text;
           if (Array.isArray(v.tags)) tags = v.tags;
+          if (typeof v.context === "string") context = v.context;
         } catch {}
-        return { id: o.id, text: o.value, source: o.source, timestamp: o.ts, tags };
+        return { id: o.id, text, source: o.source, timestamp: o.ts, tags, context };
       });
       return {
         contents: [
@@ -104,7 +108,7 @@ export function registerResources(server: McpServer, db: KaiDB): void {
   server.resource("profile-summary", "kai://profile/summary", async (uri) => {
     const profile = engine.getProfile();
     const identity = profile.identity;
-    const topTraits = profile.traits
+    const topTraits = [...profile.traits]
       .sort((a, b) => b.confidence - a.confidence || b.updated_at.localeCompare(a.updated_at))
       .slice(0, 5)
       .map((t) => ({
@@ -116,9 +120,6 @@ export function registerResources(server: McpServer, db: KaiDB): void {
       ? {
           name: identity.name,
           role: identity.role,
-          location: "",
-          timezone: "",
-          language: "",
           goals: safeJsonParse(identity.goals),
           expertise_areas: safeJsonParse(identity.expertise_areas),
         }

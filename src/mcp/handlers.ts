@@ -24,11 +24,11 @@ const log = (msg: string, data?: unknown) => {
   );
 };
 
-function safeJsonParse(str: string): unknown {
+function safeJsonParse(str: string, fallback: unknown = []): unknown {
   try {
     return JSON.parse(str);
   } catch {
-    return str;
+    return fallback;
   }
 }
 
@@ -100,7 +100,7 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
 
       // scope === "summary" or "full"
       const profile = engine.getProfile();
-      const topTraits = allTraits
+      const topTraits = [...allTraits]
         .sort(
           (a, b) =>
             b.confidence - a.confidence ||
@@ -289,10 +289,14 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
       let duplicates = 0;
       let errors = 0;
       const results: { id?: number; text: string; duplicate: boolean }[] = [];
+      const escapedTool = sourceTool.replace(/:/g, "_");
 
       for (const obs of observations) {
+        if (!checkRateLimit()) {
+          errors += observations.length - results.length;
+          break;
+        }
         try {
-          const escapedTool = sourceTool.replace(/:/g, "_");
           const { isDuplicate, hash } = checkDuplicate(
             engine,
             `mcp:${escapedTool}`,

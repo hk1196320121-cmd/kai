@@ -4,5 +4,6 @@ export function mcpToInternal(mcpValue: number): number {
 }
 
 export function internalToMcp(internalValue: number): number {
-  return (internalValue - 1) / 9;
+  const clamped = Math.max(1, Math.min(10, internalValue));
+  return (clamped - 1) / 9;
 }

@@ -13,7 +13,7 @@ export function createMcpServer(db: KaiDB): McpServer {
     version: "0.1.0",
   });
 
-  server.onerror = (error: Error) => {
+  server.server.onerror = (error: Error) => {
     log("mcp_server_error", { message: error.message });
   };
 
@@ -33,9 +33,11 @@ export async function startMcpServer(dbPath: string): Promise<void> {
 
   log("kai_mcp_server_started", { dbPath });
 
-  process.on("SIGTERM", () => {
-    log("kai_mcp_server_shutdown", { signal: "SIGTERM" });
+  const shutdown = (signal: string) => {
+    log("kai_mcp_server_shutdown", { signal });
     db.close();
     process.exit(0);
-  });
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }

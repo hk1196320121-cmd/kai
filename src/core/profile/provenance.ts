@@ -24,9 +24,12 @@ export class ProvenanceEngine {
 
     const allObs = this.engine.getObservations();
     const relatedObs = allObs.filter((obs) => {
+      if (obs.key.includes(dimension)) return true;
       try {
         const prov = JSON.parse(obs.provenance) as Record<string, unknown>;
-        return obs.key.includes(dimension) || (Array.isArray(prov.related_traits) && prov.related_traits.includes(dimension));
+        if (Array.isArray(prov.related_traits) && prov.related_traits.includes(dimension)) return true;
+        if (obs.type === "signal" && obs.key.startsWith("mcp:") && obs.value.includes(dimension)) return true;
+        return false;
       } catch {
         return false;
       }
