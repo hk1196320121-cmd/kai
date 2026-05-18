@@ -2,16 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { KaiDB } from "../db/client";
 import { registerHandlers } from "./handlers";
 import { registerResources } from "./resources";
-
-const log = (msg: string, data?: unknown) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      ts: new Date().toISOString(),
-      msg,
-      ...(data ? { data } : {}),
-    })}\n`,
-  );
-};
+import { log } from "./utils";
 
 export function createMcpServer(db: KaiDB): McpServer {
   const server = new McpServer({

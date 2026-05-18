@@ -5,14 +5,7 @@ import {
 import { ProfileEngine } from "../core/profile/engine";
 import { internalToMcp } from "../core/profile/mcp-scale";
 import type { KaiDB } from "../db/client";
-
-function safeJsonParse(str: string, fallback: unknown = []): unknown {
-  try {
-    return JSON.parse(str);
-  } catch {
-    return fallback;
-  }
-}
+import { safeJsonParse } from "./utils";
 
 export function registerResources(server: McpServer, db: KaiDB): void {
   const engine = new ProfileEngine(db);

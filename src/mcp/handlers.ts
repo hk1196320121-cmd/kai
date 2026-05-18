@@ -13,24 +13,7 @@ import {
   ProfileReadSchema,
   ProfileWhySchema,
 } from "./schema";
-
-const log = (msg: string, data?: unknown) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      ts: new Date().toISOString(),
-      msg,
-      ...(data ? { data } : {}),
-    })}\n`,
-  );
-};
-
-function safeJsonParse(str: string, fallback: unknown = []): unknown {
-  try {
-    return JSON.parse(str);
-  } catch {
-    return fallback;
-  }
-}
+import { log, safeJsonParse } from "./utils";
 
 function textContent(data: unknown) {
   return {
