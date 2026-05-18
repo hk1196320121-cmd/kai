@@ -3,24 +3,23 @@
 ## [0.1.0.0] - 2026-05-18
 
 ### Added
-- Profile Engine with identity, observations, traits, and preferences CRUD
-- SQLite database client with WAL mode, CHECK constraints, and schema migrations
-- Rule-based trait derivation engine (early_riser, tinkerer, consistent_user)
-- LLM-based trait derivation with OpenAI-compatible API and output validation
-- Confidence decay engine with declared-trait immunity and daily-apply guard
-- Trust model with provenance chain: `why` explains trait origin, `correct` removes incorrect traits
-- Observation collector with SHA-256 dedup and cron schedule parsing
-- Hermes bridge for reading cron outputs, skills, and job configs from file system
-- CLI with `profile` (bootstrap, read, update, derive, why, correct, decay) and `observe` (from-cron, daily) subcommands
-- 88 tests across 13 files covering core modules, bridge, collector, and E2E flows
+- **Profile Engine** — build a user profile through identity, observations, traits, and preferences. Start with `kai profile bootstrap`
+- **Local SQLite storage** with write-ahead logging and built-in data integrity checks
+- **Trait derivation** — automatically discovers behavioral traits from observations. Rule-based (early_riser, tinkerer, consistent_user) and LLM-powered inference
+- **Confidence decay** — traits weaken over time unless reinforced by new observations. Declared traits (set by you) stay permanent
+- **Provenance chain** — every trait has evidence behind it. `kai profile why <trait>` shows the reasoning, `kai profile correct <trait>` removes wrong ones
+- **Observation collection** — gather behavioral data from cron outputs with automatic deduplication. `kai observe daily` scans everything at once
+- **Hermes bridge** — reads cron outputs, skill configs, and job data directly from the file system
+- **Full CLI** — `profile` (bootstrap, read, update, derive, why, correct, decay) and `observe` (from-cron, daily) subcommands
+- 88 tests across 13 files covering all core modules, bridge, collector, and end-to-end flows
 
 ### Fixed
-- Profile read shows partial data (traits/observations) even without identity
-- Timestamp format normalization for same-day observation queries
-- `--field` flag guard against null identity in partial profile state
-- Derivation rules aligned with actual collected cron data (schedule/hour extraction)
-- Decay engine prevents double-apply on same day
-- LLM provider only retries on transient errors (429, 5xx), not client errors
+- `profile read` now handles partial profiles gracefully (traits/observations visible even without identity)
+- Same-day observation queries return consistent results across timezone boundaries
+- `--field` flag no longer crashes when identity hasn't been set yet
+- Trait derivation rules now match the actual format of collected cron data
+- Confidence decay won't apply twice on the same day
+- LLM provider stops retrying on client errors (400/401/403) — only retries on rate limits and server issues
 
 ### Security
 - LLM output dimension validation via allowlist (VALID_LLM_DIMENSIONS)
