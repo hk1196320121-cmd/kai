@@ -23,7 +23,8 @@ const RULES: Rule[] = [
     match: (key, value) => {
       try {
         const v = JSON.parse(value);
-        return key.startsWith("cron:") && typeof v.contentLength === "number" && v.contentLength > 0;
+        const isActivityKey = key.startsWith("cron:") || key.startsWith("mcp:");
+        return isActivityKey && typeof v.contentLength === "number" && v.contentLength > 0;
       } catch { return false; }
     },
     derive: (count) => ({
@@ -39,6 +40,54 @@ const RULES: Rule[] = [
       value: Math.min(1.0, count * 0.05),
       confidence: Math.min(10, Math.floor(count / 2)),
       reasoning: `Ran ${count} cron tasks`,
+    }),
+  },
+  {
+    dimension: "detail_oriented",
+    match: (key, value) => {
+      if (!key.startsWith("mcp:")) return false;
+      try {
+        const v = JSON.parse(value);
+        const text = (v.text ?? "").toLowerCase();
+        return text.includes("detail") || text.includes("thorough") || text.includes("exhaustive") || text.includes("careful");
+      } catch { return false; }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.15),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `MCP observation suggests detail orientation (${count} signals)`,
+    }),
+  },
+  {
+    dimension: "scope_appetite",
+    match: (key, value) => {
+      if (!key.startsWith("mcp:")) return false;
+      try {
+        const v = JSON.parse(value);
+        const text = (v.text ?? "").toLowerCase();
+        return text.includes("ambitious") || text.includes("big project") || text.includes("scope") || text.includes("large");
+      } catch { return false; }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.2),
+      confidence: Math.min(10, 2 + count),
+      reasoning: `MCP observation suggests large scope appetite (${count} signals)`,
+    }),
+  },
+  {
+    dimension: "risk_tolerance",
+    match: (key, value) => {
+      if (!key.startsWith("mcp:")) return false;
+      try {
+        const v = JSON.parse(value);
+        const text = (v.text ?? "").toLowerCase();
+        return text.includes("risk") || text.includes("experiment") || text.includes("try new") || text.includes("cutting edge");
+      } catch { return false; }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.2),
+      confidence: Math.min(10, 2 + count),
+      reasoning: `MCP observation suggests risk tolerance (${count} signals)`,
     }),
   },
 ];

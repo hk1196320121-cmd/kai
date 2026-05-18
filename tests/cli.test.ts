@@ -32,6 +32,19 @@ describe("CLI", () => {
     expect(stdout).toContain("daily");
   });
 
+  test("mcp serve --help shows usage", async () => {
+    const proc = spawn("bun", ["run", "src/cli/index.ts", "mcp", "serve", "--help"], { cwd: process.cwd() });
+    let stdout = "";
+    let stderr = "";
+    proc.stdout.on("data", (d) => (stdout += d));
+    proc.stderr.on("data", (d) => (stderr += d));
+    const exitCode = await new Promise<number>((resolve) => proc.on("close", (code) => resolve(code ?? 1)));
+
+    expect(exitCode).toBe(0);
+    expect(stdout.toLowerCase()).toContain("mcp");
+    expect(stdout.toLowerCase()).toContain("serve");
+  });
+
   test("unknown command shows error", async () => {
     const { exitCode, stderr } = await runCli(["nonexistent"]);
     expect(exitCode).not.toBe(0);
