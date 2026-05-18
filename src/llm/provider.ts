@@ -24,6 +24,10 @@ export class LLMProvider {
     };
   }
 
+  getConfig(): LLMConfig {
+    return { ...this.config };
+  }
+
   buildHeaders(): Record<string, string> {
     return {
       "Authorization": `Bearer ${this.config.apiKey}`,
