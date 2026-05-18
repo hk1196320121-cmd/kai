@@ -10,7 +10,7 @@ interface Rule {
   };
 }
 
-const RULES: Rule[] = [
+export const RULES: Rule[] = [
   {
     dimension: "early_riser",
     match: (_key, value) => {

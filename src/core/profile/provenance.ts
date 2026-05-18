@@ -1,3 +1,4 @@
+import { RULES } from "./derivator";
 import type { ProfileEngine } from "./engine";
 import type { Observation, ProvenanceChain } from "./types";
 
@@ -44,13 +45,13 @@ export class ProvenanceEngine {
       }
     });
 
-    const behaviorObs = allObs
-      .filter((obs) => obs.type === "behavior")
-      .slice(0, 5);
+    const rule = RULES.find((r) => r.dimension === dimension);
+    const ruleObs = rule
+      ? allObs.filter((obs) => rule.match(obs.key, obs.value))
+      : [];
+
     const combined = [
-      ...new Map(
-        [...relatedObs, ...behaviorObs].map((o) => [o.id, o]),
-      ).values(),
+      ...new Map([...relatedObs, ...ruleObs].map((o) => [o.id, o])).values(),
     ];
 
     return {

@@ -270,9 +270,10 @@ export class ProfileEngine {
   }
 
   getCorrections(): { dimension: string; reason: string }[] {
-    return this.db
-      .query("SELECT dimension, reason FROM corrections")
-      .all() as { dimension: string; reason: string }[];
+    return this.db.query("SELECT dimension, reason FROM corrections").all() as {
+      dimension: string;
+      reason: string;
+    }[];
   }
 
   isCorrected(dimension: string): boolean {
