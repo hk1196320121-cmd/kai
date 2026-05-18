@@ -159,6 +159,7 @@ export class Derivator {
     const results: DerivedTrait[] = [];
 
     for (const rule of RULES) {
+      if (this.engine.isCorrected(rule.dimension)) continue;
       const matches = observations.filter((obs) =>
         rule.match(obs.key, obs.value),
       );
@@ -217,6 +218,7 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
       const results: DerivedTrait[] = [];
       for (const t of traits) {
         if (!VALID_LLM_DIMENSIONS.has(t.dimension)) continue;
+        if (this.engine.isCorrected(t.dimension)) continue;
         const derived: DerivedTrait = {
           dimension: t.dimension,
           value: Math.round(Math.max(0, Math.min(1, t.value)) * 100) / 100,

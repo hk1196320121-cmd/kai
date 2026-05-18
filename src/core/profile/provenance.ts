@@ -83,6 +83,7 @@ export class ProvenanceEngine {
       }),
     });
 
+    this.engine.addCorrection(dimension, reason);
     return this.engine.removeTrait(dimension);
   }
 

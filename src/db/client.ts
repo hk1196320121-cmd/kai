@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-const _SCHEMA_VERSION = 2;
+const _SCHEMA_VERSION = 3;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -81,6 +81,15 @@ CREATE INDEX IF NOT EXISTS idx_observations_key ON observations(key);
 CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts);
 `;
 
+const MIGRATION_V3 = `
+CREATE TABLE IF NOT EXISTS corrections (
+  dimension TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  corrected_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(dimension)
+);
+`;
+
 export class KaiDB {
   private db: Database;
 
@@ -108,6 +117,13 @@ export class KaiDB {
       this.db.run(
         "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
         [2],
+      );
+    }
+    if (currentVersion < 3) {
+      this.db.exec(MIGRATION_V3);
+      this.db.run(
+        "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
+        [3],
       );
     }
     this.db.run("PRAGMA busy_timeout = 5000");

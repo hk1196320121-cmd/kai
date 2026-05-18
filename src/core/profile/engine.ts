@@ -260,4 +260,25 @@ export class ProfileEngine {
       .run(dimension);
     return result.changes > 0;
   }
+
+  addCorrection(dimension: string, reason: string): void {
+    this.db
+      .query(
+        "INSERT OR REPLACE INTO corrections (dimension, reason, corrected_at) VALUES ($dim, $reason, datetime('now'))",
+      )
+      .run({ $dim: dimension, $reason: reason });
+  }
+
+  getCorrections(): { dimension: string; reason: string }[] {
+    return this.db
+      .query("SELECT dimension, reason FROM corrections")
+      .all() as { dimension: string; reason: string }[];
+  }
+
+  isCorrected(dimension: string): boolean {
+    const row = this.db
+      .query("SELECT 1 FROM corrections WHERE dimension = ?")
+      .get(dimension);
+    return row !== null;
+  }
 }
