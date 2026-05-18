@@ -1,6 +1,6 @@
-import { readFileSync, readdirSync, existsSync, statSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { HermesCronJob, HermesSkill } from "../core/profile/types";
 
 export interface CronOutputEntry {
@@ -78,7 +78,11 @@ export class HermesBridge {
           const content = readFileSync(skillMd, "utf-8");
           skills.push({
             name: dirName,
-            description: content.split("\n").find((l) => l.trim() && !l.startsWith("---"))?.trim() ?? "",
+            description:
+              content
+                .split("\n")
+                .find((l) => l.trim() && !l.startsWith("---"))
+                ?.trim() ?? "",
             path: skillMd,
           });
         }

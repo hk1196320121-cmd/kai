@@ -42,10 +42,7 @@ export const ObserveSubmitSchema = {
 };
 
 export const DeriveTriggerSchema = {
-  method: z
-    .enum(["rules", "llm", "both"])
-    .optional()
-    .default("rules"),
+  method: z.enum(["rules", "llm", "both"]).optional().default("rules"),
 };
 
 export const ObserveBatchSchema = {

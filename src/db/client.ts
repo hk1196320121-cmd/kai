@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite";
-import { mkdirSync, existsSync } from "fs";
-import { dirname } from "path";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
-const SCHEMA_VERSION = 2;
+const _SCHEMA_VERSION = 2;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -100,14 +100,14 @@ export class KaiDB {
       this.db.exec(SCHEMA_SQL);
       this.db.run(
         "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
-        [1]
+        [1],
       );
     }
     if (currentVersion < 2) {
       this.db.exec(MIGRATION_V2);
       this.db.run(
         "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
-        [2]
+        [2],
       );
     }
     this.db.run("PRAGMA busy_timeout = 5000");
@@ -115,7 +115,9 @@ export class KaiDB {
 
   private getVersion(): number {
     try {
-      const row = this.db.query("SELECT MAX(version) as v FROM schema_version").get() as { v: number | null } | null;
+      const row = this.db
+        .query("SELECT MAX(version) as v FROM schema_version")
+        .get() as { v: number | null } | null;
       return row?.v ?? 0;
     } catch {
       return 0;
@@ -123,19 +125,23 @@ export class KaiDB {
   }
 
   listTables(): string[] {
-    const rows = this.db.query(
-      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    ).all() as { name: string }[];
+    const rows = this.db
+      .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all() as { name: string }[];
     return rows.map((r) => r.name);
   }
 
   getJournalMode(): string {
-    const row = this.db.query("PRAGMA journal_mode").get() as { journal_mode: string };
+    const row = this.db.query("PRAGMA journal_mode").get() as {
+      journal_mode: string;
+    };
     return row.journal_mode;
   }
 
   integrityCheck(): string {
-    const row = this.db.query("PRAGMA integrity_check").get() as { integrity_check: string };
+    const row = this.db.query("PRAGMA integrity_check").get() as {
+      integrity_check: string;
+    };
     return row.integrity_check;
   }
 

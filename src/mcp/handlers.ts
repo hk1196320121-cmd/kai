@@ -1,26 +1,26 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { KaiDB } from "../db/client";
-import { ProfileEngine } from "../core/profile/engine";
-import { ProvenanceEngine } from "../core/profile/provenance";
-import { Derivator } from "../core/profile/derivator";
-import { LLMProvider } from "../llm/provider";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { checkDuplicate } from "../core/profile/dedup";
-import { mcpToInternal, internalToMcp } from "../core/profile/mcp-scale";
+import { Derivator } from "../core/profile/derivator";
+import { ProfileEngine } from "../core/profile/engine";
+import { internalToMcp, mcpToInternal } from "../core/profile/mcp-scale";
+import { ProvenanceEngine } from "../core/profile/provenance";
+import type { KaiDB } from "../db/client";
+import { LLMProvider } from "../llm/provider";
 import {
-  ProfileReadSchema,
-  ProfileWhySchema,
-  ObserveSubmitSchema,
   DeriveTriggerSchema,
   ObserveBatchSchema,
+  ObserveSubmitSchema,
+  ProfileReadSchema,
+  ProfileWhySchema,
 } from "./schema";
 
 const log = (msg: string, data?: unknown) => {
   process.stderr.write(
-    JSON.stringify({
+    `${JSON.stringify({
       ts: new Date().toISOString(),
       msg,
       ...(data ? { data } : {}),
-    }) + "\n",
+    })}\n`,
   );
 };
 
@@ -51,10 +51,7 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
   function checkRateLimit(): boolean {
     const now = Date.now();
     const windowStart = now - RATE_LIMIT_WINDOW;
-    while (
-      submitTimestamps.length > 0 &&
-      submitTimestamps[0] < windowStart
-    ) {
+    while (submitTimestamps.length > 0 && submitTimestamps[0] < windowStart) {
       submitTimestamps.shift();
     }
     if (submitTimestamps.length >= RATE_LIMIT_MAX) return false;
@@ -228,56 +225,52 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
   );
 
   // --- derive.trigger ---
-  server.tool(
-    "derive.trigger",
-    DeriveTriggerSchema,
-    async ({ method }) => {
-      log("derive.trigger", { method });
-      const derivator = new Derivator(engine);
-      const results: { dimension: string; value: number; confidence: number }[] =
-        [];
+  server.tool("derive.trigger", DeriveTriggerSchema, async ({ method }) => {
+    log("derive.trigger", { method });
+    const derivator = new Derivator(engine);
+    const results: { dimension: string; value: number; confidence: number }[] =
+      [];
 
-      if (method === "rules" || method === "both") {
-        const ruleResults = derivator.deriveFromRules();
-        for (const t of ruleResults) {
-          results.push({
-            dimension: t.dimension,
-            value: t.value,
-            confidence: internalToMcp(t.confidence),
-          });
-        }
+    if (method === "rules" || method === "both") {
+      const ruleResults = derivator.deriveFromRules();
+      for (const t of ruleResults) {
+        results.push({
+          dimension: t.dimension,
+          value: t.value,
+          confidence: internalToMcp(t.confidence),
+        });
       }
+    }
 
-      if (method === "llm" || method === "both") {
-        if (!llmProvider.getConfig().apiKey) {
-          if (method === "llm") {
-            return textContent({ error: "llm_not_configured" });
+    if (method === "llm" || method === "both") {
+      if (!llmProvider.getConfig().apiKey) {
+        if (method === "llm") {
+          return textContent({ error: "llm_not_configured" });
+        }
+      } else {
+        try {
+          const llmResults = await derivator.deriveFromLLM(llmProvider);
+          for (const t of llmResults) {
+            results.push({
+              dimension: t.dimension,
+              value: t.value,
+              confidence: internalToMcp(t.confidence),
+            });
           }
-        } else {
-          try {
-            const llmResults = await derivator.deriveFromLLM(llmProvider);
-            for (const t of llmResults) {
-              results.push({
-                dimension: t.dimension,
-                value: t.value,
-                confidence: internalToMcp(t.confidence),
-              });
-            }
-          } catch {
-            if (method === "llm" && results.length === 0) {
-              return textContent({
-                error: "llm_call_failed",
-                derived: 0,
-                traits: [],
-              });
-            }
+        } catch {
+          if (method === "llm" && results.length === 0) {
+            return textContent({
+              error: "llm_call_failed",
+              derived: 0,
+              traits: [],
+            });
           }
         }
       }
+    }
 
-      return textContent({ derived: results.length, traits: results });
-    },
-  );
+    return textContent({ derived: results.length, traits: results });
+  });
 
   // --- observe.batch ---
   server.tool(

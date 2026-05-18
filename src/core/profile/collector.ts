@@ -1,13 +1,14 @@
-import { ProfileEngine } from "./engine";
-import { HermesBridge } from "../../bridge/hermes";
+import type { HermesBridge } from "../../bridge/hermes";
 import { checkDuplicate } from "./dedup";
+import type { ProfileEngine } from "./engine";
 
 function parseCronHour(schedule: string): number | undefined {
   const parts = schedule.trim().split(/\s+/);
   if (parts.length < 2) return undefined;
   const minute = parseInt(parts[0], 10);
   const hour = parseInt(parts[1], 10);
-  if (isNaN(minute) || isNaN(hour) || hour < 0 || hour > 23) return undefined;
+  if (Number.isNaN(minute) || Number.isNaN(hour) || hour < 0 || hour > 23)
+    return undefined;
   return hour;
 }
 
@@ -20,8 +21,16 @@ export class ProfileCollector {
     this.bridge = bridge;
   }
 
-  collectFromCronOutput(jobId: string, content: string, schedule?: string): number {
-    const { isDuplicate, hash } = checkDuplicate(this.engine, `cron:${jobId}`, content);
+  collectFromCronOutput(
+    jobId: string,
+    content: string,
+    schedule?: string,
+  ): number {
+    const { isDuplicate, hash } = checkDuplicate(
+      this.engine,
+      `cron:${jobId}`,
+      content,
+    );
     if (isDuplicate) return 0;
 
     const value: Record<string, unknown> = {
@@ -57,7 +66,11 @@ export class ProfileCollector {
     const jobSchedules = new Map(jobs.map((j) => [j.id, j.schedule]));
     let count = 0;
     for (const output of outputs) {
-      count += this.collectFromCronOutput(output.jobId, output.content, jobSchedules.get(output.jobId));
+      count += this.collectFromCronOutput(
+        output.jobId,
+        output.content,
+        jobSchedules.get(output.jobId),
+      );
     }
     return count;
   }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { registerProfileCommands } from "./profile";
-import { registerObserveCommands } from "./observe";
 import { registerMcpCommands } from "./mcp";
+import { registerObserveCommands } from "./observe";
+import { registerProfileCommands } from "./profile";
 
 const program = new Command();
 

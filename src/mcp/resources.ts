@@ -1,10 +1,17 @@
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { KaiDB } from "../db/client";
+import {
+  type McpServer,
+  ResourceTemplate,
+} from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ProfileEngine } from "../core/profile/engine";
 import { internalToMcp } from "../core/profile/mcp-scale";
+import type { KaiDB } from "../db/client";
 
 function safeJsonParse(str: string, fallback: unknown = []): unknown {
-  try { return JSON.parse(str); } catch { return fallback; }
+  try {
+    return JSON.parse(str);
+  } catch {
+    return fallback;
+  }
 }
 
 export function registerResources(server: McpServer, db: KaiDB): void {
@@ -23,7 +30,11 @@ export function registerResources(server: McpServer, db: KaiDB): void {
       : { identity: null };
     return {
       contents: [
-        { uri: uri.href, mimeType: "application/json", text: JSON.stringify(parsed) },
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(parsed),
+        },
       ],
     };
   });
@@ -39,7 +50,11 @@ export function registerResources(server: McpServer, db: KaiDB): void {
     }));
     return {
       contents: [
-        { uri: uri.href, mimeType: "application/json", text: JSON.stringify({ traits }) },
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify({ traits }),
+        },
       ],
     };
   });
@@ -63,7 +78,9 @@ export function registerResources(server: McpServer, db: KaiDB): void {
     "profile-traits-dimension",
     traitsDimensionTemplate,
     async (uri, variables) => {
-      const dimension = Array.isArray(variables.dimension) ? variables.dimension[0] : variables.dimension;
+      const dimension = Array.isArray(variables.dimension)
+        ? variables.dimension[0]
+        : variables.dimension;
       const traits = engine.getTraits({ dimension }).map((t) => ({
         dimension: t.dimension,
         value: t.value,
@@ -73,7 +90,11 @@ export function registerResources(server: McpServer, db: KaiDB): void {
       }));
       return {
         contents: [
-          { uri: uri.href, mimeType: "application/json", text: JSON.stringify({ traits }) },
+          {
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify({ traits }),
+          },
         ],
       };
     },
@@ -84,21 +105,35 @@ export function registerResources(server: McpServer, db: KaiDB): void {
     "profile-observations-recent",
     "kai://profile/observations/recent",
     async (uri) => {
-      const obs = engine.getObservations().slice(0, 50).map((o) => {
-        let text = o.value;
-        let tags: string[] = [];
-        let context = "";
-        try {
-          const v = JSON.parse(o.value);
-          if (typeof v.text === "string") text = v.text;
-          if (Array.isArray(v.tags)) tags = v.tags;
-          if (typeof v.context === "string") context = v.context;
-        } catch {}
-        return { id: o.id, text, source: o.source, timestamp: o.ts, tags, context };
-      });
+      const obs = engine
+        .getObservations()
+        .slice(0, 50)
+        .map((o) => {
+          let text = o.value;
+          let tags: string[] = [];
+          let context = "";
+          try {
+            const v = JSON.parse(o.value);
+            if (typeof v.text === "string") text = v.text;
+            if (Array.isArray(v.tags)) tags = v.tags;
+            if (typeof v.context === "string") context = v.context;
+          } catch {}
+          return {
+            id: o.id,
+            text,
+            source: o.source,
+            timestamp: o.ts,
+            tags,
+            context,
+          };
+        });
       return {
         contents: [
-          { uri: uri.href, mimeType: "application/json", text: JSON.stringify(obs) },
+          {
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify(obs),
+          },
         ],
       };
     },
@@ -109,7 +144,11 @@ export function registerResources(server: McpServer, db: KaiDB): void {
     const profile = engine.getProfile();
     const identity = profile.identity;
     const topTraits = [...profile.traits]
-      .sort((a, b) => b.confidence - a.confidence || b.updated_at.localeCompare(a.updated_at))
+      .sort(
+        (a, b) =>
+          b.confidence - a.confidence ||
+          b.updated_at.localeCompare(a.updated_at),
+      )
       .slice(0, 5)
       .map((t) => ({
         name: t.dimension,
@@ -146,26 +185,34 @@ export function registerResources(server: McpServer, db: KaiDB): void {
 
     let sizeBytes = 0;
     try {
-      const pc = database.query("SELECT page_count as c FROM pragma_page_count()").get() as { c: number } | null;
-      const ps = database.query("SELECT page_size as s FROM pragma_page_size()").get() as { s: number } | null;
+      const pc = database
+        .query("SELECT page_count as c FROM pragma_page_count()")
+        .get() as { c: number } | null;
+      const ps = database
+        .query("SELECT page_size as s FROM pragma_page_size()")
+        .get() as { s: number } | null;
       sizeBytes = (pc?.c ?? 0) * (ps?.s ?? 0);
     } catch {}
 
-    const statsRow = database.query(
-      "SELECT (SELECT COUNT(*) FROM observations) as observationCount, (SELECT COUNT(*) FROM traits) as traitCount"
-    ).get() as { observationCount: number; traitCount: number };
+    const statsRow = database
+      .query(
+        "SELECT (SELECT COUNT(*) FROM observations) as observationCount, (SELECT COUNT(*) FROM traits) as traitCount",
+      )
+      .get() as { observationCount: number; traitCount: number };
 
-    const lastObs = database.query(
-      "SELECT ts FROM observations ORDER BY ts DESC LIMIT 1"
-    ).get() as { ts: string } | null;
+    const lastObs = database
+      .query("SELECT ts FROM observations ORDER BY ts DESC LIMIT 1")
+      .get() as { ts: string } | null;
 
-    const lastTrait = database.query(
-      "SELECT updated_at FROM traits ORDER BY updated_at DESC LIMIT 1"
-    ).get() as { updated_at: string } | null;
+    const lastTrait = database
+      .query("SELECT updated_at FROM traits ORDER BY updated_at DESC LIMIT 1")
+      .get() as { updated_at: string } | null;
 
-    const lastCron = database.query(
-      "SELECT ts FROM observations WHERE source='cron_output' ORDER BY ts DESC LIMIT 1"
-    ).get() as { ts: string } | null;
+    const lastCron = database
+      .query(
+        "SELECT ts FROM observations WHERE source='cron_output' ORDER BY ts DESC LIMIT 1",
+      )
+      .get() as { ts: string } | null;
 
     return {
       contents: [

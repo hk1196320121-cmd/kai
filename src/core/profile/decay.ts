@@ -1,4 +1,4 @@
-import { ProfileEngine } from "./engine";
+import type { ProfileEngine } from "./engine";
 
 export interface DecayResult {
   decayed: number;
@@ -36,13 +36,18 @@ export class DecayEngine {
         continue;
       }
 
-      const newConfidence = Math.max(this.MIN_CONFIDENCE, trait.confidence - this.DECAY_AMOUNT);
+      const newConfidence = Math.max(
+        this.MIN_CONFIDENCE,
+        trait.confidence - this.DECAY_AMOUNT,
+      );
       this.engine.setTrait({
         dimension: trait.dimension,
         value: trait.value,
         confidence: newConfidence,
         source: trait.source,
-        reasoning: trait.reasoning.replace(/(; decayed(\s*\d{4}-\d{2}-\d{2})?)+$/, "") + `; decayed ${today}`,
+        reasoning:
+          trait.reasoning.replace(/(; decayed(\s*\d{4}-\d{2}-\d{2})?)+$/, "") +
+          `; decayed ${today}`,
       });
       decayed++;
     }

@@ -1,5 +1,5 @@
-import { ProfileEngine } from "./engine";
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
+import type { ProfileEngine } from "./engine";
 
 export interface DedupResult {
   isDuplicate: boolean;
@@ -21,7 +21,10 @@ export function checkDuplicate(
   if (extras?.tags?.length) hashInput += JSON.stringify(extras.tags);
   if (extras?.context) hashInput += extras.context;
 
-  const hash = createHash("sha256").update(hashInput).digest("hex").slice(0, 16);
+  const hash = createHash("sha256")
+    .update(hashInput)
+    .digest("hex")
+    .slice(0, 16);
   const key = `${namespace}:${hash}`;
   const existing = engine.getObservations({ key });
   return { isDuplicate: existing.length > 0, hash };

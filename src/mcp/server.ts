@@ -1,10 +1,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { KaiDB } from "../db/client";
-import { registerResources } from "./resources";
 import { registerHandlers } from "./handlers";
+import { registerResources } from "./resources";
 
 const log = (msg: string, data?: unknown) => {
-  process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), msg, ...(data ? { data } : {}) }) + "\n");
+  process.stderr.write(
+    `${JSON.stringify({
+      ts: new Date().toISOString(),
+      msg,
+      ...(data ? { data } : {}),
+    })}\n`,
+  );
 };
 
 export function createMcpServer(db: KaiDB): McpServer {
@@ -27,7 +33,9 @@ export async function startMcpServer(dbPath: string): Promise<void> {
   const db = new KaiDB(dbPath);
   const server = createMcpServer(db);
 
-  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
+  const { StdioServerTransport } = await import(
+    "@modelcontextprotocol/sdk/server/stdio.js"
+  );
   const transport = new StdioServerTransport();
   await server.connect(transport);
 

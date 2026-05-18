@@ -19,7 +19,10 @@ export class LLMProvider {
   constructor(config?: Partial<LLMConfig>) {
     this.config = {
       apiKey: config?.apiKey ?? process.env.LLM_API_KEY ?? "",
-      baseUrl: config?.baseUrl ?? process.env.LLM_BASE_URL ?? "http://localhost:11434/v1",
+      baseUrl:
+        config?.baseUrl ??
+        process.env.LLM_BASE_URL ??
+        "http://localhost:11434/v1",
       model: config?.model ?? process.env.LLM_MODEL ?? "gpt-4o-mini",
     };
   }
@@ -30,12 +33,15 @@ export class LLMProvider {
 
   buildHeaders(): Record<string, string> {
     return {
-      "Authorization": `Bearer ${this.config.apiKey}`,
+      Authorization: `Bearer ${this.config.apiKey}`,
       "Content-Type": "application/json",
     };
   }
 
-  buildRequestBody(prompt: string, systemPrompt: string): Record<string, unknown> {
+  buildRequestBody(
+    prompt: string,
+    systemPrompt: string,
+  ): Record<string, unknown> {
     return {
       model: this.config.model,
       messages: [
@@ -48,7 +54,11 @@ export class LLMProvider {
     };
   }
 
-  async call(prompt: string, systemPrompt: string, retries = 1): Promise<Record<string, unknown>> {
+  async call(
+    prompt: string,
+    systemPrompt: string,
+    retries = 1,
+  ): Promise<Record<string, unknown>> {
     const url = `${this.config.baseUrl}/chat/completions`;
     const body = this.buildRequestBody(prompt, systemPrompt);
 
@@ -61,7 +71,7 @@ export class LLMProvider {
         });
 
         if (response.status === 429) {
-          const delay = Math.pow(2, attempt) * 1000;
+          const delay = 2 ** attempt * 1000;
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
@@ -70,15 +80,21 @@ export class LLMProvider {
           throw new Error(`LLM API error: ${response.status}`);
         }
 
-        const data = await response.json() as ChatResponse;
+        const data = (await response.json()) as ChatResponse;
         return await this.parseResponse(data);
       } catch (error) {
         if (attempt === retries) throw error;
-        if (error instanceof Error && error.message.startsWith("LLM API error:")) {
-          const status = parseInt(error.message.replace("LLM API error: ", ""), 10);
+        if (
+          error instanceof Error &&
+          error.message.startsWith("LLM API error:")
+        ) {
+          const status = parseInt(
+            error.message.replace("LLM API error: ", ""),
+            10,
+          );
           if (status !== 429 && status < 500) throw error;
         }
-        const delay = Math.pow(2, attempt) * 1000;
+        const delay = 2 ** attempt * 1000;
         await new Promise((r) => setTimeout(r, delay));
       }
     }
@@ -86,7 +102,9 @@ export class LLMProvider {
     throw new Error("LLM call failed after retries");
   }
 
-  async parseResponse(response: { choices: { message: { content: string } }[] }): Promise<Record<string, unknown>> {
+  async parseResponse(response: {
+    choices: { message: { content: string } }[];
+  }): Promise<Record<string, unknown>> {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error("No content in LLM response");
     try {
@@ -96,7 +114,10 @@ export class LLMProvider {
     }
   }
 
-  validateWithSchema(obj: Record<string, unknown>, requiredFields: string[]): void {
+  validateWithSchema(
+    obj: Record<string, unknown>,
+    requiredFields: string[],
+  ): void {
     for (const field of requiredFields) {
       if (!(field in obj)) {
         throw new Error(`Missing required field: ${field}`);
