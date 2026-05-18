@@ -47,4 +47,13 @@ describe("KaiDB", () => {
     const result = db.integrityCheck();
     expect(result).toBe("ok");
   });
+
+  test("schema v2: observations accept source='mcp'", () => {
+    const database = db.getDatabase();
+    const result = database.run(
+      "INSERT INTO observations (type, key, value, confidence, source, provenance) VALUES (?, ?, ?, ?, ?, ?)",
+      ["signal", "mcp:test:abc123", "{}", 5, "mcp", "{}"]
+    );
+    expect(Number(result.lastInsertRowid)).toBeGreaterThan(0);
+  });
 });
