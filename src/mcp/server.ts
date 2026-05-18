@@ -3,11 +3,19 @@ import { KaiDB } from "../db/client";
 import { registerResources } from "./resources";
 import { registerHandlers } from "./handlers";
 
+const log = (msg: string, data?: unknown) => {
+  process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), msg, ...(data ? { data } : {}) }) + "\n");
+};
+
 export function createMcpServer(db: KaiDB): McpServer {
   const server = new McpServer({
     name: "kai",
     version: "0.1.0",
   });
+
+  server.onerror = (error: Error) => {
+    log("mcp_server_error", { message: error.message });
+  };
 
   registerResources(server, db);
   registerHandlers(server, db);
@@ -23,11 +31,10 @@ export async function startMcpServer(dbPath: string): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  const log = (msg: string) => process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), msg }) + "\n");
-  log("kai mcp server started on stdio");
+  log("kai_mcp_server_started", { dbPath });
 
   process.on("SIGTERM", () => {
-    log("kai mcp server shutting down");
+    log("kai_mcp_server_shutdown", { signal: "SIGTERM" });
     db.close();
     process.exit(0);
   });
