@@ -129,12 +129,7 @@ const RULES: Rule[] = [
 ];
 
 const VALID_LLM_DIMENSIONS = new Set(
-  RULES.map((r) => r.dimension).concat([
-    "scope_appetite",
-    "risk_tolerance",
-    "autonomy",
-    "detail_oriented",
-  ]),
+  RULES.map((r) => r.dimension).concat(["autonomy"]),
 );
 
 export interface DerivedTrait {
