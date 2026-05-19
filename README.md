@@ -131,6 +131,15 @@ Data flows: **Hermes cron outputs** -> **Collector** (dedup) -> **Observations**
 
 Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 
+## Documentation
+
+| Document | Type | Description |
+|----------|------|-------------|
+| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 5 tools and 6 resources |
+| [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
+| [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
+| [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
+
 ## Development
 
 ```bash
