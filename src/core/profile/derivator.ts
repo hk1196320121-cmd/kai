@@ -126,10 +126,63 @@ export const RULES: Rule[] = [
       reasoning: `MCP observation suggests risk tolerance (${count} signals)`,
     }),
   },
+  {
+    dimension: "detail_oriented",
+    match: (key, value) => {
+      if (key !== "coldstart:signal.detail_level") return false;
+      try {
+        const v = JSON.parse(value);
+        return v.level === "high";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.5 + count * 0.15),
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} high-detail signals detected`,
+    }),
+  },
+  {
+    dimension: "comm_style",
+    match: (key) => key === "coldstart:signal.comm_style",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.2),
+      confidence: Math.min(10, 3 + count * 2),
+      reasoning: `Cold start: ${count} communication style signals`,
+    }),
+  },
+  {
+    dimension: "domain_context",
+    match: (key) => key === "coldstart:signal.domain",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.25),
+      confidence: Math.min(10, 4 + count * 2),
+      reasoning: `Cold start: ${count} domain context signals`,
+    }),
+  },
+  {
+    dimension: "preferred_output_shape",
+    match: (key) => key === "coldstart:format",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.3),
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} output format preferences`,
+    }),
+  },
+  {
+    dimension: "task_completion_rate",
+    match: (key) => key.startsWith("workspace:task_"),
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.15),
+      confidence: Math.min(10, count),
+      reasoning: `${count} workspace task events recorded`,
+    }),
+  },
 ];
 
 const VALID_LLM_DIMENSIONS = new Set(
-  RULES.map((r) => r.dimension).concat(["autonomy"]),
+  RULES.map((r) => r.dimension).concat(["autonomy", "planning_style"]),
 );
 
 export interface DerivedTrait {
@@ -147,7 +200,7 @@ export class Derivator {
     this.engine = engine;
   }
 
-  deriveFromRules(): DerivedTrait[] {
+  deriveFromRules(persist: boolean = true): DerivedTrait[] {
     const observations = this.engine.getObservations();
     if (observations.length === 0) return [];
 
@@ -168,7 +221,9 @@ export class Derivator {
           reasoning: derived.reasoning,
         };
         results.push(trait);
-        this.engine.setTrait(trait);
+        if (persist) {
+          this.engine.setTrait(trait);
+        }
       }
     }
 
