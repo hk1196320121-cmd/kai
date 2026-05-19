@@ -15,10 +15,10 @@ Build a behavioral profile from scratch. You'll submit observations through the 
 ## Step 1: Bootstrap your profile
 
 ```bash
-bun run dev profile bootstrap
+bun run dev work start
 ```
 
-Answer the questions. This creates your identity (name, role, timezone, etc.) in the database. The profile is stored at `~/.kai/profile.db`.
+Answer 4 questions about your work style. Kai also scans your git history (last 30 days) to detect patterns like commit times and branch naming. Review the derived traits, edit any that look wrong, then confirm. The profile is stored at `~/.kai/profile.db`.
 
 Verify it worked:
 

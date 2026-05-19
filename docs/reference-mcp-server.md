@@ -117,6 +117,8 @@ Triggers trait derivation from collected observations.
 
 **Derivation rules:**
 
+*MCP / cron rules:*
+
 | Rule | Dimension | Matches | Derives |
 |------|-----------|---------|---------|
 | Early riser | `early_riser` | Cron patterns showing morning (5–9 AM) activity | value 0–1, confidence based on match count |
@@ -125,6 +127,18 @@ Triggers trait derivation from collected observations.
 | Detail oriented | `detail_oriented` | MCP observations showing thorough behavior | value 0–1, confidence based on text length |
 | Scope appetite | `scope_appetite` | Observations showing broad exploration | value 0–1, confidence based on topic diversity |
 | Risk tolerance | `risk_tolerance` | Observations showing risk-taking behavior | value 0–1, confidence based on risk indicators |
+
+*Coldstart signal rules:*
+
+| Rule | Dimension | Signal key | Source |
+|------|-----------|------------|--------|
+| Detail level | `detail_oriented` | `coldstart:signal.detail_level` | Self-assessment |
+| Communication style | `comm_style` | `coldstart:signal.comm_style` | Self-assessment |
+| Domain context | `domain_context` | `coldstart:signal.domain` | Self-assessment |
+| Output shape | `preferred_output_shape` | `coldstart:format` | Self-assessment |
+| Commit times | `early_riser` | `coldstart:git.commit_time_distribution` | Git history |
+| Commit messages | `detail_oriented` | `coldstart:git.commit_message_length` | Git history |
+| Branch patterns | `scope_appetite` | `coldstart:git.branch_pattern` | Git history |
 
 **Skips:** Dimensions with active corrections are never re-derived.
 

@@ -5,7 +5,7 @@ Connect any MCP-compatible AI agent to Kai's profile server via stdio transport.
 ## Prerequisites
 
 - Kai installed and on PATH (`bun link` from the repo, or `npm install -g`)
-- A working profile database (`kai profile bootstrap` if first time)
+- A working profile database (`kai work start` if first time)
 - An MCP-compatible client (Claude Desktop, Cursor, or any MCP SDK client)
 
 ## Step 1: Verify Kai works
@@ -14,7 +14,7 @@ Connect any MCP-compatible AI agent to Kai's profile server via stdio transport.
 kai profile read
 ```
 
-You should see your profile (or an empty profile message if no data yet). If this fails, run `kai profile bootstrap` first.
+You should see your profile (or an empty profile message if no data yet). If this fails, run `kai work start` first.
 
 ## Step 2: Configure your MCP client
 
@@ -81,7 +81,7 @@ Expected response: a stored observation with an ID and timestamp.
 
 **"Cannot find module"** — Dependencies not installed. Run `bun install` in the Kai repo.
 
-**No profile data returned** — Database is empty. Run `kai profile bootstrap` to create initial identity, then `kai observe daily` to collect observations.
+**No profile data returned** — Database is empty. Run `kai work start` to create initial identity, then `kai observe daily` to collect observations.
 
 **Rate limit errors** — You're submitting too fast. Kai allows 60 `observe.submit` calls per minute. Use `observe.batch` for bulk submissions instead.
 
