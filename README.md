@@ -150,7 +150,12 @@ Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 | [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 5 tools and 6 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
+| [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |
+| [How to Use Cold Start](docs/howto-cold-start.md) | How-to | Re-running cold start, editing traits, diff, troubleshooting |
+| [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
+| [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
+| [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
 
 ## Development
 
