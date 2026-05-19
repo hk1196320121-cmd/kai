@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { registerMcpCommands } from "./mcp";
 import { registerObserveCommands } from "./observe";
 import { registerProfileCommands } from "./profile";
+import { registerWorkCommands } from "./work";
 
 const program = new Command();
 
@@ -14,6 +15,7 @@ program
 registerProfileCommands(program);
 registerObserveCommands(program);
 registerMcpCommands(program);
+registerWorkCommands(program);
 
 export { program };
 
