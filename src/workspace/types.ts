@@ -30,15 +30,9 @@ export interface WorkspaceEvent {
 
 export type WorkspaceEventType =
   | "workspace_created"
+  | "workspace_archived"
   | "task_created"
   | "task_updated"
   | "task_completed"
   | "interaction"
   | "coldstart_answer";
-
-export interface IWorkspaceAdapter {
-  readonly name: string;
-  fetchEvents(since: string): WorkspaceEvent[];
-  pushTask(task: Omit<Task, "created_at" | "updated_at">): void;
-  pushEvent(event: Omit<WorkspaceEvent, "id" | "created_at">): void;
-}
