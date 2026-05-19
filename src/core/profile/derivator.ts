@@ -126,6 +126,110 @@ export const RULES: Rule[] = [
       reasoning: `MCP observation suggests risk tolerance (${count} signals)`,
     }),
   },
+  {
+    dimension: "detail_oriented",
+    match: (key, value) => {
+      if (key !== "coldstart:signal.detail_level") return false;
+      try {
+        const v = JSON.parse(value);
+        return v.level === "high";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.5 + count * 0.15),
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} high-detail signals detected`,
+    }),
+  },
+  {
+    dimension: "comm_style",
+    match: (key) => key === "coldstart:signal.comm_style",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.2),
+      confidence: Math.min(10, 3 + count * 2),
+      reasoning: `Cold start: ${count} communication style signals`,
+    }),
+  },
+  {
+    dimension: "domain_context",
+    match: (key) => key === "coldstart:signal.domain",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.25),
+      confidence: Math.min(10, 4 + count * 2),
+      reasoning: `Cold start: ${count} domain context signals`,
+    }),
+  },
+  {
+    dimension: "preferred_output_shape",
+    match: (key) => key === "coldstart:format",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.3),
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} output format preferences`,
+    }),
+  },
+  {
+    dimension: "early_riser",
+    match: (key, value) => {
+      if (key !== "coldstart:git.commit_time_distribution") return false;
+      try {
+        const v = JSON.parse(value);
+        return v.morning_ratio > 0.3;
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.4 + count * 0.15),
+      confidence: Math.min(10, 4 + count),
+      reasoning: `Git scan: ${count} high morning commit ratio signals`,
+    }),
+  },
+  {
+    dimension: "detail_oriented",
+    match: (key, value) => {
+      if (key !== "coldstart:git.commit_message_length") return false;
+      try {
+        const v = JSON.parse(value);
+        return v.detail_level === "high";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.4 + count * 0.15),
+      confidence: Math.min(10, 4 + count),
+      reasoning: `Git scan: ${count} long commit message signals`,
+    }),
+  },
+  {
+    dimension: "scope_appetite",
+    match: (key, value) => {
+      if (key !== "coldstart:git.branch_pattern") return false;
+      try {
+        const v = JSON.parse(value);
+        return v.structured === true;
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.2),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `Git scan: ${count} structured branch naming signals`,
+    }),
+  },
+  {
+    dimension: "task_completion_rate",
+    match: (key) => key.startsWith("workspace:task_"),
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.15),
+      confidence: Math.min(10, count),
+      reasoning: `${count} workspace task events recorded`,
+    }),
+  },
 ];
 
 const VALID_LLM_DIMENSIONS = new Set(
@@ -147,27 +251,54 @@ export class Derivator {
     this.engine = engine;
   }
 
-  deriveFromRules(): DerivedTrait[] {
+  deriveFromRules(persist: boolean = true): DerivedTrait[] {
     const observations = this.engine.getObservations();
     if (observations.length === 0) return [];
 
-    const results: DerivedTrait[] = [];
+    // Collect all matching observations per dimension across all rules.
+    // Multiple rules can target the same dimension (e.g. detail_oriented
+    // from MCP keywords and from coldstart signal). Observations from
+    // all matching rules are merged so the derive function sees the
+    // combined count.
+    const dimMatches = new Map<
+      string,
+      {
+        observations: typeof observations;
+        derive: (typeof RULES)[number]["derive"];
+      }
+    >();
 
     for (const rule of RULES) {
       if (this.engine.isCorrected(rule.dimension)) continue;
       const matches = observations.filter((obs) =>
         rule.match(obs.key, obs.value),
       );
-      if (matches.length > 0) {
-        const derived = rule.derive(matches.length);
-        const trait: DerivedTrait = {
-          dimension: rule.dimension,
-          value: Math.round(derived.value * 100) / 100,
-          confidence: Math.max(1, derived.confidence),
-          source: "observed",
-          reasoning: derived.reasoning,
-        };
-        results.push(trait);
+      if (matches.length === 0) continue;
+
+      const existing = dimMatches.get(rule.dimension);
+      if (existing) {
+        existing.observations.push(...matches);
+      } else {
+        dimMatches.set(rule.dimension, {
+          observations: [...matches],
+          derive: rule.derive,
+        });
+      }
+    }
+
+    const results: DerivedTrait[] = [];
+
+    for (const [dimension, { observations: obs, derive }] of dimMatches) {
+      const derived = derive(obs.length);
+      const trait: DerivedTrait = {
+        dimension,
+        value: Math.round(derived.value * 100) / 100,
+        confidence: Math.max(1, derived.confidence),
+        source: "observed",
+        reasoning: derived.reasoning,
+      };
+      results.push(trait);
+      if (persist) {
         this.engine.setTrait(trait);
       }
     }

@@ -35,7 +35,14 @@ export interface Observation {
   key: string;
   value: string; // JSON payload
   confidence: number; // 1-10
-  source: "cron_output" | "session_log" | "user_stated" | "inferred" | "mcp";
+  source:
+    | "cron_output"
+    | "session_log"
+    | "user_stated"
+    | "inferred"
+    | "mcp"
+    | "coldstart"
+    | "workspace";
   provenance: string; // JSON: { origin_file, extracted_at, extractor_version }
   ts: string; // ISO 8601
 }

@@ -45,6 +45,21 @@ The corrections table breaks this loop. Once corrected, a dimension stays correc
 
 **The trade-off:** Corrections are permanent until manually cleared. If a user corrects "early_riser" but later actually becomes an early riser, the trait won't derive until the correction record is removed from the database. This is intentional — false negatives (missing a real trait) are preferable to false positives (a wrong trait keeps reappearing).
 
+## Source precedence
+
+Traits have a source that determines where the value came from. When the same dimension gets a new value from a different source, the engine checks whether the new source has higher priority:
+
+| Priority | Source | Example |
+|----------|--------|---------|
+| 4 (highest) | `declared` | User set directly via `kai profile update` |
+| 3 | `corrected` | User corrected via `kai profile correct` |
+| 2 | `observed` | Derived from coldstart signals or workspace events |
+| 1 (lowest) | `inferred` | Derived by rules or LLM |
+
+A lower-priority source cannot overwrite a higher-priority one. If you declare `early_riser` via `kai profile update`, no amount of derived observations can change it.
+
+**Why precedence?** Without it, running `derive` could silently overwrite a value the user set explicitly. Source precedence gives the user final say over their profile while still allowing automatic derivation for dimensions they haven't manually set.
+
 ## How they work together
 
 ```

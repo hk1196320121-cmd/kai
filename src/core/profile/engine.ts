@@ -55,6 +55,14 @@ const ALLOWED_IDENTITY_FIELDS = new Set([
 export class ProfileEngine {
   private db;
 
+  private static readonly SOURCE_PRECEDENCE: Record<string, number> = {
+    declared: 4,
+    corrected: 3,
+    observed: 2,
+    inferred: 1,
+    "cross-model": 1,
+  };
+
   constructor(kaiDb: KaiDB) {
     this.db = kaiDb.getDatabase();
   }
@@ -168,6 +176,17 @@ export class ProfileEngine {
   }
 
   setTrait(input: SetTraitInput): string {
+    // Source precedence: higher-priority sources cannot be overwritten by lower
+    const existing = this.getTraits({ dimension: input.dimension });
+    if (existing.length > 0) {
+      const currentPrecedence =
+        ProfileEngine.SOURCE_PRECEDENCE[existing[0].source] ?? 0;
+      const newPrecedence = ProfileEngine.SOURCE_PRECEDENCE[input.source] ?? 0;
+      if (newPrecedence < currentPrecedence) {
+        return existing[0].id;
+      }
+    }
+
     const id = randomUUID();
     this.db
       .query(

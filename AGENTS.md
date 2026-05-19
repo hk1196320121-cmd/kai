@@ -85,15 +85,18 @@ Resources are read-only profile access endpoints. All return `application/json`.
 
 ```bash
 # Profile management
-kai profile bootstrap              # Interactive first-time setup
 kai profile read                   # View profile
 kai profile read --json            # JSON output
 kai profile read --field <name>    # Single identity field
+kai profile diff --last            # See profile changes since last cold start
 kai profile update --field <name> --value <val>
 kai profile derive                 # Derive traits from observations
 kai profile why <dimension>        # Trait provenance
 kai profile correct <dimension>    # Remove incorrect trait
 kai profile decay                  # Apply confidence decay
+
+# Cold start
+kai work start                     # Interactive profile bootstrapping (4 questions + git scan)
 
 # Observation collection
 kai observe from-cron <file>       # Extract from cron output file
@@ -108,7 +111,7 @@ kai mcp serve --db <path>          # Custom database path
 
 ```
 src/
-  cli/              Commander.js CLI (profile, observe, mcp subcommands)
+  cli/              Commander.js CLI (profile, observe, work, mcp subcommands)
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
     handlers.ts     5 tool handlers with rate limiting and dedup
@@ -116,23 +119,29 @@ src/
     schema.ts       Zod input validation schemas
     utils.ts        safeJsonParse, structured logging
   core/profile/     Profile engine core
-    engine.ts       CRUD for identity, observations, traits, preferences
-    derivator.ts    Rule-based + LLM trait derivation (6 rules)
+    engine.ts       CRUD for identity, observations, traits, preferences; source precedence
+    derivator.ts    Rule-based + LLM trait derivation (13 rules across 9 dimensions)
     provenance.ts   Trait provenance chain and correction tracking
     dedup.ts        SHA-256 deduplication (content + tags + context)
     decay.ts        Time-based confidence decay (declared traits immune)
     mcp-scale.ts    MCP (0–1) ↔ internal (1–10) confidence conversion
     collector.ts    Hermes cron output parsing and batch collection
     types.ts        Core type definitions
+  workspace/        Workspace system
+    store.ts        CRUD for workspaces, tasks, and events with SQLite persistence
+    event-bus.ts    Converts workspace state changes into profile observations
+    types.ts        Workspace, Task, Event type definitions
   bridge/           Hermes bridge (file system reads for cron data)
-  db/               SQLite client with WAL mode and schema migrations (v1–v3)
+  db/               SQLite client with WAL mode and schema migrations (v1–v4)
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
 Data flows:
+- **Cold start path**: `kai work start` (4 questions + git scan) → Observations → Derivator → Traits → Preview/edit/confirm
 - **CLI path**: Hermes cron → Collector (dedup) → Observations (SQLite) → Derivator (rules + LLM) → Traits → Decay → Provenance
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
-- Both paths share the same database (`~/.kai/profile.db`)
+- **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
+- All paths share the same database (`~/.kai/profile.db`)
 
 ## Key Concepts
 
@@ -140,13 +149,24 @@ Data flows:
 
 **Deduplication**: Observations are hashed (SHA-256) using content + tags + context. Namespace format: `mcp:{tool}:{hash}`. Duplicate submissions return the existing observation.
 
-**Trait derivation rules** (6 built-in):
+**Trait derivation rules** (13 rules across 9 unique dimensions):
+
+*MCP / cron rules (6):*
 - `early_riser`: Matches cron patterns indicating morning activity
 - `tinkerer`: Matches experimentation/tool usage patterns (accepts `mcp:` keys)
 - `consistent_user`: Matches regular daily usage patterns
 - `detail_oriented`: Matches MCP observations showing thorough, detailed behavior
 - `scope_appetite`: Matches observations indicating willingness to explore broadly
 - `risk_tolerance`: Matches observations showing risk-taking or cautious behavior
+
+*Coldstart signal rules (7):*
+- `detail_oriented` (coldstart:signal.detail_level): From self-assessed detail orientation
+- `comm_style` (coldstart:signal.comm_style): From preferred communication style
+- `domain_context` (coldstart:signal.domain): From stated domain expertise
+- `preferred_output_shape` (coldstart:format): From preferred output format
+- `early_riser` (coldstart:git.commit_time_distribution): From git commit time patterns
+- `detail_oriented` (coldstart:git.commit_message_length): From commit message thoroughness
+- `scope_appetite` (coldstart:git.branch_pattern): From branch naming patterns
 
 **Corrections**: When a user corrects a trait via `profile.correct`, the correction is stored in a `corrections` table. Derivation skips corrected dimensions — the trait won't reappear after re-running `derive.trigger`.
 
@@ -156,7 +176,7 @@ Data flows:
 
 **Identity**: name, role, location, timezone, communication_style, interests (user-editable fields)
 
-**Observation**: text, source (cron_output|session_log|user_stated|inferred|mcp), type (behavior|preference|feedback|context|signal), confidence (1–10), tags, context, timestamp
+**Observation**: text, source (cron_output|session_log|user_stated|inferred|mcp|coldstart|workspace), type (behavior|preference|feedback|context|signal), confidence (1–10), tags, context, timestamp
 
 **Trait**: dimension, value (0–1), confidence (1–10), source (declared|observed|inferred|cross-model), timestamp
 
@@ -164,15 +184,35 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/profile.db`. Schema versioned (v1–v3). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/profile.db`. Schema versioned (v1–v4). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (152 across 20 files)
+bun test             # Run tests (226 across 33 files)
 bun test --watch     # Watch mode
+bun run typecheck    # Type-check with tsc --noEmit
+bun run lint         # Lint with Biome
 bun run dev <cmd>    # Run CLI in dev mode
 ```
 
-Health stack: `npx tsc --noEmit` (typecheck), `npx @biomejs/biome check src/` (lint), `npx knip` (dead code).
+Health stack: `bun run typecheck`, `bun run lint`, `bun test`, `npx knip` (dead code). CI (GitHub Actions) runs all three checks on every push and PR.
+
+
+<claude-mem-context>
+# Memory Context
+
+# claude-mem status
+
+This project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
+
+Memory injection starts on your second session in a project.
+
+`/learn-codebase` is available if the user wants to front-load the entire repo into memory in a single pass (~5 minutes on a typical repo, optional). Otherwise memory builds passively as work happens.
+
+Live activity: http://localhost:37700
+How it works: `/how-it-works`
+
+This message disappears once the first observation lands.
+</claude-mem-context>

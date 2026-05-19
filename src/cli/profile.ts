@@ -3,7 +3,132 @@ import type { Command } from "commander";
 import { DecayEngine } from "../core/profile/decay";
 import { Derivator } from "../core/profile/derivator";
 import { ProvenanceEngine } from "../core/profile/provenance";
+import type { Trait } from "../core/profile/types";
+import { WorkspaceStore } from "../workspace/store";
 import { getEngine } from "./utils";
+
+interface TraitChange {
+  dimension: string;
+  before: { value: number; confidence: number };
+  after: { value: number; confidence: number };
+  reasoning: string;
+}
+
+export interface ProfileDiff {
+  workspaceName: string;
+  coldstartDate: string;
+  changed: TraitChange[];
+  stable: TraitChange[];
+  newTraits: Trait[];
+  removed: TraitChange[];
+}
+
+export function computeProfileDiff(
+  engine: import("../core/profile/engine").ProfileEngine,
+  store: WorkspaceStore,
+): ProfileDiff | null {
+  const workspaces = store.listWorkspaces();
+  let snapshotWs: import("../workspace/types").Workspace | null = null;
+  let snapshot:
+    | { dimension: string; value: number; confidence: number }[]
+    | null = null;
+  let snapshotCtx: Record<string, unknown> | null = null;
+
+  for (const ws of workspaces) {
+    try {
+      const ctx = JSON.parse(ws.context);
+      if (ctx.profile_snapshot) {
+        snapshotWs = ws;
+        snapshot = ctx.profile_snapshot;
+        snapshotCtx = ctx;
+        break;
+      }
+    } catch {}
+  }
+
+  if (!snapshotWs || !snapshot || !snapshotCtx) return null;
+
+  const currentTraits = engine.getTraits();
+  const snapshotMap = new Map(snapshot.map((t) => [t.dimension, t]));
+  const currentMap = new Map(currentTraits.map((t) => [t.dimension, t]));
+
+  const changed: TraitChange[] = [];
+  const stable: TraitChange[] = [];
+  const removed: TraitChange[] = [];
+
+  for (const snap of snapshot) {
+    const curr = currentMap.get(snap.dimension);
+    if (!curr) {
+      removed.push({
+        dimension: snap.dimension,
+        before: { value: snap.value, confidence: snap.confidence },
+        after: { value: 0, confidence: 0 },
+        reasoning: "Trait removed",
+      });
+    } else if (Math.abs(curr.value - snap.value) > 0.01) {
+      changed.push({
+        dimension: snap.dimension,
+        before: { value: snap.value, confidence: snap.confidence },
+        after: { value: curr.value, confidence: curr.confidence },
+        reasoning: curr.reasoning,
+      });
+    } else {
+      stable.push({
+        dimension: snap.dimension,
+        before: { value: snap.value, confidence: snap.confidence },
+        after: { value: curr.value, confidence: curr.confidence },
+        reasoning: curr.reasoning,
+      });
+    }
+  }
+
+  const newTraits = currentTraits.filter((t) => !snapshotMap.has(t.dimension));
+
+  return {
+    workspaceName: snapshotWs.name,
+    coldstartDate:
+      (snapshotCtx?.coldstart_completed_at as string) ?? snapshotWs.created_at,
+    changed,
+    stable,
+    newTraits,
+    removed,
+  };
+}
+
+function formatDiff(diff: ProfileDiff): string {
+  const lines: string[] = [];
+  lines.push(
+    `Profile changes since cold start (${diff.coldstartDate.slice(0, 10)}):\n`,
+  );
+
+  for (const c of diff.changed) {
+    const delta = c.after.value - c.before.value;
+    const sign = delta >= 0 ? "+" : "";
+    const confDelta = c.after.confidence - c.before.confidence;
+    const confSign = confDelta >= 0 ? "+" : "";
+    lines.push(
+      `  ${c.dimension.padEnd(22)}${c.before.value.toFixed(1)}→${c.after.value.toFixed(1)} (${sign}${delta.toFixed(1)})   confidence ${c.before.confidence}→${c.after.confidence} (${confSign}${confDelta})   — ${c.reasoning}`,
+    );
+  }
+
+  for (const t of diff.newTraits) {
+    lines.push(
+      `  + ${t.dimension.padEnd(20)}new        confidence ${t.confidence}     — ${t.reasoning}`,
+    );
+  }
+
+  for (const r of diff.removed) {
+    lines.push(
+      `  - ${r.dimension.padEnd(20)}removed     was ${r.before.value.toFixed(1)} (${r.reasoning})`,
+    );
+  }
+
+  lines.push(
+    `\n${diff.stable.length} traits stable, ${diff.changed.length} evolved, ${diff.newTraits.length} new, ${diff.removed.length} removed since cold start.`,
+  );
+
+  return lines.join("\n");
+}
 
 export function registerProfileCommands(program: Command): void {
   const profile = program.command("profile").description("Manage user profile");
@@ -14,6 +139,9 @@ export function registerProfileCommands(program: Command): void {
       "Interactive cold start: build your initial profile through questions",
     )
     .action(async () => {
+      console.log(
+        "(Note: `kai profile bootstrap` is deprecated. Use `kai work start` instead.)\n",
+      );
       const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -216,5 +344,32 @@ export function registerProfileCommands(program: Command): void {
       console.log(
         `Decayed ${result.decayed} traits, skipped ${result.skipped}.`,
       );
+    });
+
+  profile
+    .command("diff")
+    .option("--last", "Compare current profile vs cold start snapshot")
+    .description("Show profile changes over time")
+    .action((opts) => {
+      if (!opts.last) {
+        console.log(
+          "Use --last to compare against cold start snapshot. Other modes coming soon.",
+        );
+        return;
+      }
+
+      const { db, engine } = getEngine();
+      const store = new WorkspaceStore(db);
+      const diff = computeProfileDiff(engine, store);
+
+      if (!diff) {
+        console.log(
+          "No cold start snapshot found. Run `kai work start` first.",
+        );
+      } else {
+        console.log(formatDiff(diff));
+      }
+
+      db.close();
     });
 }

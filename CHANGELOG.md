@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.0.0] - 2026-05-20
+
+### Added
+- **`kai work start`** — interactive cold start flow that bootstraps a behavioral profile from 4 questions + git history scan, with preview/edit/confirm cycle
+- **`kai profile diff --last`** — see how your profile evolved since the last cold start
+- **Workspace system** — CRUD for workspaces, tasks, and events with SQLite persistence (MIGRATION_V4)
+- **Event bus** — converts workspace state changes into profile observations with confidence mapping
+- **Source precedence** — traits now respect source priority: declared > corrected > observed > inferred, so `kai profile declare` values can't be overwritten by derived ones
+- **7 coldstart derivation rules** — detail_oriented, comm_style, domain_context, preferred_output_shape, early_riser, scope_appetite, task_completion_rate
+- **Git history scan** — auto-detects work patterns (commit times, message length, branch naming) from the last 30 days
+- **226 tests** across 33 files (+73 new tests since v0.2.1.0)
+
+### Changed
+- `kai profile bootstrap` is now deprecated — use `kai work start` instead
+- `Observation.source` type union now includes `"coldstart"` and `"workspace"`
+- `deriveFromRules(persist)` supports preview mode (persist=false) for the cold start confirm flow
+
+### Fixed
+- Git timestamp parsing now correctly extracts hours from ISO 8601 format (`T`-prefixed)
+- `extractColdStartSignals` guards against divide-by-zero when answers array is empty
+- Edit prompts validate numeric input to prevent NaN from reaching SQLite
+
 ## [0.2.1.0] - 2026-05-19
 
 ### Added
@@ -12,7 +34,7 @@
 
 ### Changed
 - Dependabot ecosystem set to `bun` (not `npm`) for correct lockfile handling
-- CLAUDE.md updated with skill routing rules and health stack documentation
+- CLAUDE.md now includes skill routing rules and health stack commands for contributors
 - TODO 3 (CI pipeline) marked as completed; TODO 6 (CD release flow) added
 
 ## [0.2.0.0] - 2026-05-19

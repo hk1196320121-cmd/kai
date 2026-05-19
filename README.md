@@ -8,8 +8,10 @@ Kai watches what you do (cron outputs, daily patterns, explicit preferences) and
 
 Core capabilities:
 - **MCP Server** — Model Context Protocol server via stdio. 5 tools (`profile.read`, `profile.why`, `observe.submit`, `observe.batch`, `derive.trigger`) and 6 resources (`kai://profile/*`, `kai://system/health`)
+- **Cold Start** — `kai work start` bootstraps a profile from 4 questions + git history scan with preview/edit/confirm
 - **Profile Engine** — identity, observations, traits, and preferences with full CRUD
-- **Trait Derivation** — rule-based (early riser, tinkerer, consistent user) + LLM-based inference
+- **Trait Derivation** — 13 rules across 9 dimensions + LLM-based inference, with source precedence protection
+- **Workspace System** — CRUD for workspaces, tasks, and events with event-driven observation collection
 - **Confidence Decay** — traits weaken over time unless reinforced, declared traits are immune
 - **Provenance** — every trait has a chain of evidence. Ask "why?" and get the reasoning
 - **Observation Collection** — SHA-256 dedup, cron schedule parsing, daily batch collection
@@ -40,11 +42,14 @@ kai <command>
 ## Quick start
 
 ```bash
-# Interactive first-time profile setup
-kai profile bootstrap
+# Bootstrap your profile from questions + git history
+kai work start
 
 # View your profile
 kai profile read
+
+# See how your profile changed since last cold start
+kai profile diff --last
 
 # Collect observations from cron outputs
 kai observe daily
@@ -71,7 +76,7 @@ kai mcp serve
 
 | Command | Description |
 |---------|-------------|
-| `bootstrap` | Interactive cold start: build your initial profile through questions |
+| `diff --last` | See how your profile changed since the last cold start |
 | `read` | Display current profile (identity, traits, observation count) |
 | `read --json` | Output profile as JSON |
 | `read --field <name>` | Show a specific identity field |
@@ -80,6 +85,12 @@ kai mcp serve
 | `why <dimension>` | Explain why a trait has its value (provenance chain) |
 | `correct <dimension>` | Remove an incorrect trait and log the correction |
 | `decay` | Apply confidence decay to stale traits |
+
+### `kai work`
+
+| Command | Description |
+|---------|-------------|
+| `start` | Interactive cold start: 4 questions + git history scan, with preview/edit/confirm |
 
 ### `kai observe`
 
@@ -119,15 +130,16 @@ kai mcp serve
 
 ```
 src/
-  cli/            Commander.js CLI (profile, observe, mcp subcommands)
+  cli/            Commander.js CLI (profile, observe, work, mcp subcommands)
   core/profile/   Profile engine, derivator, decay, provenance, collector
+  workspace/      Workspace/task/event CRUD + event bus for observation collection
   mcp/            MCP server — handlers, resources, schema, stdio transport
   bridge/         Hermes bridge (file system reads for cron data)
   db/             SQLite client with WAL mode and schema migrations
   llm/            OpenAI-compatible LLM provider with transient-error retry
 ```
 
-Data flows: **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** (SQLite) -> **Derivator** (rules + LLM) -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). MCP clients connect via stdio to read profiles and submit observations.
+Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. MCP clients connect via stdio to read profiles and submit observations.
 
 Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 
@@ -138,20 +150,25 @@ Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 | [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 5 tools and 6 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
+| [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |
+| [How to Use Cold Start](docs/howto-cold-start.md) | How-to | Re-running cold start, editing traits, diff, troubleshooting |
+| [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
+| [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
+| [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
 
 ## Development
 
 ```bash
-# Run tests
-bun test
-
-# Watch mode
-bun test --watch
-
-# Run CLI in dev mode
-bun run dev profile bootstrap
+bun install                # Install dependencies
+bun test                   # Run tests
+bun test --watch           # Watch mode
+bun run typecheck          # Type-check with tsc
+bun run lint               # Lint with Biome
+bun run dev profile bootstrap  # Run CLI in dev mode
 ```
+
+CI runs on every push and PR: typecheck, lint, test. Dependabot checks for dependency updates weekly.
 
 ## License
 
