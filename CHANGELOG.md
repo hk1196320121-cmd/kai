@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1.0] - 2026-05-19
+
+### Added
+- **GitHub Actions CI** — automated typecheck, lint, and test on every push and PR
+- **Dependabot** — weekly dependency updates for GitHub Actions and Bun packages
+- **typecheck script** (`bun run typecheck`) — runs `tsc --noEmit` for type safety
+- **lint script** (`bun run lint`) — runs Biome on `src/` for code quality
+- **.bun-version** — pins Bun version (1.3.13) for reproducible CI builds
+- **.npmrc** — ensures lockfile resolves against npmjs.org (not mirrors) for CI reliability
+
+### Changed
+- Dependabot ecosystem set to `bun` (not `npm`) for correct lockfile handling
+- CLAUDE.md updated with skill routing rules and health stack documentation
+- TODO 3 (CI pipeline) marked as completed; TODO 6 (CD release flow) added
+
 ## [0.2.0.0] - 2026-05-19
 
 ### Added
