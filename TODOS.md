@@ -19,10 +19,6 @@
 - **Depends on**: Phase 1 积累足够的 observation 数据（建议 >1000 条后启动设计）
 - **Added**: 2026-05-18 by /plan-eng-review
 
-### CI/CD 流水线 (TODO 3)
-- **What**: 设置 GitHub Actions 自动测试 + 发布流程
-- **Completed**: 2026-05-19 — ci.yml (typecheck + lint + test, Bun 1.3.13), dependabot.yml (actions + npm weekly)
-
 ## TODO 4: LLM Prompt 演化策略
 - **What**: 为 profile-derive.md 建立 prompt 版本管理和回归测试
 - **Why**: Prompt 会迭代，需要确保改动不降低推导质量。没有版本管理的 prompt 就像没有测试的代码
