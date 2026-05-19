@@ -172,7 +172,9 @@ SQLite with WAL mode. Default path: `~/.kai/profile.db`. Schema versioned (v1–
 bun install          # Install dependencies
 bun test             # Run tests (152 across 20 files)
 bun test --watch     # Watch mode
+bun run typecheck    # Type-check with tsc --noEmit
+bun run lint         # Lint with Biome
 bun run dev <cmd>    # Run CLI in dev mode
 ```
 
-Health stack: `npx tsc --noEmit` (typecheck), `npx @biomejs/biome check src/` (lint), `npx knip` (dead code).
+Health stack: `bun run typecheck`, `bun run lint`, `bun test`, `npx knip` (dead code). CI (GitHub Actions) runs all three checks on every push and PR.

@@ -12,7 +12,7 @@
 
 ### Changed
 - Dependabot ecosystem set to `bun` (not `npm`) for correct lockfile handling
-- CLAUDE.md updated with skill routing rules and health stack documentation
+- CLAUDE.md now includes skill routing rules and health stack commands for contributors
 - TODO 3 (CI pipeline) marked as completed; TODO 6 (CD release flow) added
 
 ## [0.2.0.0] - 2026-05-19

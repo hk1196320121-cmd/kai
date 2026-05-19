@@ -143,15 +143,15 @@ Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 ## Development
 
 ```bash
-# Run tests
-bun test
-
-# Watch mode
-bun test --watch
-
-# Run CLI in dev mode
-bun run dev profile bootstrap
+bun install                # Install dependencies
+bun test                   # Run tests
+bun test --watch           # Watch mode
+bun run typecheck          # Type-check with tsc
+bun run lint               # Lint with Biome
+bun run dev profile bootstrap  # Run CLI in dev mode
 ```
+
+CI runs on every push and PR: typecheck, lint, test. Dependabot checks for dependency updates weekly.
 
 ## License
 
