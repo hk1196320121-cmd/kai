@@ -1,13 +1,16 @@
-import { Command } from "commander";
-import { ProfileCollector } from "../core/profile/collector";
+import { existsSync, readFileSync } from "node:fs";
+import type { Command } from "commander";
 import { HermesBridge } from "../bridge/hermes";
+import { ProfileCollector } from "../core/profile/collector";
 import { getEngine, getHermesDir } from "./utils";
-import { readFileSync, existsSync } from "fs";
 
 export function registerObserveCommands(program: Command): void {
-  const observe = program.command("observe").description("Collect observations from sources");
+  const observe = program
+    .command("observe")
+    .description("Collect observations from sources");
 
-  observe.command("from-cron <file>")
+  observe
+    .command("from-cron <file>")
     .description("Extract observations from a cron output file")
     .action((file: string) => {
       if (!existsSync(file)) {
@@ -27,7 +30,8 @@ export function registerObserveCommands(program: Command): void {
       console.log(`Collected ${count} observation(s) from ${file}.`);
     });
 
-  observe.command("daily")
+  observe
+    .command("daily")
     .description("Scan all Hermes cron outputs and collect observations")
     .action(() => {
       const { db, engine } = getEngine();

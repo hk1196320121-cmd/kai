@@ -78,3 +78,68 @@ describe("Derivator", () => {
     });
   });
 });
+
+describe("Derivator with MCP observations", () => {
+  let engine: ProfileEngine;
+  let db: KaiDB;
+  let dbPath: string;
+
+  beforeEach(() => {
+    dbPath = join(tmpdir(), `kai-derive-mcp-test-${Date.now()}.db`);
+    db = new KaiDB(dbPath);
+    engine = new ProfileEngine(db);
+  });
+
+  afterEach(() => {
+    db.close();
+    for (const suffix of ['', '-wal', '-shm']) {
+      try { unlinkSync(dbPath + suffix); } catch {}
+    }
+  });
+
+  test("derives detail_oriented from MCP observations with detail-related text", () => {
+    engine.addObservation({
+      type: "signal",
+      key: "mcp:cursor:abc123",
+      value: JSON.stringify({ text: "User asks for detailed explanations of every code change" }),
+      confidence: 8,
+      source: "mcp",
+      provenance: JSON.stringify({ source_tool: "cursor", submitted_via: "mcp" }),
+    });
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const detail = results.find((t) => t.dimension === "detail_oriented");
+    expect(detail).toBeDefined();
+    expect(detail!.value).toBeGreaterThan(0);
+  });
+
+  test("derives scope_appetite from MCP observations with scope-related text", () => {
+    engine.addObservation({
+      type: "signal",
+      key: "mcp:claude-code:def456",
+      value: JSON.stringify({ text: "User wants to take on ambitious large-scale projects" }),
+      confidence: 7,
+      source: "mcp",
+      provenance: JSON.stringify({ source_tool: "claude-code" }),
+    });
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const scope = results.find((t) => t.dimension === "scope_appetite");
+    expect(scope).toBeDefined();
+  });
+
+  test("derives risk_tolerance from MCP observations with risk-related text", () => {
+    engine.addObservation({
+      type: "signal",
+      key: "mcp:hermes:ghi789",
+      value: JSON.stringify({ text: "User likes to experiment with cutting edge technologies" }),
+      confidence: 6,
+      source: "mcp",
+      provenance: JSON.stringify({ source_tool: "hermes" }),
+    });
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const risk = results.find((t) => t.dimension === "risk_tolerance");
+    expect(risk).toBeDefined();
+  });
+});

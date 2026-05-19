@@ -1,13 +1,10 @@
 # TODOS — Kai
 
-## TODO 1: MCP Server 设计
+## Completed
+
+### MCP Server 设计 (TODO 1)
 - **What**: 为 Kai 设计 MCP Server 接口，暴露画像/上下文为 MCP tools/resources
-- **Why**: CEO review 接受（低成本高价值），让 Kai 成为 AI 工具的身份层。Claude/Hermes/任何 AI agent 都能通过 MCP 获得"这个用户是谁"的深度理解
-- **Pros**: 一次设计，所有 MCP 兼容 AI 工具都能消费画像数据
-- **Cons**: 需要定义稳定的 MCP schema，接口变更会影响所有消费者
-- **Context**: 设计文档无此设计。CEO review 将其列为 ACCEPTED (S effort)。需要定义 MCP tools schema (profile.read, profile.why, observe.submit)、resource URI scheme (kai://profile/traits, kai://profile/observations)、和 transport (stdio vs SSE)
-- **Depends on**: Phase 1 Profile Engine 完成，画像数据模型稳定
-- **Added**: 2026-05-18 by /plan-eng-review
+- **Completed**: v0.2.0.0 (2026-05-19) — 5 tools (profile.read, profile.why, observe.submit, observe.batch, derive.trigger), 6 resources (kai://profile/*), stdio transport, persistent corrections, 152 tests
 
 ## TODO 2: Pattern Intelligence 设计
 - **What**: 设计观察数据的主动模式发现引擎

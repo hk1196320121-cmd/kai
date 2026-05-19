@@ -1,7 +1,7 @@
-import { KaiDB } from "../db/client";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { ProfileEngine } from "../core/profile/engine";
-import { join } from "path";
-import { homedir } from "os";
+import { KaiDB } from "../db/client";
 
 export function getDbPath(): string {
   return process.env.KAI_DB ?? join(homedir(), ".kai", "kai.db");

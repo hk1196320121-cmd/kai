@@ -1,5 +1,6 @@
-import { ProfileEngine } from "./engine";
-import type { ProvenanceChain, Observation } from "./types";
+import { RULES } from "./derivator";
+import type { ProfileEngine } from "./engine";
+import type { Observation, ProvenanceChain } from "./types";
 
 export interface TraitExplanation {
   dimension: string;
@@ -24,16 +25,34 @@ export class ProvenanceEngine {
 
     const allObs = this.engine.getObservations();
     const relatedObs = allObs.filter((obs) => {
+      if (obs.key.includes(dimension)) return true;
       try {
         const prov = JSON.parse(obs.provenance) as Record<string, unknown>;
-        return obs.key.includes(dimension) || (Array.isArray(prov.related_traits) && prov.related_traits.includes(dimension));
+        if (
+          Array.isArray(prov.related_traits) &&
+          prov.related_traits.includes(dimension)
+        )
+          return true;
+        if (
+          obs.type === "signal" &&
+          obs.key.startsWith("mcp:") &&
+          obs.value.includes(dimension)
+        )
+          return true;
+        return false;
       } catch {
         return false;
       }
     });
 
-    const behaviorObs = allObs.filter((obs) => obs.type === "behavior").slice(0, 5);
-    const combined = [...new Map([...relatedObs, ...behaviorObs].map((o) => [o.id, o])).values()];
+    const rule = RULES.find((r) => r.dimension === dimension);
+    const ruleObs = rule
+      ? allObs.filter((obs) => rule.match(obs.key, obs.value))
+      : [];
+
+    const combined = [
+      ...new Map([...relatedObs, ...ruleObs].map((o) => [o.id, o])).values(),
+    ];
 
     return {
       dimension: trait.dimension,
@@ -52,12 +71,20 @@ export class ProvenanceEngine {
     this.engine.addObservation({
       type: "feedback",
       key: `correction:${dimension}`,
-      value: JSON.stringify({ corrected_trait: dimension, reason, previous_value: traits[0].value }),
+      value: JSON.stringify({
+        corrected_trait: dimension,
+        reason,
+        previous_value: traits[0].value,
+      }),
       confidence: 10,
       source: "user_stated",
-      provenance: JSON.stringify({ correction: true, corrected_at: new Date().toISOString() }),
+      provenance: JSON.stringify({
+        correction: true,
+        corrected_at: new Date().toISOString(),
+      }),
     });
 
+    this.engine.addCorrection(dimension, reason);
     return this.engine.removeTrait(dimension);
   }
 

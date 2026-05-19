@@ -1,13 +1,14 @@
-import { ProfileEngine } from "./engine";
-import { HermesBridge } from "../../bridge/hermes";
-import { createHash } from "crypto";
+import type { HermesBridge } from "../../bridge/hermes";
+import { checkDuplicate } from "./dedup";
+import type { ProfileEngine } from "./engine";
 
 function parseCronHour(schedule: string): number | undefined {
   const parts = schedule.trim().split(/\s+/);
   if (parts.length < 2) return undefined;
   const minute = parseInt(parts[0], 10);
   const hour = parseInt(parts[1], 10);
-  if (isNaN(minute) || isNaN(hour) || hour < 0 || hour > 23) return undefined;
+  if (Number.isNaN(minute) || Number.isNaN(hour) || hour < 0 || hour > 23)
+    return undefined;
   return hour;
 }
 
@@ -20,11 +21,17 @@ export class ProfileCollector {
     this.bridge = bridge;
   }
 
-  collectFromCronOutput(jobId: string, content: string, schedule?: string): number {
-    const contentHash = createHash("sha256").update(content).digest("hex").slice(0, 16);
-
-    const existing = this.engine.getObservations({ key: `cron:${jobId}:${contentHash}` });
-    if (existing.length > 0) return 0;
+  collectFromCronOutput(
+    jobId: string,
+    content: string,
+    schedule?: string,
+  ): number {
+    const { isDuplicate, hash } = checkDuplicate(
+      this.engine,
+      `cron:${jobId}`,
+      content,
+    );
+    if (isDuplicate) return 0;
 
     const value: Record<string, unknown> = {
       jobId,
@@ -39,13 +46,13 @@ export class ProfileCollector {
 
     const id = this.engine.addObservation({
       type: "behavior",
-      key: `cron:${jobId}:${contentHash}`,
+      key: `cron:${jobId}:${hash}`,
       value: JSON.stringify(value),
       confidence: 5,
       source: "cron_output",
       provenance: JSON.stringify({
         origin_job: jobId,
-        content_hash: contentHash,
+        content_hash: hash,
         extracted_at: new Date().toISOString(),
         extractor_version: "0.2.0",
       }),
@@ -59,7 +66,11 @@ export class ProfileCollector {
     const jobSchedules = new Map(jobs.map((j) => [j.id, j.schedule]));
     let count = 0;
     for (const output of outputs) {
-      count += this.collectFromCronOutput(output.jobId, output.content, jobSchedules.get(output.jobId));
+      count += this.collectFromCronOutput(
+        output.jobId,
+        output.content,
+        jobSchedules.get(output.jobId),
+      );
     }
     return count;
   }

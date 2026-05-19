@@ -1,9 +1,13 @@
-import { KaiDB } from "../../db/client";
+import { randomUUID } from "node:crypto";
+import type { KaiDB } from "../../db/client";
 import type {
-  Identity, Trait, Preference, Observation,
-  BehaviorObservation, ProfileSnapshot,
+  BehaviorObservation,
+  Identity,
+  Observation,
+  Preference,
+  ProfileSnapshot,
+  Trait,
 } from "./types";
-import { randomUUID } from "crypto";
 
 export interface CreateIdentityInput {
   name: string;
@@ -39,8 +43,13 @@ export interface SetPreferenceInput {
 }
 
 const ALLOWED_IDENTITY_FIELDS = new Set([
-  'name', 'role', 'goals', 'expertise_areas', 'learning_interests',
-  'work_context', 'communication_style',
+  "name",
+  "role",
+  "goals",
+  "expertise_areas",
+  "learning_interests",
+  "work_context",
+  "communication_style",
 ]);
 
 export class ProfileEngine {
@@ -53,27 +62,33 @@ export class ProfileEngine {
   createIdentity(input: CreateIdentityInput): string {
     const existing = this.getIdentity();
     if (existing) {
-      throw new Error("Identity already exists. Use `kai profile update` to modify it.");
+      throw new Error(
+        "Identity already exists. Use `kai profile update` to modify it.",
+      );
     }
     const id = randomUUID();
-    this.db.query(
-      `INSERT INTO identity (id, name, role, goals, expertise_areas, learning_interests, work_context, communication_style)
-       VALUES ($id, $name, $role, $goals, $expertise, $interests, $context, $style)`
-    ).run({
-      $id: id,
-      $name: input.name,
-      $role: input.role,
-      $goals: input.goals ?? "[]",
-      $expertise: input.expertise_areas ?? "[]",
-      $interests: input.learning_interests ?? "[]",
-      $context: input.work_context ?? "",
-      $style: input.communication_style ?? "",
-    });
+    this.db
+      .query(
+        `INSERT INTO identity (id, name, role, goals, expertise_areas, learning_interests, work_context, communication_style)
+       VALUES ($id, $name, $role, $goals, $expertise, $interests, $context, $style)`,
+      )
+      .run({
+        $id: id,
+        $name: input.name,
+        $role: input.role,
+        $goals: input.goals ?? "[]",
+        $expertise: input.expertise_areas ?? "[]",
+        $interests: input.learning_interests ?? "[]",
+        $context: input.work_context ?? "",
+        $style: input.communication_style ?? "",
+      });
     return id;
   }
 
   getIdentity(): Identity | null {
-    return this.db.query("SELECT * FROM identity LIMIT 1").get() as Identity | null;
+    return this.db
+      .query("SELECT * FROM identity LIMIT 1")
+      .get() as Identity | null;
   }
 
   updateIdentity(fields: Partial<Omit<Identity, "id" | "created_at">>): void {
@@ -92,33 +107,49 @@ export class ProfileEngine {
     }
     if (sets.length === 0) return;
     sets.push("updated_at = datetime('now')");
-    this.db.query(`UPDATE identity SET ${sets.join(", ")} WHERE id = $id`).run(params);
+    this.db
+      .query(`UPDATE identity SET ${sets.join(", ")} WHERE id = $id`)
+      .run(params);
   }
 
   addObservation(input: AddObservationInput): number {
-    const result = this.db.query(
-      `INSERT INTO observations (type, key, value, confidence, source, provenance, ts)
-       VALUES ($type, $key, $value, $confidence, $source, $provenance, datetime('now'))`
-    ).run({
-      $type: input.type,
-      $key: input.key,
-      $value: input.value,
-      $confidence: input.confidence,
-      $source: input.source,
-      $provenance: input.provenance,
-    });
+    const result = this.db
+      .query(
+        `INSERT INTO observations (type, key, value, confidence, source, provenance, ts)
+       VALUES ($type, $key, $value, $confidence, $source, $provenance, datetime('now'))`,
+      )
+      .run({
+        $type: input.type,
+        $key: input.key,
+        $value: input.value,
+        $confidence: input.confidence,
+        $source: input.source,
+        $provenance: input.provenance,
+      });
     return Number(result.lastInsertRowid);
   }
 
-  getObservations(filter?: { type?: string; since?: string; key?: string }): Observation[] {
+  getObservations(filter?: {
+    type?: string;
+    since?: string;
+    key?: string;
+  }): Observation[] {
     let sql = "SELECT * FROM observations WHERE 1=1";
     const params: Record<string, string> = {};
-    if (filter?.type) { sql += " AND type = $type"; params.$type = filter.type; }
+    if (filter?.type) {
+      sql += " AND type = $type";
+      params.$type = filter.type;
+    }
     if (filter?.since) {
       sql += " AND replace(ts, ' ', 'T') >= $since";
-      params.$since = filter.since.includes("T") ? filter.since : filter.since.replace(" ", "T");
+      params.$since = filter.since.includes("T")
+        ? filter.since
+        : filter.since.replace(" ", "T");
     }
-    if (filter?.key) { sql += " AND key = $key"; params.$key = filter.key; }
+    if (filter?.key) {
+      sql += " AND key = $key";
+      params.$key = filter.key;
+    }
     sql += " ORDER BY ts DESC";
     return this.db.query(sql).all(params) as Observation[];
   }
@@ -138,8 +169,9 @@ export class ProfileEngine {
 
   setTrait(input: SetTraitInput): string {
     const id = randomUUID();
-    this.db.query(
-      `INSERT INTO traits (id, dimension, value, confidence, source, reasoning, updated_at)
+    this.db
+      .query(
+        `INSERT INTO traits (id, dimension, value, confidence, source, reasoning, updated_at)
        VALUES ($id, $dimension, $value, $confidence, $source, $reasoning, datetime('now'))
        ON CONFLICT(dimension) DO UPDATE SET
          value = excluded.value,
@@ -147,53 +179,66 @@ export class ProfileEngine {
          source = excluded.source,
          reasoning = excluded.reasoning,
          updated_at = datetime('now'),
-         id = excluded.id`
-    ).run({
-      $id: id,
-      $dimension: input.dimension,
-      $value: input.value,
-      $confidence: input.confidence,
-      $source: input.source,
-      $reasoning: input.reasoning,
-    });
+         id = excluded.id`,
+      )
+      .run({
+        $id: id,
+        $dimension: input.dimension,
+        $value: input.value,
+        $confidence: input.confidence,
+        $source: input.source,
+        $reasoning: input.reasoning,
+      });
     return id;
   }
 
   getTraits(filter?: { dimension?: string }): Trait[] {
     if (filter?.dimension) {
-      return this.db.query("SELECT * FROM traits WHERE dimension = $dim").all({ $dim: filter.dimension }) as Trait[];
+      return this.db
+        .query("SELECT * FROM traits WHERE dimension = $dim")
+        .all({ $dim: filter.dimension }) as Trait[];
     }
-    return this.db.query("SELECT * FROM traits ORDER BY dimension").all() as Trait[];
+    return this.db
+      .query("SELECT * FROM traits ORDER BY dimension")
+      .all() as Trait[];
   }
 
   setPreference(input: SetPreferenceInput): string {
     const id = randomUUID();
-    this.db.query(
-      `INSERT INTO preferences (id, key, value, source)
+    this.db
+      .query(
+        `INSERT INTO preferences (id, key, value, source)
        VALUES ($id, $key, $value, $source)
        ON CONFLICT(key) DO UPDATE SET
          value = excluded.value,
          source = excluded.source,
-         id = excluded.id`
-    ).run({
-      $id: id,
-      $key: input.key,
-      $value: input.value,
-      $source: input.source,
-    });
+         id = excluded.id`,
+      )
+      .run({
+        $id: id,
+        $key: input.key,
+        $value: input.value,
+        $source: input.source,
+      });
     return id;
   }
 
   getPreferences(): Preference[] {
-    return this.db.query("SELECT * FROM preferences ORDER BY key").all() as Preference[];
+    return this.db
+      .query("SELECT * FROM preferences ORDER BY key")
+      .all() as Preference[];
   }
 
   getProfile(): ProfileSnapshot {
     const identity = this.getIdentity();
     const traits = this.getTraits();
     const preferences = this.getPreferences();
-    const countRow = this.db.query("SELECT COUNT(*) as cnt FROM observations").get() as { cnt: number };
-    const recentObs = this.db.query("SELECT * FROM observations ORDER BY ts DESC LIMIT 20").all() as Observation[];
+    const countRow = this.db
+      .query("SELECT COUNT(*) as cnt FROM observations")
+      .get() as { cnt: number };
+    const recentObs = this.db
+      .query("SELECT * FROM observations ORDER BY ts DESC LIMIT 20")
+      .all() as Observation[];
     return {
       identity,
       traits,
@@ -204,11 +249,37 @@ export class ProfileEngine {
   }
 
   getObservationById(id: number): Observation | null {
-    return this.db.query("SELECT * FROM observations WHERE id = ?").get(id) as Observation | null;
+    return this.db
+      .query("SELECT * FROM observations WHERE id = ?")
+      .get(id) as Observation | null;
   }
 
   removeTrait(dimension: string): boolean {
-    const result = this.db.query("DELETE FROM traits WHERE dimension = ?").run(dimension);
+    const result = this.db
+      .query("DELETE FROM traits WHERE dimension = ?")
+      .run(dimension);
     return result.changes > 0;
+  }
+
+  addCorrection(dimension: string, reason: string): void {
+    this.db
+      .query(
+        "INSERT OR REPLACE INTO corrections (dimension, reason, corrected_at) VALUES ($dim, $reason, datetime('now'))",
+      )
+      .run({ $dim: dimension, $reason: reason });
+  }
+
+  getCorrections(): { dimension: string; reason: string }[] {
+    return this.db.query("SELECT dimension, reason FROM corrections").all() as {
+      dimension: string;
+      reason: string;
+    }[];
+  }
+
+  isCorrected(dimension: string): boolean {
+    const row = this.db
+      .query("SELECT 1 FROM corrections WHERE dimension = ?")
+      .get(dimension);
+    return row !== null;
   }
 }

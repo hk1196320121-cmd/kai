@@ -1,8 +1,6 @@
 import { Database } from "bun:sqlite";
-import { mkdirSync, existsSync } from "fs";
-import { dirname } from "path";
-
-const SCHEMA_VERSION = 1;
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -58,6 +56,42 @@ CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts);
 CREATE INDEX IF NOT EXISTS idx_traits_dimension ON traits(dimension);
 `;
 
+const MIGRATION_V2 = `
+BEGIN TRANSACTION;
+
+CREATE TABLE IF NOT EXISTS observations_v2 (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL CHECK(type IN ('behavior','preference','feedback','context','signal')),
+  key TEXT NOT NULL,
+  value TEXT NOT NULL DEFAULT '{}',
+  confidence INTEGER NOT NULL DEFAULT 5 CHECK(confidence >= 1 AND confidence <= 10),
+  source TEXT NOT NULL CHECK(source IN ('cron_output','session_log','user_stated','inferred','mcp')),
+  provenance TEXT NOT NULL DEFAULT '{}',
+  ts TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO observations_v2 (id, type, key, value, confidence, source, provenance, ts)
+  SELECT id, type, key, value, confidence, source, provenance, ts FROM observations;
+
+DROP TABLE IF EXISTS observations;
+ALTER TABLE observations_v2 RENAME TO observations;
+
+CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type);
+CREATE INDEX IF NOT EXISTS idx_observations_key ON observations(key);
+CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts);
+
+COMMIT;
+`;
+
+const MIGRATION_V3 = `
+CREATE TABLE IF NOT EXISTS corrections (
+  dimension TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  corrected_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(dimension)
+);
+`;
+
 export class KaiDB {
   private db: Database;
 
@@ -73,18 +107,35 @@ export class KaiDB {
 
   runMigrations(): void {
     const currentVersion = this.getVersion();
-    if (currentVersion < SCHEMA_VERSION) {
+    if (currentVersion < 1) {
       this.db.exec(SCHEMA_SQL);
       this.db.run(
         "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
-        [SCHEMA_VERSION]
+        [1],
       );
     }
+    if (currentVersion < 2) {
+      this.db.exec(MIGRATION_V2);
+      this.db.run(
+        "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
+        [2],
+      );
+    }
+    if (currentVersion < 3) {
+      this.db.exec(MIGRATION_V3);
+      this.db.run(
+        "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
+        [3],
+      );
+    }
+    this.db.run("PRAGMA busy_timeout = 5000");
   }
 
   private getVersion(): number {
     try {
-      const row = this.db.query("SELECT MAX(version) as v FROM schema_version").get() as { v: number | null } | null;
+      const row = this.db
+        .query("SELECT MAX(version) as v FROM schema_version")
+        .get() as { v: number | null } | null;
       return row?.v ?? 0;
     } catch {
       return 0;
@@ -92,19 +143,23 @@ export class KaiDB {
   }
 
   listTables(): string[] {
-    const rows = this.db.query(
-      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    ).all() as { name: string }[];
+    const rows = this.db
+      .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all() as { name: string }[];
     return rows.map((r) => r.name);
   }
 
   getJournalMode(): string {
-    const row = this.db.query("PRAGMA journal_mode").get() as { journal_mode: string };
+    const row = this.db.query("PRAGMA journal_mode").get() as {
+      journal_mode: string;
+    };
     return row.journal_mode;
   }
 
   integrityCheck(): string {
-    const row = this.db.query("PRAGMA integrity_check").get() as { integrity_check: string };
+    const row = this.db.query("PRAGMA integrity_check").get() as {
+      integrity_check: string;
+    };
     return row.integrity_check;
   }
 

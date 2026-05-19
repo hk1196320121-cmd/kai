@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.2.0.0] - 2026-05-19
+
+### Added
+- **MCP Server** — full Model Context Protocol server with stdio transport. Start with `kai mcp serve`
+- **5 MCP tools**: `profile.read` (identity/traits/summary/full scopes), `profile.why` (trait provenance), `observe.submit` (with rate limiting and dedup), `observe.batch` (bulk submit), `derive.trigger` (rules/llm/both methods)
+- **6 MCP resources**: `kai://profile/identity`, `kai://profile/traits`, `kai://profile/traits/{dimension}`, `kai://profile/observations/recent`, `kai://profile/summary`, `kai://system/health`
+- **Persistent trait corrections** — corrected traits are now stored in a corrections table and survive re-derivation
+- **SHA-256 dedup** — extracted to standalone module with context/tag-aware hashing
+- **Confidence scale conversion** — transparent mapping between MCP (0-1) and internal (1-10) scales
+- **MCP derivation rules** — new rules for `detail_oriented`, `scope_appetite`, `risk_tolerance` from MCP observations
+- **Structured stderr logging** — JSON-line format for all MCP tool/resource operations
+- **Biome linter + Knip dead code detection** — health stack tooling
+- **152 tests** across 20 files (+64 new tests since v0.1.0)
+
+### Changed
+- `profile.why` now includes rule-matched observations alongside related observations
+- Derivation rules skip corrected dimensions (no re-deriving traits you already corrected)
+- `tinkerer` rule extended to accept `mcp:` observation keys
+- Database schema versioned to v3 (corrections table) with transaction-safe v2 migration
+
+### Fixed
+- Trait corrections are now persistent — re-running derive no longer recreates corrected traits
+- `profile.read` identity scope no longer leaks internal fields (id, timestamps)
+- Database migration v2 now wraps DDL in a transaction for crash safety
+- Removed unused `_SCHEMA_VERSION` constant
+- Extracted shared `safeJsonParse` and `log` utilities (was duplicated in handlers)
+- Removed redundant entries from `VALID_LLM_DIMENSIONS`
+
 ## [0.1.0.0] - 2026-05-18
 
 ### Added
