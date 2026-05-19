@@ -2,8 +2,6 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-const _SCHEMA_VERSION = 3;
-
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_version (
   version INTEGER PRIMARY KEY
@@ -59,6 +57,8 @@ CREATE INDEX IF NOT EXISTS idx_traits_dimension ON traits(dimension);
 `;
 
 const MIGRATION_V2 = `
+BEGIN TRANSACTION;
+
 CREATE TABLE IF NOT EXISTS observations_v2 (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL CHECK(type IN ('behavior','preference','feedback','context','signal')),
@@ -79,6 +79,8 @@ ALTER TABLE observations_v2 RENAME TO observations;
 CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type);
 CREATE INDEX IF NOT EXISTS idx_observations_key ON observations(key);
 CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts);
+
+COMMIT;
 `;
 
 const MIGRATION_V3 = `

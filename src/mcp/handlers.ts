@@ -54,10 +54,13 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
       if (scope === "identity") {
         const parsed = identity
           ? {
-              ...identity,
+              name: identity.name,
+              role: identity.role,
               goals: safeJsonParse(identity.goals),
               expertise_areas: safeJsonParse(identity.expertise_areas),
               learning_interests: safeJsonParse(identity.learning_interests),
+              work_context: identity.work_context,
+              communication_style: identity.communication_style,
             }
           : null;
         return textContent({ identity: parsed });
