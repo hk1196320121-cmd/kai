@@ -9,8 +9,6 @@ MCP server that builds and serves a behavioral profile from observations.
 - test: npm test
 - deadcode: npx knip
 - gbrain: gbrain doctor --json
-# currentDate
-Todayʹs date is 2026/05/19.
 
 ## Skill routing
 
