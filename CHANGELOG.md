@@ -3,10 +3,10 @@
 ## [0.2.0.0] - 2026-05-19
 
 ### Added
-- **MCP Server** — full Model Context Protocol server with stdio transport. Start with `kai mcp serve`
+- **MCP Server** — connect AI agents to Kai via Model Context Protocol. Run `kai mcp serve` to start the stdio server
 - **5 MCP tools**: `profile.read` (identity/traits/summary/full scopes), `profile.why` (trait provenance), `observe.submit` (with rate limiting and dedup), `observe.batch` (bulk submit), `derive.trigger` (rules/llm/both methods)
 - **6 MCP resources**: `kai://profile/identity`, `kai://profile/traits`, `kai://profile/traits/{dimension}`, `kai://profile/observations/recent`, `kai://profile/summary`, `kai://system/health`
-- **Persistent trait corrections** — corrected traits are now stored in a corrections table and survive re-derivation
+- **Persistent trait corrections** — corrected traits survive re-derivation. No more reappearing after `kai profile derive`
 - **SHA-256 dedup** — extracted to standalone module with context/tag-aware hashing
 - **Confidence scale conversion** — transparent mapping between MCP (0-1) and internal (1-10) scales
 - **MCP derivation rules** — new rules for `detail_oriented`, `scope_appetite`, `risk_tolerance` from MCP observations

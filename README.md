@@ -1,12 +1,13 @@
 # Kai
 
-Intelligent task orchestration and personal assistant system. Kai builds a deep understanding of who you are through behavioral observation, then uses that profile to personalize every interaction.
+MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol to read your profile and submit new observations.
 
 ## What it does
 
 Kai watches what you do (cron outputs, daily patterns, explicit preferences) and builds a living user profile: identity, behavioral traits, and preferences. Other AI tools can then ask Kai "who is this person?" and get a rich, evidence-based answer.
 
 Core capabilities:
+- **MCP Server** — Model Context Protocol server via stdio. 5 tools (`profile.read`, `profile.why`, `observe.submit`, `observe.batch`, `derive.trigger`) and 6 resources (`kai://profile/*`, `kai://system/health`)
 - **Profile Engine** — identity, observations, traits, and preferences with full CRUD
 - **Trait Derivation** — rule-based (early riser, tinkerer, consistent user) + LLM-based inference
 - **Confidence Decay** — traits weaken over time unless reinforced, declared traits are immune
@@ -59,6 +60,9 @@ kai profile correct early_riser
 
 # Apply time-based confidence decay
 kai profile decay
+
+# Start MCP server (for AI agent integration)
+kai mcp serve
 ```
 
 ## CLI reference
@@ -84,18 +88,46 @@ kai profile decay
 | `from-cron <file>` | Extract observations from a cron output markdown file |
 | `daily` | Scan all Hermes cron outputs and collect new observations |
 
+### `kai mcp`
+
+| Command | Description |
+|---------|-------------|
+| `serve` | Start MCP server with stdio transport for AI agent integration |
+
+#### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `profile.read` | Read profile in 4 scopes: identity, traits, summary, full |
+| `profile.why` | Explain why a trait has its value (provenance chain) |
+| `observe.submit` | Submit a single observation (rate-limited, deduped) |
+| `observe.batch` | Submit multiple observations at once |
+| `derive.trigger` | Trigger trait derivation (rules, LLM, or both) |
+
+#### MCP Resources
+
+| Resource | Description |
+|----------|-------------|
+| `kai://profile/identity` | Identity fields |
+| `kai://profile/traits` | All behavioral traits |
+| `kai://profile/traits/{dimension}` | Single trait by dimension |
+| `kai://profile/observations/recent` | Recent observations |
+| `kai://profile/summary` | Profile summary |
+| `kai://system/health` | System health check |
+
 ## Architecture
 
 ```
 src/
-  cli/            Commander.js CLI (profile, observe subcommands)
+  cli/            Commander.js CLI (profile, observe, mcp subcommands)
   core/profile/   Profile engine, derivator, decay, provenance, collector
+  mcp/            MCP server — handlers, resources, schema, stdio transport
   bridge/         Hermes bridge (file system reads for cron data)
   db/             SQLite client with WAL mode and schema migrations
   llm/            OpenAI-compatible LLM provider with transient-error retry
 ```
 
-Data flows: **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** (SQLite) -> **Derivator** (rules + LLM) -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain).
+Data flows: **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** (SQLite) -> **Derivator** (rules + LLM) -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). MCP clients connect via stdio to read profiles and submit observations.
 
 Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 
