@@ -1,21 +1,9 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { KaiDB } from "../../src/db/client";
 import { WorkspaceStore } from "../../src/workspace/store";
 import { eventToObservation, processStateChange } from "../../src/workspace/event-bus";
 import type { WorkspaceEvent } from "../../src/workspace/types";
-
-function tempDb(): string {
-  return join(tmpdir(), `kai-eb-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-}
-
-function cleanup(dbPath: string) {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix);
-  }
-}
+import { cleanup, tempDb } from "../helpers/temp-db";
 
 describe("eventToObservation", () => {
   test("converts workspace event to observation", () => {
@@ -112,7 +100,6 @@ describe("processStateChange", () => {
     expect(result.shouldDerive).toBe(true);
     expect(result.observations.length).toBe(1);
 
-    store.close();
     db.close();
   });
 
@@ -128,7 +115,6 @@ describe("processStateChange", () => {
 
     expect(result.shouldDerive).toBe(true);
 
-    store.close();
     db.close();
   });
 
@@ -143,7 +129,6 @@ describe("processStateChange", () => {
 
     expect(result.shouldDerive).toBe(false);
 
-    store.close();
     db.close();
   });
 });

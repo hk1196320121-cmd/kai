@@ -3,11 +3,11 @@ import type { Command } from "commander";
 import { DecayEngine } from "../core/profile/decay";
 import { Derivator } from "../core/profile/derivator";
 import { ProvenanceEngine } from "../core/profile/provenance";
-import { WorkspaceStore } from "../workspace/store";
 import type { Trait } from "../core/profile/types";
+import { WorkspaceStore } from "../workspace/store";
 import { getEngine } from "./utils";
 
-export interface TraitChange {
+interface TraitChange {
   dimension: string;
   before: { value: number; confidence: number };
   after: { value: number; confidence: number };
@@ -29,7 +29,10 @@ export function computeProfileDiff(
 ): ProfileDiff | null {
   const workspaces = store.listWorkspaces();
   let snapshotWs: import("../workspace/types").Workspace | null = null;
-  let snapshot: { dimension: string; value: number; confidence: number }[] | null = null;
+  let snapshot:
+    | { dimension: string; value: number; confidence: number }[]
+    | null = null;
+  let snapshotCtx: Record<string, unknown> | null = null;
 
   for (const ws of workspaces) {
     try {
@@ -37,14 +40,13 @@ export function computeProfileDiff(
       if (ctx.profile_snapshot) {
         snapshotWs = ws;
         snapshot = ctx.profile_snapshot;
+        snapshotCtx = ctx;
         break;
       }
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
-  if (!snapshotWs || !snapshot) return null;
+  if (!snapshotWs || !snapshot || !snapshotCtx) return null;
 
   const currentTraits = engine.getTraits();
   const snapshotMap = new Map(snapshot.map((t) => [t.dimension, t]));
@@ -80,15 +82,12 @@ export function computeProfileDiff(
     }
   }
 
-  const newTraits = currentTraits.filter(
-    (t) => !snapshotMap.has(t.dimension),
-  );
-
-  const ctx = JSON.parse(snapshotWs.context);
+  const newTraits = currentTraits.filter((t) => !snapshotMap.has(t.dimension));
 
   return {
     workspaceName: snapshotWs.name,
-    coldstartDate: ctx.coldstart_completed_at ?? snapshotWs.created_at,
+    coldstartDate:
+      (snapshotCtx?.coldstart_completed_at as string) ?? snapshotWs.created_at,
     changed,
     stable,
     newTraits,
@@ -98,7 +97,9 @@ export function computeProfileDiff(
 
 function formatDiff(diff: ProfileDiff): string {
   const lines: string[] = [];
-  lines.push(`Profile changes since cold start (${diff.coldstartDate.slice(0, 10)}):\n`);
+  lines.push(
+    `Profile changes since cold start (${diff.coldstartDate.slice(0, 10)}):\n`,
+  );
 
   for (const c of diff.changed) {
     const delta = c.after.value - c.before.value;
@@ -116,8 +117,14 @@ function formatDiff(diff: ProfileDiff): string {
     );
   }
 
+  for (const r of diff.removed) {
+    lines.push(
+      `  - ${r.dimension.padEnd(20)}removed     was ${r.before.value.toFixed(1)} (${r.reasoning})`,
+    );
+  }
+
   lines.push(
-    `\n${diff.stable.length} traits stable, ${diff.changed.length} evolved, ${diff.newTraits.length} new since cold start.`,
+    `\n${diff.stable.length} traits stable, ${diff.changed.length} evolved, ${diff.newTraits.length} new, ${diff.removed.length} removed since cold start.`,
   );
 
   return lines.join("\n");
@@ -132,7 +139,9 @@ export function registerProfileCommands(program: Command): void {
       "Interactive cold start: build your initial profile through questions",
     )
     .action(async () => {
-      console.log("(Note: `kai profile bootstrap` is deprecated. Use `kai work start` instead.)\n");
+      console.log(
+        "(Note: `kai profile bootstrap` is deprecated. Use `kai work start` instead.)\n",
+      );
       const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -343,7 +352,9 @@ export function registerProfileCommands(program: Command): void {
     .description("Show profile changes over time")
     .action((opts) => {
       if (!opts.last) {
-        console.log("Use --last to compare against cold start snapshot. Other modes coming soon.");
+        console.log(
+          "Use --last to compare against cold start snapshot. Other modes coming soon.",
+        );
         return;
       }
 
@@ -352,12 +363,13 @@ export function registerProfileCommands(program: Command): void {
       const diff = computeProfileDiff(engine, store);
 
       if (!diff) {
-        console.log("No cold start snapshot found. Run `kai work start` first.");
+        console.log(
+          "No cold start snapshot found. Run `kai work start` first.",
+        );
       } else {
         console.log(formatDiff(diff));
       }
 
-      store.close();
       db.close();
     });
 }

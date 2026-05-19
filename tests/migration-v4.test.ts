@@ -1,22 +1,7 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { KaiDB } from "../src/db/client";
 import { ProfileEngine } from "../src/core/profile/engine";
-
-function tempDb(): string {
-  return join(
-    tmpdir(),
-    `kai-mig4-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
-  );
-}
-
-function cleanup(dbPath: string) {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix);
-  }
-}
+import { cleanup, tempDb } from "./helpers/temp-db";
 
 describe("MIGRATION_V4", () => {
   let dbPath: string;

@@ -1,21 +1,9 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { KaiDB } from "../src/db/client";
 import { ProfileEngine } from "../src/core/profile/engine";
 import { WorkspaceStore } from "../src/workspace/store";
 import { computeProfileDiff } from "../src/cli/profile";
-
-function tempDb(): string {
-  return join(tmpdir(), `kai-diff-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-}
-
-function cleanup(dbPath: string) {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix);
-  }
-}
+import { cleanup, tempDb } from "./helpers/temp-db";
 
 describe("computeProfileDiff", () => {
   let dbPath: string;
@@ -54,7 +42,6 @@ describe("computeProfileDiff", () => {
     expect(diff!.newTraits.length).toBe(1);
     expect(diff!.newTraits[0].dimension).toBe("comm_style");
 
-    store.close();
     db.close();
   });
 
@@ -67,7 +54,6 @@ describe("computeProfileDiff", () => {
     const diff = computeProfileDiff(engine, store);
     expect(diff).toBeNull();
 
-    store.close();
     db.close();
   });
 });

@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
 import type { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import type { KaiDB } from "../db/client";
-import type { Workspace, Task, WorkspaceEvent } from "./types";
+import type { Task, Workspace, WorkspaceEvent } from "./types";
 
 export class WorkspaceStore {
   private db: Database;
@@ -10,17 +10,14 @@ export class WorkspaceStore {
     this.db = kaiDb.getDatabase();
   }
 
-  createWorkspace(input: {
-    name: string;
-    description?: string;
-  }): Workspace {
+  createWorkspace(input: { name: string; description?: string }): Workspace {
     const id = randomUUID();
     this.db
       .query(
         `INSERT INTO workspaces (id, name, description) VALUES ($id, $name, $desc)`,
       )
       .run({ $id: id, $name: input.name, $desc: input.description ?? "" });
-    return this.getWorkspace(id)!;
+    return this.getWorkspace(id) as Workspace;
   }
 
   getWorkspace(id: string): Workspace | null {
@@ -107,7 +104,9 @@ export class WorkspaceStore {
 
   updateTask(
     id: string,
-    fields: Partial<Pick<Task, "title" | "description" | "status" | "metadata">>,
+    fields: Partial<
+      Pick<Task, "title" | "description" | "status" | "metadata">
+    >,
   ): void {
     const sets: string[] = [];
     const params: Record<string, string> = { $id: id };
@@ -132,9 +131,7 @@ export class WorkspaceStore {
     if (sets.length === 0) return;
     sets.push("updated_at = datetime('now')");
     this.db
-      .query(
-        `UPDATE workspace_tasks SET ${sets.join(", ")} WHERE id = $id`,
-      )
+      .query(`UPDATE workspace_tasks SET ${sets.join(", ")} WHERE id = $id`)
       .run(params);
   }
 
@@ -164,7 +161,46 @@ export class WorkspaceStore {
       .all({ $ws: workspaceId }) as WorkspaceEvent[];
   }
 
-  close(): void {
-    // DB lifetime managed by KaiDB caller
+  getTaskStatsByWorkspaces(
+    workspaceIds: string[],
+  ): Map<string, { total: number; completed: number }> {
+    const result = new Map<string, { total: number; completed: number }>();
+    for (const id of workspaceIds) result.set(id, { total: 0, completed: 0 });
+    if (workspaceIds.length === 0) return result;
+
+    const rows = this.db
+      .query(
+        `SELECT workspace_id, COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed FROM workspace_tasks WHERE workspace_id IN (${workspaceIds.map((_, i) => `$ws${i}`).join(",")}) GROUP BY workspace_id`,
+      )
+      .all(
+        Object.fromEntries(workspaceIds.map((id, i) => [`$ws${i}`, id])),
+      ) as { workspace_id: string; total: number; completed: number }[];
+
+    for (const row of rows) {
+      result.set(row.workspace_id, {
+        total: row.total,
+        completed: row.completed,
+      });
+    }
+    return result;
+  }
+
+  getEventCountsByWorkspaces(workspaceIds: string[]): Map<string, number> {
+    const result = new Map<string, number>();
+    for (const id of workspaceIds) result.set(id, 0);
+    if (workspaceIds.length === 0) return result;
+
+    const rows = this.db
+      .query(
+        `SELECT workspace_id, COUNT(*) as count FROM workspace_events WHERE workspace_id IN (${workspaceIds.map((_, i) => `$ws${i}`).join(",")}) GROUP BY workspace_id`,
+      )
+      .all(
+        Object.fromEntries(workspaceIds.map((id, i) => [`$ws${i}`, id])),
+      ) as { workspace_id: string; count: number }[];
+
+    for (const row of rows) {
+      result.set(row.workspace_id, row.count);
+    }
+    return result;
   }
 }

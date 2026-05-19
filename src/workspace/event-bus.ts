@@ -1,6 +1,6 @@
 import type { AddObservationInput } from "../core/profile/engine";
-import type { WorkspaceEvent } from "./types";
 import type { WorkspaceStore } from "./store";
+import type { WorkspaceEvent } from "./types";
 
 const CONFIDENCE_BY_EVENT_TYPE: Record<string, number> = {
   workspace_created: 3,
@@ -11,14 +11,9 @@ const CONFIDENCE_BY_EVENT_TYPE: Record<string, number> = {
   coldstart_answer: 8,
 };
 
-const STATE_CHANGE_EVENTS = new Set([
-  "task_completed",
-  "workspace_archived",
-]);
+const STATE_CHANGE_EVENTS = new Set(["task_completed", "workspace_archived"]);
 
-export function eventToObservation(
-  event: WorkspaceEvent,
-): AddObservationInput {
+export function eventToObservation(event: WorkspaceEvent): AddObservationInput {
   return {
     type: "signal",
     key: `workspace:${event.event_type}`,
@@ -49,7 +44,7 @@ export function processStateChange(
   try {
     const events = store.listEvents(workspaceId);
     const relevant = taskId
-      ? events.filter((e) => e.task_id === taskId || e.event_type === eventType)
+      ? events.filter((e) => e.task_id === taskId && e.event_type === eventType)
       : events.filter((e) => e.event_type === eventType);
 
     const observations = relevant.map(eventToObservation);

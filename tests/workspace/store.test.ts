@@ -1,22 +1,7 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { KaiDB } from "../../src/db/client";
 import { WorkspaceStore } from "../../src/workspace/store";
-
-function tempDb(): string {
-  return join(
-    tmpdir(),
-    `kai-ws-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
-  );
-}
-
-function cleanup(dbPath: string) {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix);
-  }
-}
+import { cleanup, tempDb } from "../helpers/temp-db";
 
 describe("WorkspaceStore", () => {
   let dbPath: string;
@@ -24,7 +9,6 @@ describe("WorkspaceStore", () => {
   let store: WorkspaceStore;
 
   afterEach(() => {
-    if (store) store.close();
     if (db) db.close();
     cleanup(dbPath);
   });

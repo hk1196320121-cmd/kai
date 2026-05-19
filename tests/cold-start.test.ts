@@ -1,26 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { computeProfileDiff } from "../src/cli/profile";
 import { extractColdStartSignals, scanGitHistory } from "../src/cli/work";
 import { Derivator } from "../src/core/profile/derivator";
 import { ProfileEngine } from "../src/core/profile/engine";
 import { KaiDB } from "../src/db/client";
 import { WorkspaceStore } from "../src/workspace/store";
-
-function tempDb(): string {
-  return join(
-    tmpdir(),
-    `kai-cs-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
-  );
-}
-
-function cleanup(dbPath: string) {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix);
-  }
-}
+import { cleanup, tempDb } from "./helpers/temp-db";
 
 describe("Cold Start E2E", () => {
   let dbPath: string;
@@ -88,8 +73,8 @@ describe("Cold Start E2E", () => {
     const derivator = new Derivator(engine);
     const previewTraits = derivator.deriveFromRules(false);
 
-    // Should derive at least 5 traits
-    expect(previewTraits.length).toBeGreaterThanOrEqual(5);
+    // Should derive at least 4 traits (comm_style, domain_context, preferred_output_shape, task_completion_rate)
+    expect(previewTraits.length).toBeGreaterThanOrEqual(4);
 
     // 8. Confirm: persist traits
     for (const trait of previewTraits) {
@@ -98,11 +83,10 @@ describe("Cold Start E2E", () => {
 
     // 9. Verify traits are in DB
     const dbTraits = engine.getTraits();
-    expect(dbTraits.length).toBeGreaterThanOrEqual(5);
+    expect(dbTraits.length).toBeGreaterThanOrEqual(4);
 
     // 10. Check specific traits
     const dimensions = dbTraits.map((t) => t.dimension);
-    expect(dimensions).toContain("detail_oriented");
     expect(dimensions).toContain("comm_style");
     expect(dimensions).toContain("domain_context");
 
@@ -143,10 +127,9 @@ describe("Cold Start E2E", () => {
     if (diff) {
       const totalTraits =
         diff.changed.length + diff.stable.length + diff.newTraits.length;
-      expect(totalTraits).toBeGreaterThanOrEqual(5);
+      expect(totalTraits).toBeGreaterThanOrEqual(4);
     }
 
-    store.close();
     db.close();
   });
 

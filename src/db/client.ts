@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS workspace_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   task_id TEXT REFERENCES workspace_tasks(id) ON DELETE SET NULL,
-  event_type TEXT NOT NULL,
+  event_type TEXT NOT NULL CHECK(event_type IN ('workspace_created','task_created','task_updated','task_completed','interaction','coldstart_answer','workspace_archived')),
   payload TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -204,6 +204,7 @@ export class KaiDB {
         [4],
       );
     }
+    this.db.run("PRAGMA foreign_keys = ON");
     this.db.run("PRAGMA busy_timeout = 5000");
   }
 
