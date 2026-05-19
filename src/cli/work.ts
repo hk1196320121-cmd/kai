@@ -65,7 +65,7 @@ export function scanGitHistory(repoPath: string): GitScanResult {
   for (const line of lines) {
     const parts = line.split("\0");
     if (parts.length >= 2) {
-      const match = parts[1].match(/^(\d{2}):/);
+      const match = parts[1].match(/T(\d{2}):/);
       if (match) hours.push(Number.parseInt(match[1], 10));
     }
   }
@@ -520,13 +520,16 @@ export function registerWorkCommands(program: Command): void {
             )
           ).trim();
 
-          if (newValue)
-            trait.value = Math.max(0, Math.min(1, Number.parseFloat(newValue)));
-          if (newConf)
-            trait.confidence = Math.max(
-              1,
-              Math.min(10, Number.parseInt(newConf, 10)),
-            );
+          if (newValue) {
+            const parsed = Number.parseFloat(newValue);
+            if (!Number.isNaN(parsed))
+              trait.value = Math.max(0, Math.min(1, parsed));
+          }
+          if (newConf) {
+            const parsed = Number.parseInt(newConf, 10);
+            if (!Number.isNaN(parsed))
+              trait.confidence = Math.max(1, Math.min(10, parsed));
+          }
 
           console.log("\nUpdated preview:");
           displayPreview(previewTraits, gitResult.traits);
