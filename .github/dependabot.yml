@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    versioning-strategy: bump-if-necessary
+    open-pull-requests-limit: 5

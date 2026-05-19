@@ -1,6 +1,6 @@
 {
   "name": "kai",
-  "version": "0.2.0.0",
+  "version": "0.2.1.0",
   "description": "Intelligent task orchestration and personal assistant system",
   "type": "module",
   "bin": {
@@ -9,13 +9,16 @@
   "scripts": {
     "dev": "bun run src/cli/index.ts",
     "test": "bun test",
-    "test:watch": "bun test --watch"
+    "test:watch": "bun test --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src/"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "commander": "^13.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
     "@types/bun": "^1.1.0",
     "knip": "^6.14.1",
     "typescript": "^5.5.0"
