@@ -10,6 +10,10 @@
 - **What**: 设置 GitHub Actions 自动测试 + 发布流程
 - **Completed**: 2026-05-19 — ci.yml (typecheck + lint + test, Bun 1.3.13), dependabot.yml (actions + npm weekly)
 
+### Orchestrator Idea-to-Execution Engine
+- **What**: Complete orchestrator pipeline — ideas, planning, scheduling, dispatching, observation, closed-loop re-planning
+- **Completed**: v0.4.0.0 (2026-05-20) — 7 MCP tools, profile-aware planner, agent bridge, observer pipeline, idea clustering, closed loop engine, V5 migration, 319 tests
+
 ## TODO 2: Pattern Intelligence 设计
 - **What**: 设计观察数据的主动模式发现引擎
 - **Why**: CEO review 接受，核心差异化能力——从被动记录到主动洞察。让 Kai 不只是记录观察，而是发现用户自己没注意到的行为模式

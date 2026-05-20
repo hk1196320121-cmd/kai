@@ -20,6 +20,19 @@
 - Observer `getProfileUpdates` returns current trait state (removed misleading oldValue/newValue fields)
 - Planner validates LLM-generated agent names against an allowlist
 - Error responses from MCP handlers no longer expose internal error details
+- Plan approve handler validates task field updates against an explicit allowlist and cron schedule format
+- LLM-generated task prompts capped at 2000 characters; feedback capped at 2000
+- Planner prompt uses delimiter markers to separate user input from system context
+- Observer `processAllResults` pre-fetches idea and tasks to eliminate N+1 DB queries
+- Clustering uses single batch query instead of 3 separate status lookups
+- Store list methods accept optional `limit` parameter; execution status uses batch result lookup
+- ClosedLoopEngine constructed once per handler registration (not per-request)
+- Magic numbers extracted to named constants across clustering, closed-loop, observer, planner, scheduler
+
+### Security
+- Dynamic task field updates now validated against explicit allowlist (prevents arbitrary column writes)
+- Cron schedule values validated against format regex before persistence
+- Prompt injection mitigated with delimiter markers and anti-exfiltration system instruction
 
 ## [0.3.0.0] - 2026-05-20
 
