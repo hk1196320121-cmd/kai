@@ -25,10 +25,10 @@ import { log } from "./utils";
 
 const ALLOWED_UPDATE_FIELDS = [
   "title",
-  "description",
   "prompt",
   "cron_schedule",
   "agent",
+  "type",
 ] as const;
 
 const CRON_FORMAT =
