@@ -168,8 +168,11 @@ Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 | [How to Use Cold Start](docs/howto-cold-start.md) | How-to | Re-running cold start, editing traits, diff, troubleshooting |
 | [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
 | [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
+| [How to Use the Orchestrator](docs/howto-orchestrator.md) | How-to | Submitting ideas, approving plans, executing tasks, re-planning |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
 | [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
+| [How the Orchestrator Works](docs/explanation-orchestrator.md) | Explanation | Profile-aware planning, closed loop, clustering, design trade-offs |
+| [Orchestrator Tutorial](docs/tutorial-first-idea.md) | Tutorial | From idea submission to execution and profile feedback in 10 minutes |
 
 ## Development
 
