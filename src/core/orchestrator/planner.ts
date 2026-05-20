@@ -1,5 +1,6 @@
 import type { LLMProvider } from "../../llm/provider";
 import type { Trait } from "../profile/types";
+import type { PromptCompiler } from "../prompt/prompt-compiler";
 import { formatProfileContext } from "./profile-context";
 import type { OrchestratorStore } from "./store";
 import type { Idea, PlannedTask } from "./types";
@@ -44,10 +45,12 @@ Return a JSON object with a "tasks" array. Each task MUST have:
 export class Planner {
   private store: OrchestratorStore;
   private llm: LLMProvider;
+  private compiler: PromptCompiler | null;
 
-  constructor(store: OrchestratorStore, llm: LLMProvider) {
+  constructor(store: OrchestratorStore, llm: LLMProvider, compiler?: PromptCompiler) {
     this.store = store;
     this.llm = llm;
+    this.compiler = compiler ?? null;
   }
 
   async decomposeIdea(ideaId: string, traits: Trait[]): Promise<PlannedTask[]> {
@@ -57,9 +60,22 @@ export class Planner {
     const profileContext = formatProfileContext(traits);
     const prompt = this.buildPrompt(idea, profileContext);
 
+    // Resolve system prompt: use compiled prompt if compiler available, else hardcoded
+    let systemPrompt: string;
+    try {
+      if (this.compiler) {
+        const compiled = await this.compiler.compile("planner", traits);
+        systemPrompt = compiled.prompt;
+      } else {
+        systemPrompt = PLANNER_SYSTEM_PROMPT;
+      }
+    } catch {
+      systemPrompt = PLANNER_SYSTEM_PROMPT;
+    }
+
     try {
       // First attempt with full profile-aware prompt
-      const response = await this.llm.call(prompt, PLANNER_SYSTEM_PROMPT);
+      const response = await this.llm.call(prompt, systemPrompt);
 
       try {
         this.llm.validateWithSchema(response as Record<string, unknown>, [
