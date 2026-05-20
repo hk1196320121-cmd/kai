@@ -308,6 +308,7 @@ export class Derivator {
 
   async deriveFromLLM(
     provider: import("../../llm/provider").LLMProvider,
+    compiler?: import("../prompt/prompt-compiler").PromptCompiler,
   ): Promise<DerivedTrait[]> {
     const observations = this.engine.getObservations();
     if (observations.length === 0) return [];
@@ -321,9 +322,21 @@ export class Derivator {
       })),
     );
 
-    const systemPrompt = `You are a user profile analysis engine. Given observations about a user, derive personality traits.
+    const DERIVATOR_FALLBACK = `You are a user profile analysis engine. Given observations about a user, derive personality traits.
 Return a JSON object with a "traits" array. Each trait has: dimension (string), value (0.0-1.0), confidence (1-10), reasoning (string).
 Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented.`;
+
+    let systemPrompt: string;
+    if (compiler) {
+      try {
+        const compiled = await compiler.compile("derivator", []);
+        systemPrompt = compiled.prompt;
+      } catch {
+        systemPrompt = DERIVATOR_FALLBACK;
+      }
+    } else {
+      systemPrompt = DERIVATOR_FALLBACK;
+    }
 
     try {
       const response = await provider.call(prompt, systemPrompt);
