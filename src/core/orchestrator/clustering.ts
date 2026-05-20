@@ -1,6 +1,19 @@
 import type { ProfileEngine } from "../profile/engine";
 import type { OrchestratorStore } from "./store";
 
+/** Look back window for observations when clustering (7 days in ms) */
+const CLUSTER_WINDOW_DAYS = 7 * 24 * 60 * 60 * 1000;
+/** Minimum occurrence count for a word to be considered a cluster */
+const MIN_CLUSTER_COUNT = 3;
+/** Maximum number of clusters returned from detectClusters */
+const MAX_CLUSTERS = 5;
+/** Maximum sample texts stored per word */
+const MAX_SAMPLES_PER_WORD = 3;
+/** Character length of each sample text */
+const SAMPLE_TEXT_LENGTH = 100;
+/** Maximum observations to scan for clustering */
+const MAX_OBSERVATIONS_FOR_CLUSTERING = 500;
+
 export interface ClusterResult {
   theme: string;
   count: number;
@@ -109,10 +122,13 @@ export class IdeaClusterer {
   }
 
   detectClusters(): ClusterResult[] {
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const since = new Date(Date.now() - CLUSTER_WINDOW_DAYS)
       .toISOString()
       .replace("T", " ");
-    const observations = this.profileEngine.getObservations({ since });
+    const observations = this.profileEngine.getObservations({
+      since,
+      limit: MAX_OBSERVATIONS_FOR_CLUSTERING,
+    });
     const wordCounts = new Map<string, { count: number; samples: string[] }>();
     const existingIdeas = this.getAllIdeaThemes();
 
@@ -123,17 +139,23 @@ export class IdeaClusterer {
         const existing = wordCounts.get(word);
         if (existing) {
           existing.count++;
-          if (existing.samples.length < 3)
-            existing.samples.push(text.slice(0, 100));
+          if (existing.samples.length < MAX_SAMPLES_PER_WORD)
+            existing.samples.push(text.slice(0, SAMPLE_TEXT_LENGTH));
         } else {
-          wordCounts.set(word, { count: 1, samples: [text.slice(0, 100)] });
+          wordCounts.set(word, {
+            count: 1,
+            samples: [text.slice(0, SAMPLE_TEXT_LENGTH)],
+          });
         }
       }
     }
 
     const clusters: ClusterResult[] = [];
     for (const [theme, data] of wordCounts) {
-      if (data.count >= 3 && !existingIdeas.has(theme.toLowerCase())) {
+      if (
+        data.count >= MIN_CLUSTER_COUNT &&
+        !existingIdeas.has(theme.toLowerCase())
+      ) {
         clusters.push({
           theme,
           count: data.count,
@@ -141,7 +163,7 @@ export class IdeaClusterer {
         });
       }
     }
-    return clusters.sort((a, b) => b.count - a.count).slice(0, 5);
+    return clusters.sort((a, b) => b.count - a.count).slice(0, MAX_CLUSTERS);
   }
 
   private extractText(value: string): string {
@@ -163,11 +185,11 @@ export class IdeaClusterer {
   }
 
   private getAllIdeaThemes(): Set<string> {
-    const ideas = [
-      ...this.store.listIdeasByStatus("draft"),
-      ...this.store.listIdeasByStatus("planned"),
-      ...this.store.listIdeasByStatus("executing"),
-    ];
+    const ideas = this.store.listIdeasByStatuses([
+      "draft",
+      "planned",
+      "executing",
+    ]);
     const themes = new Set<string>();
     for (const idea of ideas) {
       const words = this.tokenize(`${idea.title} ${idea.description}`);

@@ -141,9 +141,10 @@ export class ProfileEngine {
     type?: string;
     since?: string;
     key?: string;
+    limit?: number;
   }): Observation[] {
     let sql = "SELECT * FROM observations WHERE 1=1";
-    const params: Record<string, string> = {};
+    const params: Record<string, string | number> = {};
     if (filter?.type) {
       sql += " AND type = $type";
       params.$type = filter.type;
@@ -159,6 +160,10 @@ export class ProfileEngine {
       params.$key = filter.key;
     }
     sql += " ORDER BY ts DESC";
+    if (filter?.limit !== undefined) {
+      sql += " LIMIT $limit";
+      params.$limit = filter.limit;
+    }
     return this.db.query(sql).all(params) as Observation[];
   }
 

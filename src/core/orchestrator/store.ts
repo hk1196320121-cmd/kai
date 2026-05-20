@@ -85,20 +85,40 @@ export class OrchestratorStore {
       .run({ $id: id, $status: status });
   }
 
-  listIdeasByStatus(status: IdeaStatus): Idea[] {
-    return this.db
-      .query(
-        "SELECT * FROM ideas WHERE status = $status ORDER BY created_at DESC",
-      )
-      .all({ $status: status }) as Idea[];
+  listIdeasByStatus(status: IdeaStatus, limit?: number): Idea[] {
+    let sql =
+      "SELECT * FROM ideas WHERE status = $status ORDER BY created_at DESC";
+    const params: Record<string, string | number> = { $status: status };
+    if (limit !== undefined) {
+      sql += " LIMIT $limit";
+      params.$limit = limit;
+    }
+    return this.db.query(sql).all(params) as Idea[];
   }
 
-  listIdeasByWorkspace(workspaceId: string): Idea[] {
+  listIdeasByStatuses(statuses: IdeaStatus[]): Idea[] {
+    if (statuses.length === 0) return [];
+    const placeholders = statuses.map((_, i) => `$s${i}`).join(", ");
+    const params: Record<string, string> = {};
+    for (let i = 0; i < statuses.length; i++) {
+      params[`$s${i}`] = statuses[i];
+    }
     return this.db
       .query(
-        "SELECT * FROM ideas WHERE workspace_id = $ws ORDER BY created_at DESC",
+        `SELECT * FROM ideas WHERE status IN (${placeholders}) ORDER BY created_at DESC`,
       )
-      .all({ $ws: workspaceId }) as Idea[];
+      .all(params) as Idea[];
+  }
+
+  listIdeasByWorkspace(workspaceId: string, limit?: number): Idea[] {
+    let sql =
+      "SELECT * FROM ideas WHERE workspace_id = $ws ORDER BY created_at DESC";
+    const params: Record<string, string | number> = { $ws: workspaceId };
+    if (limit !== undefined) {
+      sql += " LIMIT $limit";
+      params.$limit = limit;
+    }
+    return this.db.query(sql).all(params) as Idea[];
   }
 
   // --- Planned Tasks ---
@@ -133,12 +153,15 @@ export class OrchestratorStore {
     }) as PlannedTask | null;
   }
 
-  getTasksByIdea(ideaId: string): PlannedTask[] {
-    return this.db
-      .query(
-        "SELECT * FROM planned_tasks WHERE idea_id = $idea ORDER BY created_at",
-      )
-      .all({ $idea: ideaId }) as PlannedTask[];
+  getTasksByIdea(ideaId: string, limit?: number): PlannedTask[] {
+    let sql =
+      "SELECT * FROM planned_tasks WHERE idea_id = $idea ORDER BY created_at";
+    const params: Record<string, string | number> = { $idea: ideaId };
+    if (limit !== undefined) {
+      sql += " LIMIT $limit";
+      params.$limit = limit;
+    }
+    return this.db.query(sql).all(params) as PlannedTask[];
   }
 
   updateTaskStatus(id: string, status: TaskStatus): void {
@@ -161,28 +184,28 @@ export class OrchestratorStore {
     const sets: string[] = [];
     const params: Record<string, string | null> = { $id: id };
     if (fields.title !== undefined) {
-      sets.push("title = $v");
-      params.$v = fields.title;
+      sets.push("title = $title");
+      params.$title = fields.title;
     }
     if (fields.description !== undefined) {
-      sets.push("description = $v2");
-      params.$v2 = fields.description;
+      sets.push("description = $description");
+      params.$description = fields.description;
     }
     if (fields.agent !== undefined) {
-      sets.push("agent = $v3");
-      params.$v3 = fields.agent;
+      sets.push("agent = $agent");
+      params.$agent = fields.agent;
     }
     if (fields.prompt !== undefined) {
-      sets.push("prompt = $v4");
-      params.$v4 = fields.prompt;
+      sets.push("prompt = $prompt");
+      params.$prompt = fields.prompt;
     }
     if (fields.cron_schedule !== undefined) {
-      sets.push("cron_schedule = $v5");
-      params.$v5 = fields.cron_schedule;
+      sets.push("cron_schedule = $cron_schedule");
+      params.$cron_schedule = fields.cron_schedule;
     }
     if (fields.type !== undefined) {
-      sets.push("type = $v6");
-      params.$v6 = fields.type;
+      sets.push("type = $type");
+      params.$type = fields.type;
     }
     if (sets.length === 0) return;
     sets.push("updated_at = datetime('now')");
@@ -241,6 +264,21 @@ export class OrchestratorStore {
         "SELECT * FROM execution_results WHERE task_id = $task ORDER BY completed_at DESC",
       )
       .all({ $task: taskId }) as Record<string, unknown>[];
+    return rows.map((r) => this.mapResult(r));
+  }
+
+  getResultsByTaskIds(taskIds: string[]): ExecutionResult[] {
+    if (taskIds.length === 0) return [];
+    const placeholders = taskIds.map((_, i) => `$t${i}`).join(", ");
+    const params: Record<string, string> = {};
+    for (let i = 0; i < taskIds.length; i++) {
+      params[`$t${i}`] = taskIds[i];
+    }
+    const rows = this.db
+      .query(
+        `SELECT * FROM execution_results WHERE task_id IN (${placeholders}) ORDER BY completed_at DESC`,
+      )
+      .all(params) as Record<string, unknown>[];
     return rows.map((r) => this.mapResult(r));
   }
 

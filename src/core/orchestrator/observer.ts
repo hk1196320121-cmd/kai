@@ -1,6 +1,19 @@
 import type { ProfileEngine } from "../profile/engine";
 import type { OrchestratorStore } from "./store";
-import type { ExecutionResult } from "./types";
+import type { ExecutionResult, Idea, PlannedTask } from "./types";
+
+/** Observation confidence for a successful task completion (1-10 scale) */
+const OBSERVATION_CONFIDENCE_SUCCESS = 7;
+/** Observation confidence for a failed task completion (1-10 scale) */
+const OBSERVATION_CONFIDENCE_FAILURE = 4;
+/** Observation confidence for duration metrics (1-10 scale) */
+const OBSERVATION_CONFIDENCE_DURATION = 5;
+/** Observation confidence for user feedback (1-10 scale) */
+const OBSERVATION_CONFIDENCE_FEEDBACK = 6;
+
+/** Valid observation types for emitObservation */
+const OBSERVATION_TYPES = ["behavior", "signal", "feedback"] as const;
+type ObservationType = (typeof OBSERVATION_TYPES)[number];
 
 export interface ProcessedObservation {
   id: number;
@@ -20,9 +33,16 @@ export class Observer {
     this.profileEngine = profileEngine;
   }
 
-  processResult(result: ExecutionResult): ProcessedObservation[] {
+  processResult(
+    result: ExecutionResult,
+    prefetched?: {
+      task: PlannedTask | null;
+      idea: Idea | null;
+      ideaResults: ExecutionResult[];
+    },
+  ): ProcessedObservation[] {
     const observations: ProcessedObservation[] = [];
-    const task = this.store.getTask(result.task_id);
+    const task = prefetched?.task ?? this.store.getTask(result.task_id);
 
     // Task completion observation
     observations.push(
@@ -33,7 +53,9 @@ export class Observer {
           success: result.success,
           duration_ms: result.duration_ms,
         }),
-        result.success ? 7 : 4,
+        result.success
+          ? OBSERVATION_CONFIDENCE_SUCCESS
+          : OBSERVATION_CONFIDENCE_FAILURE,
       ),
     );
 
@@ -43,22 +65,23 @@ export class Observer {
         "behavior",
         `execution:duration:${result.task_id}`,
         JSON.stringify({ duration_ms: result.duration_ms }),
-        5,
+        OBSERVATION_CONFIDENCE_DURATION,
       ),
     );
 
     // Domain observation (if task found)
     if (task) {
-      const idea = this.store.getIdea(task.idea_id);
+      const idea = prefetched?.idea ?? this.store.getIdea(task.idea_id);
       if (idea) {
-        const results = this.store.getResultsByIdea(idea.id);
-        const completed = results.filter((r) => r.success).length;
-        const failed = results.filter((r) => !r.success).length;
+        const ideaResults =
+          prefetched?.ideaResults ?? this.store.getResultsByIdea(idea.id);
+        const completed = ideaResults.filter((r) => r.success).length;
+        const failed = ideaResults.filter((r) => !r.success).length;
         observations.push(
           this.emitObservation(
             "signal",
             `execution:domain:${idea.domain}`,
-            JSON.stringify({ completed, failed, total: results.length }),
+            JSON.stringify({ completed, failed, total: ideaResults.length }),
             5,
           ),
         );
@@ -80,7 +103,7 @@ export class Observer {
         "feedback",
         `execution:feedback:result-${resultId}`,
         JSON.stringify({ text: feedback }),
-        6,
+        OBSERVATION_CONFIDENCE_FEEDBACK,
       ),
     );
     return observations;
@@ -88,9 +111,16 @@ export class Observer {
 
   processAllResults(ideaId: string): ProcessedObservation[] {
     const results = this.store.getResultsByIdea(ideaId);
+    const idea = this.store.getIdea(ideaId);
+    const tasks = this.store.getTasksByIdea(ideaId);
+    const taskMap = new Map(tasks.map((t) => [t.id, t]));
+
     const allObs: ProcessedObservation[] = [];
     for (const result of results) {
-      allObs.push(...this.processResult(result));
+      const task = taskMap.get(result.task_id) ?? null;
+      allObs.push(
+        ...this.processResult(result, { task, idea, ideaResults: results }),
+      );
     }
     return allObs;
   }
@@ -113,13 +143,13 @@ export class Observer {
   }
 
   private emitObservation(
-    type: string,
+    type: ObservationType,
     key: string,
     value: string,
     confidence: number,
   ): ProcessedObservation {
     const id = this.profileEngine.addObservation({
-      type: type as "behavior" | "signal" | "feedback",
+      type,
       key,
       value,
       confidence,
