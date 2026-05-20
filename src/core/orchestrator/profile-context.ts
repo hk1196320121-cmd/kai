@@ -1,4 +1,3 @@
-// src/core/orchestrator/profile-context.ts
 import type { Trait } from "../profile/types";
 
 export const DEFAULT_TRAITS: Record<string, number> = {

@@ -2,6 +2,9 @@ import type { AgentBridge, DispatchResult } from "../../bridge/agent-bridge";
 import type { Trait } from "../profile/types";
 import type { OrchestratorStore } from "./store";
 
+/** Default cron schedule: daily at 09:00 */
+const DEFAULT_CRON_SCHEDULE = "0 9 * * *";
+
 interface ScheduleResult {
   scheduled: number;
   errors: number;
@@ -30,7 +33,7 @@ export class Scheduler {
       try {
         let result: DispatchResult;
         if (task.type === "cron") {
-          let cronSchedule = task.cron_schedule ?? "0 9 * * *";
+          let cronSchedule = task.cron_schedule ?? DEFAULT_CRON_SCHEDULE;
           cronSchedule = this.applyTraitAdjustments(cronSchedule, traitMap);
           result = await this.bridge.scheduleCron(
             task.id,

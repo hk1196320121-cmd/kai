@@ -36,12 +36,15 @@ export class Dispatcher {
     );
     if (!result.success) {
       this.store.incrementRetryCount(taskId);
-      const task2 = this.store.getTask(taskId);
-      if (task2 && task2.retry_count < task2.max_retries) {
+      const refreshedTask = this.store.getTask(taskId);
+      if (
+        refreshedTask &&
+        refreshedTask.retry_count < refreshedTask.max_retries
+      ) {
         const retry = await this.bridge.dispatchOneOff(
           taskId,
-          task2.agent,
-          task2.prompt,
+          refreshedTask.agent,
+          refreshedTask.prompt,
         );
         if (retry.success) {
           this.store.updateTaskStatus(taskId, "executing");

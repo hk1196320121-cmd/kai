@@ -1,6 +1,13 @@
 import type { ProfileEngine } from "../profile/engine";
 import type { OrchestratorStore } from "./store";
 
+/** Default minimum trait value change to trigger a replan (0-1 scale) */
+const DEFAULT_VALUE_DELTA = 0.15;
+/** Default minimum confidence change to trigger a replan (1-10 scale) */
+const DEFAULT_CONFIDENCE_DELTA = 2;
+/** Default look-back window for trait change detection (hours) */
+const DEFAULT_WINDOW_HOURS = 24;
+
 interface TraitChange {
   dimension: string;
   oldValue: number;
@@ -19,13 +26,11 @@ type TraitSnapshot = { value: number; confidence: number; updatedAt: string };
 
 export class ClosedLoopEngine {
   private profileEngine: ProfileEngine;
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: stored for future store operations
-  private store: OrchestratorStore;
   private previousTraits: Map<string, TraitSnapshot>;
 
   constructor(profileEngine: ProfileEngine, store: OrchestratorStore) {
     this.profileEngine = profileEngine;
-    this.store = store;
+    this._store = store;
     this.previousTraits = this.snapshotTraits();
   }
 
@@ -71,9 +76,11 @@ export class ClosedLoopEngine {
     );
 
     return {
-      valueDelta: valuePref ? parseFloat(valuePref.value) : 0.15,
-      confidenceDelta: confPref ? parseInt(confPref.value, 10) : 2,
-      windowHours: 24,
+      valueDelta: valuePref ? parseFloat(valuePref.value) : DEFAULT_VALUE_DELTA,
+      confidenceDelta: confPref
+        ? parseInt(confPref.value, 10)
+        : DEFAULT_CONFIDENCE_DELTA,
+      windowHours: DEFAULT_WINDOW_HOURS,
     };
   }
 
