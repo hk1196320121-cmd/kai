@@ -3,16 +3,16 @@
 ## [0.4.0.0] - 2026-05-20
 
 ### Added
-- **Orchestrator idea-to-execution engine** — submit ideas, decompose into tasks, schedule, dispatch, observe results, and detect behavioral changes in a closed loop
-- **7 MCP tools** — `kai_idea_submit`, `kai_idea_plan`, `kai_plan_approve`, `kai_task_execute`, `kai_idea_pause`, `kai_execution_status`, `kai_replan`
-- **Profile-aware planner** — LLM-powered task decomposition that adapts to behavioral traits (e.g., early risers get morning schedules)
-- **Agent bridge** — Hermes file-based integration for dispatching one-off and cron tasks
-- **Observer pipeline** — converts execution results and feedback into profile observations
-- **Idea clustering** — auto-detects related ideas from observation patterns with TF-IDF tokenization
-- **Closed loop engine** — detects significant trait changes and triggers automatic re-planning
+- **Orchestrator idea-to-execution engine** — submit ideas, decompose into tasks, schedule, dispatch, observe results, and detect behavioral changes in a closed loop. Use `kai_idea_submit` to start
+- **7 orchestrator MCP tools** — `kai_idea_submit`, `kai_idea_plan`, `kai_plan_approve`, `kai_task_execute`, `kai_idea_pause`, `kai_execution_status`, `kai_replan`. AI agents can now plan and execute work on your behalf
+- **Profile-aware planner** — LLM-powered task decomposition that adapts to behavioral traits (e.g., early risers get morning schedules). The planner reads your profile to personalize task timing and structure
+- **Agent bridge** — Hermes file-based integration for dispatching one-off and cron tasks to external agents
+- **Observer pipeline** — execution results automatically become profile observations, so your profile evolves as tasks complete
+- **Idea clustering** — auto-groups related ideas from observation patterns using TF-IDF tokenization, so you can see themes across your work
+- **Closed loop engine** — when your behavioral traits shift significantly, the engine triggers automatic re-planning of active ideas
 - **V5 database migration** — `ideas`, `planned_tasks`, `execution_results` tables; removes source CHECK constraint
-- **`execution_result` source type** — observations can now originate from orchestrator execution
-- **LLM max_tokens override** — provider accepts optional `max_tokens` parameter
+- **`execution_result` source type** — observations can now originate from orchestrator execution, appearing alongside cron and MCP sources
+- **LLM max_tokens override** — provider accepts optional `max_tokens` parameter for controlling response length
 - **313 tests** across 46 files (+77 new tests since v0.3.0.0)
 
 ### Changed
