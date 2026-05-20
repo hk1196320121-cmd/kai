@@ -124,7 +124,11 @@ export class Planner {
           typeof t.cron_schedule === "string" ? t.cron_schedule : undefined,
         cron_prompt:
           typeof t.cron_prompt === "string" ? t.cron_prompt : undefined,
-        agent: typeof t.agent === "string" && ["hermes", "openclaw", "auto"].includes(t.agent) ? t.agent : "hermes",
+        agent:
+          typeof t.agent === "string" &&
+          ["hermes", "openclaw", "auto"].includes(t.agent)
+            ? t.agent
+            : "hermes",
         prompt: String(t.prompt),
         decomposition_rationale:
           typeof t.decomposition_rationale === "string"

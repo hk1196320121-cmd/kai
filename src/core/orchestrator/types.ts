@@ -71,4 +71,3 @@ export interface ExecutionObservation {
   confidence: number;
   source: "execution_result";
 }
-
