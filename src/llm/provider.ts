@@ -41,6 +41,7 @@ export class LLMProvider {
   buildRequestBody(
     prompt: string,
     systemPrompt: string,
+    options?: { max_tokens?: number },
   ): Record<string, unknown> {
     return {
       model: this.config.model,
@@ -50,7 +51,7 @@ export class LLMProvider {
       ] as ChatMessage[],
       response_format: { type: "json_object" },
       temperature: 0.3,
-      max_tokens: 2048,
+      max_tokens: options?.max_tokens ?? 2048,
     };
   }
 
@@ -58,9 +59,10 @@ export class LLMProvider {
     prompt: string,
     systemPrompt: string,
     retries = 1,
+    options?: { max_tokens?: number },
   ): Promise<Record<string, unknown>> {
     const url = `${this.config.baseUrl}/chat/completions`;
-    const body = this.buildRequestBody(prompt, systemPrompt);
+    const body = this.buildRequestBody(prompt, systemPrompt, options);
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
