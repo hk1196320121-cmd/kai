@@ -82,7 +82,18 @@ export class PromptCompiler {
     for (const geneId of geneIds) {
       const gene = this.store.getGene(geneId);
       if (!gene) continue;
+
       if (gene.type === "intent" || gene.type === "contract") {
+        parts.push(gene.content);
+        geneCount++;
+      } else if (gene.type === "adapter") {
+        const interpolated = this.interpolateTraits(gene.content, traits);
+        parts.push(interpolated);
+        geneCount++;
+      } else if (gene.type === "tone") {
+        parts.push(gene.content);
+        geneCount++;
+      } else if (gene.type === "example") {
         parts.push(gene.content);
         geneCount++;
       }
@@ -115,6 +126,20 @@ export class PromptCompiler {
 
   clearCache(): void {
     this.cache.clear();
+  }
+
+  private interpolateTraits(content: string, traits: Trait[]): string {
+    const traitMap = new Map(traits.map((t) => [t.dimension, t.value]));
+    return content.replace(/\{\{trait:([\w_]+)\}\}/g, (_match, dimension: string) => {
+      const value = traitMap.get(dimension);
+      if (value !== undefined) {
+        const trait = traits.find((t) => t.dimension === dimension);
+        const confidence = trait?.confidence ?? 5;
+        const effectiveWeight = value * (confidence / 10);
+        return effectiveWeight.toFixed(2);
+      }
+      return "0.5";
+    });
   }
 
   private validateCompiledPrompt(prompt: string): boolean {
