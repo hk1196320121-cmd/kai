@@ -1,9 +1,25 @@
-export type IdeaDomain = "coding" | "writing" | "research" | "creative" | "general";
+export type IdeaDomain =
+  | "coding"
+  | "writing"
+  | "research"
+  | "creative"
+  | "general";
 export type IdeaPriority = "low" | "medium" | "high" | "critical";
-export type IdeaStatus = "draft" | "planned" | "executing" | "completed" | "paused";
+export type IdeaStatus =
+  | "draft"
+  | "planned"
+  | "executing"
+  | "completed"
+  | "paused";
 export type TaskType = "one_off" | "cron";
-export type TaskStatus = "pending" | "scheduled" | "executing" | "completed" | "failed" | "paused";
-export type AgentType = "hermes" | "openclaw" | "auto";
+export type TaskStatus =
+  | "pending"
+  | "scheduled"
+  | "executing"
+  | "completed"
+  | "failed"
+  | "paused";
+type AgentType = "hermes" | "openclaw" | "auto";
 
 export interface Idea {
   id: string;
@@ -56,9 +72,3 @@ export interface ExecutionObservation {
   source: "execution_result";
 }
 
-export interface TaskModification {
-  task_id?: string;
-  action: "update" | "remove" | "add";
-  field?: "title" | "agent" | "prompt" | "cron_schedule" | "type";
-  value?: string;
-}

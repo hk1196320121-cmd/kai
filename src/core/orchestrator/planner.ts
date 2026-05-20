@@ -56,13 +56,21 @@ export class Planner {
       const response = await this.llm.call(prompt, PLANNER_SYSTEM_PROMPT);
 
       try {
-        this.llm.validateWithSchema(response as Record<string, unknown>, ["tasks"]);
+        this.llm.validateWithSchema(response as Record<string, unknown>, [
+          "tasks",
+        ]);
         return this.processAndPersist(idea, response);
       } catch {
         // Retry once with simpler prompt
         try {
-          const retryResponse = await this.llm.call(prompt, SIMPLE_SYSTEM_PROMPT);
-          this.llm.validateWithSchema(retryResponse as Record<string, unknown>, ["tasks"]);
+          const retryResponse = await this.llm.call(
+            prompt,
+            SIMPLE_SYSTEM_PROMPT,
+          );
+          this.llm.validateWithSchema(
+            retryResponse as Record<string, unknown>,
+            ["tasks"],
+          );
           return this.processAndPersist(idea, retryResponse);
         } catch {
           return this.fallbackSingleTask(idea);
@@ -86,7 +94,10 @@ export class Planner {
     });
   }
 
-  private processAndPersist(idea: Idea, response: Record<string, unknown>): PlannedTask[] {
+  private processAndPersist(
+    idea: Idea,
+    response: Record<string, unknown>,
+  ): PlannedTask[] {
     const tasks = response.tasks as unknown[];
     if (!Array.isArray(tasks) || tasks.length < 1) {
       return this.fallbackSingleTask(idea);
@@ -109,20 +120,38 @@ export class Planner {
         title: String(t.title).slice(0, 100),
         description: String(t.description).slice(0, 500),
         type: t.type === "cron" ? "cron" : "one_off",
-        cron_schedule: typeof t.cron_schedule === "string" ? t.cron_schedule : undefined,
-        cron_prompt: typeof t.cron_prompt === "string" ? t.cron_prompt : undefined,
-        agent: typeof t.agent === "string" ? t.agent : "hermes",
+        cron_schedule:
+          typeof t.cron_schedule === "string" ? t.cron_schedule : undefined,
+        cron_prompt:
+          typeof t.cron_prompt === "string" ? t.cron_prompt : undefined,
+        agent: typeof t.agent === "string" && ["hermes", "openclaw", "auto"].includes(t.agent) ? t.agent : "hermes",
         prompt: String(t.prompt),
-        decomposition_rationale: typeof t.decomposition_rationale === "string" ? t.decomposition_rationale : "",
-        scheduling_rationale: typeof t.scheduling_rationale === "string" ? t.scheduling_rationale : "",
+        decomposition_rationale:
+          typeof t.decomposition_rationale === "string"
+            ? t.decomposition_rationale
+            : "",
+        scheduling_rationale:
+          typeof t.scheduling_rationale === "string"
+            ? t.scheduling_rationale
+            : "",
       }),
     );
   }
 
-  private validateAndFilterTasks(rawTasks: unknown[]): Record<string, unknown>[] {
+  private validateAndFilterTasks(
+    rawTasks: unknown[],
+  ): Record<string, unknown>[] {
     return rawTasks
-      .filter((t): t is Record<string, unknown> => typeof t === "object" && t !== null)
-      .filter((t) => typeof t.title === "string" && typeof t.description === "string" && typeof t.prompt === "string");
+      .filter(
+        (t): t is Record<string, unknown> =>
+          typeof t === "object" && t !== null,
+      )
+      .filter(
+        (t) =>
+          typeof t.title === "string" &&
+          typeof t.description === "string" &&
+          typeof t.prompt === "string",
+      );
   }
 
   private fallbackSingleTask(idea: Idea): PlannedTask[] {
@@ -135,7 +164,8 @@ export class Planner {
         type: "one_off",
         agent: "hermes",
         prompt: idea.description,
-        decomposition_rationale: "Fallback: single task from original idea description",
+        decomposition_rationale:
+          "Fallback: single task from original idea description",
         scheduling_rationale: "Execute when ready",
       }),
     ];

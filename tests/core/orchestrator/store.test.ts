@@ -147,4 +147,59 @@ describe("OrchestratorStore", () => {
     const results = store.getResultsByIdea(idea.id);
     expect(results).toHaveLength(2);
   });
+
+  // --- updateTask ---
+  test("updateTask updates a single field", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Original", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTask(task.id, { title: "Updated" });
+    expect(store.getTask(task.id)?.title).toBe("Updated");
+  });
+
+  test("updateTask updates multiple fields", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Original", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTask(task.id, { agent: "openclaw", prompt: "New prompt" });
+    const updated = store.getTask(task.id);
+    expect(updated?.agent).toBe("openclaw");
+    expect(updated?.prompt).toBe("New prompt");
+  });
+
+  test("updateTask with no fields is a no-op", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Original", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTask(task.id, {});
+    expect(store.getTask(task.id)?.title).toBe("Original");
+  });
+
+  test("updateTask sets cron_schedule and type", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTask(task.id, { type: "cron", cron_schedule: "0 9 * * 1-5" });
+    const updated = store.getTask(task.id);
+    expect(updated?.type).toBe("cron");
+    expect(updated?.cron_schedule).toBe("0 9 * * 1-5");
+  });
+
+  // --- deleteTask ---
+  test("deleteTask removes the task", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.deleteTask(task.id);
+    expect(store.getTask(task.id)).toBeNull();
+  });
+
+  test("deleteTask on nonexistent id does not error", () => {
+    expect(() => store.deleteTask("nonexistent")).not.toThrow();
+  });
+
+  test("deleteTask removes only the target task", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const t1 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    const t2 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T2", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.deleteTask(t1.id);
+    expect(store.getTask(t1.id)).toBeNull();
+    expect(store.getTask(t2.id)).toBeDefined();
+    expect(store.getTasksByIdea(idea.id)).toHaveLength(1);
+  });
 });

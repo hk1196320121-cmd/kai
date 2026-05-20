@@ -73,6 +73,79 @@ describe("Scheduler", () => {
     expect(hour).toBeLessThanOrEqual(9);
   });
 
+  test("scheduleTasks catches bridge exception and counts error", async () => {
+    const bridge: AgentBridge = {
+      dispatchOneOff: async () => { throw new Error("bridge crashed"); },
+      scheduleCron: async () => { throw new Error("bridge crashed"); },
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const scheduler = new Scheduler(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await scheduler.scheduleTasks(idea.id, []);
+    expect(result.errors).toBe(1);
+    expect(result.scheduled).toBe(0);
+    expect(store.getTask(store.getTasksByIdea(idea.id)[0].id)?.status).toBe("pending");
+  });
+
+  test("scheduleTasks adjusts cron schedule for night owl (low early_riser)", async () => {
+    const scheduledJobs: { id: string; schedule: string }[] = [];
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId, agent): Promise<DispatchResult> => ({ success: true, agent, jobId: taskId }),
+      scheduleCron: async (taskId, schedule, _prompt): Promise<DispatchResult> => {
+        scheduledJobs.push({ id: taskId, schedule });
+        return { success: true, agent: "hermes", jobId: taskId };
+      },
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const scheduler = new Scheduler(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Night cron", description: "D", type: "cron", agent: "hermes", prompt: "P", cron_schedule: "0 9 * * *", cron_prompt: "Daily", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const traits: Trait[] = [
+      { id: "1", dimension: "early_riser", value: 0.2, confidence: 8, source: "observed", reasoning: "test", updated_at: "2026-05-20" },
+    ];
+    await scheduler.scheduleTasks(idea.id, traits);
+    expect(scheduledJobs.length).toBe(1);
+    const hour = parseInt(scheduledJobs[0].schedule.split(/\s+/)[1], 10);
+    expect(hour).toBeGreaterThanOrEqual(19);
+  });
+
+  test("scheduleTasks skips non-pending tasks", async () => {
+    const bridge = createMockBridge();
+    const scheduler = new Scheduler(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const t1 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTaskStatus(t1.id, "completed");
+
+    const result = await scheduler.scheduleTasks(idea.id, []);
+    expect(result.scheduled).toBe(0);
+    expect(result.errors).toBe(0);
+  });
+
+  test("scheduleTasks uses default cron when cron_schedule is null", async () => {
+    const scheduledJobs: { id: string; schedule: string }[] = [];
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId, agent): Promise<DispatchResult> => ({ success: true, agent, jobId: taskId }),
+      scheduleCron: async (taskId, schedule, _prompt): Promise<DispatchResult> => {
+        scheduledJobs.push({ id: taskId, schedule });
+        return { success: true, agent: "hermes", jobId: taskId };
+      },
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const scheduler = new Scheduler(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "No schedule", description: "D", type: "cron", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    await scheduler.scheduleTasks(idea.id, []);
+    expect(scheduledJobs.length).toBe(1);
+    expect(scheduledJobs[0].schedule).toBe("0 9 * * *");
+  });
+
   test("pauseTasks cancels cron jobs and marks tasks paused", async () => {
     const bridge = createMockBridge();
     const scheduler = new Scheduler(store, bridge);

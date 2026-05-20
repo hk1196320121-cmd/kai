@@ -1,13 +1,13 @@
-import { randomUUID } from "node:crypto";
 import type { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import type { KaiDB } from "../../db/client";
 import type {
-  Idea,
-  PlannedTask,
   ExecutionResult,
+  Idea,
   IdeaDomain,
   IdeaPriority,
   IdeaStatus,
+  PlannedTask,
   TaskStatus,
 } from "./types";
 
@@ -54,18 +54,20 @@ export class OrchestratorStore {
 
   createIdea(input: CreateIdeaInput): Idea {
     const id = randomUUID();
-    this.db.query(
-      `INSERT INTO ideas (id, title, description, domain, priority, deadline, workspace_id, status)
+    this.db
+      .query(
+        `INSERT INTO ideas (id, title, description, domain, priority, deadline, workspace_id, status)
        VALUES ($id, $title, $desc, $domain, $priority, $deadline, $ws, 'draft')`,
-    ).run({
-      $id: id,
-      $title: input.title,
-      $desc: input.description,
-      $domain: input.domain ?? "general",
-      $priority: input.priority ?? "medium",
-      $deadline: input.deadline ?? null,
-      $ws: input.workspace_id,
-    });
+      )
+      .run({
+        $id: id,
+        $title: input.title,
+        $desc: input.description,
+        $domain: input.domain ?? "general",
+        $priority: input.priority ?? "medium",
+        $deadline: input.deadline ?? null,
+        $ws: input.workspace_id,
+      });
     return this.getIdea(id) as Idea;
   }
 
@@ -76,44 +78,52 @@ export class OrchestratorStore {
   }
 
   updateIdeaStatus(id: string, status: IdeaStatus): void {
-    this.db.query(
-      "UPDATE ideas SET status = $status, updated_at = datetime('now') WHERE id = $id",
-    ).run({ $id: id, $status: status });
+    this.db
+      .query(
+        "UPDATE ideas SET status = $status, updated_at = datetime('now') WHERE id = $id",
+      )
+      .run({ $id: id, $status: status });
   }
 
   listIdeasByStatus(status: IdeaStatus): Idea[] {
-    return this.db.query(
-      "SELECT * FROM ideas WHERE status = $status ORDER BY created_at DESC",
-    ).all({ $status: status }) as Idea[];
+    return this.db
+      .query(
+        "SELECT * FROM ideas WHERE status = $status ORDER BY created_at DESC",
+      )
+      .all({ $status: status }) as Idea[];
   }
 
   listIdeasByWorkspace(workspaceId: string): Idea[] {
-    return this.db.query(
-      "SELECT * FROM ideas WHERE workspace_id = $ws ORDER BY created_at DESC",
-    ).all({ $ws: workspaceId }) as Idea[];
+    return this.db
+      .query(
+        "SELECT * FROM ideas WHERE workspace_id = $ws ORDER BY created_at DESC",
+      )
+      .all({ $ws: workspaceId }) as Idea[];
   }
 
   // --- Planned Tasks ---
 
   createTask(input: CreateTaskInput): PlannedTask {
     const id = randomUUID();
-    this.db.query(
-      `INSERT INTO planned_tasks (id, idea_id, workspace_id, title, description, type, cron_schedule, cron_prompt, agent, prompt, decomposition_rationale, scheduling_rationale, status)
+    this.db
+      .query(
+        `INSERT INTO planned_tasks (id, idea_id, workspace_id, title, description, type, cron_schedule, cron_prompt, agent, prompt, decomposition_rationale, scheduling_rationale, status)
        VALUES ($id, $idea, $ws, $title, $desc, $type, $cron, $cronPrompt, $agent, $prompt, $decompR, $schedR, 'pending')`,
-    ).run({
-      $id: id,
-      $idea: input.idea_id,
-      $ws: input.workspace_id,
-      $title: input.title,
-      $desc: input.description,
-      $type: input.type,
-      $cron: input.cron_schedule ?? null,
-      $cronPrompt: input.cron_prompt ?? null,
-      $agent: input.agent,
-      $prompt: input.prompt,
-      $decompR: input.decomposition_rationale,
-      $schedR: input.scheduling_rationale,
-    });
+      )
+      .run({
+        $id: id,
+        $idea: input.idea_id,
+        $ws: input.workspace_id,
+        $title: input.title,
+        $desc: input.description,
+        $type: input.type,
+        $cron: input.cron_schedule ?? null,
+        $cronPrompt: input.cron_prompt ?? null,
+        $agent: input.agent,
+        $prompt: input.prompt,
+        $decompR: input.decomposition_rationale,
+        $schedR: input.scheduling_rationale,
+      });
     return this.getTask(id) as PlannedTask;
   }
 
@@ -124,15 +134,19 @@ export class OrchestratorStore {
   }
 
   getTasksByIdea(ideaId: string): PlannedTask[] {
-    return this.db.query(
-      "SELECT * FROM planned_tasks WHERE idea_id = $idea ORDER BY created_at",
-    ).all({ $idea: ideaId }) as PlannedTask[];
+    return this.db
+      .query(
+        "SELECT * FROM planned_tasks WHERE idea_id = $idea ORDER BY created_at",
+      )
+      .all({ $idea: ideaId }) as PlannedTask[];
   }
 
   updateTaskStatus(id: string, status: TaskStatus): void {
-    this.db.query(
-      "UPDATE planned_tasks SET status = $status, updated_at = datetime('now') WHERE id = $id",
-    ).run({ $id: id, $status: status });
+    this.db
+      .query(
+        "UPDATE planned_tasks SET status = $status, updated_at = datetime('now') WHERE id = $id",
+      )
+      .run({ $id: id, $status: status });
   }
 
   updateTask(
@@ -172,15 +186,17 @@ export class OrchestratorStore {
     }
     if (sets.length === 0) return;
     sets.push("updated_at = datetime('now')");
-    this.db.query(
-      `UPDATE planned_tasks SET ${sets.join(", ")} WHERE id = $id`,
-    ).run(params);
+    this.db
+      .query(`UPDATE planned_tasks SET ${sets.join(", ")} WHERE id = $id`)
+      .run(params);
   }
 
   incrementRetryCount(id: string): void {
-    this.db.query(
-      "UPDATE planned_tasks SET retry_count = retry_count + 1, updated_at = datetime('now') WHERE id = $id",
-    ).run({ $id: id });
+    this.db
+      .query(
+        "UPDATE planned_tasks SET retry_count = retry_count + 1, updated_at = datetime('now') WHERE id = $id",
+      )
+      .run({ $id: id });
   }
 
   deleteTask(id: string): void {
@@ -198,43 +214,51 @@ export class OrchestratorStore {
   }
 
   addExecutionResult(input: AddResultInput): ExecutionResult {
-    const result = this.db.query(
-      `INSERT INTO execution_results (task_id, agent, success, output, duration_ms, user_feedback)
+    const result = this.db
+      .query(
+        `INSERT INTO execution_results (task_id, agent, success, output, duration_ms, user_feedback)
        VALUES ($task, $agent, $success, $output, $duration, $feedback)`,
-    ).run({
-      $task: input.task_id,
-      $agent: input.agent,
-      $success: input.success ? 1 : 0,
-      $output: input.output,
-      $duration: input.duration_ms,
-      $feedback: input.user_feedback ?? null,
-    });
-    const row = this.db.query("SELECT * FROM execution_results WHERE id = $id").get({
-      $id: Number(result.lastInsertRowid),
-    }) as Record<string, unknown>;
+      )
+      .run({
+        $task: input.task_id,
+        $agent: input.agent,
+        $success: input.success ? 1 : 0,
+        $output: input.output,
+        $duration: input.duration_ms,
+        $feedback: input.user_feedback ?? null,
+      });
+    const row = this.db
+      .query("SELECT * FROM execution_results WHERE id = $id")
+      .get({
+        $id: Number(result.lastInsertRowid),
+      }) as Record<string, unknown>;
     return this.mapResult(row);
   }
 
   getResultsByTask(taskId: string): ExecutionResult[] {
-    const rows = this.db.query(
-      "SELECT * FROM execution_results WHERE task_id = $task ORDER BY completed_at DESC",
-    ).all({ $task: taskId }) as Record<string, unknown>[];
+    const rows = this.db
+      .query(
+        "SELECT * FROM execution_results WHERE task_id = $task ORDER BY completed_at DESC",
+      )
+      .all({ $task: taskId }) as Record<string, unknown>[];
     return rows.map((r) => this.mapResult(r));
   }
 
   getResultsByIdea(ideaId: string): ExecutionResult[] {
-    const rows = this.db.query(
-      `SELECT er.* FROM execution_results er
+    const rows = this.db
+      .query(
+        `SELECT er.* FROM execution_results er
        JOIN planned_tasks pt ON er.task_id = pt.id
        WHERE pt.idea_id = $idea
        ORDER BY er.completed_at DESC`,
-    ).all({ $idea: ideaId }) as Record<string, unknown>[];
+      )
+      .all({ $idea: ideaId }) as Record<string, unknown>[];
     return rows.map((r) => this.mapResult(r));
   }
 
   addUserFeedback(resultId: number, feedback: string): void {
-    this.db.query(
-      "UPDATE execution_results SET user_feedback = $fb WHERE id = $id",
-    ).run({ $id: resultId, $fb: feedback });
+    this.db
+      .query("UPDATE execution_results SET user_feedback = $fb WHERE id = $id")
+      .run({ $id: resultId, $fb: feedback });
   }
 }

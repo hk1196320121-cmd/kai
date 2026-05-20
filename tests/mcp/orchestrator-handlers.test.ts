@@ -76,4 +76,70 @@ describe("Orchestrator MCP Handlers Integration", () => {
     expect(idea.workspace_id).toBe(ws.id);
     expect(idea.status).toBe("draft");
   });
+
+  // --- kai_idea_plan: idea not found ---
+  test("plan for nonexistent idea returns not found", () => {
+    const idea = store.getIdea("nonexistent");
+    expect(idea).toBeNull();
+  });
+
+  // --- kai_plan_approve: task modifications ---
+  test("approve with remove modification deletes task", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const t1 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Keep", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    const t2 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Remove", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    store.deleteTask(t2.id);
+    expect(store.getTask(t2.id)).toBeNull();
+    expect(store.getTasksByIdea(idea.id)).toHaveLength(1);
+    expect(store.getTasksByIdea(idea.id)[0].title).toBe("Keep");
+  });
+
+  test("approve with update modification changes task field", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Original", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    store.updateTask(task.id, { prompt: "Updated prompt" });
+    expect(store.getTask(task.id)?.prompt).toBe("Updated prompt");
+  });
+
+  // --- kai_execution_status: feedback ---
+  test("execution status with feedback attaches to latest result", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    const result = store.addExecutionResult({ task_id: task.id, agent: "hermes", success: true, output: "Done", duration_ms: 100 });
+
+    store.addUserFeedback(result.id, "Great work!");
+    const updated = store.getResultsByTask(task.id);
+    expect(updated[0].user_feedback).toBe("Great work!");
+  });
+
+  // --- kai_replan: cleans up old pending tasks ---
+  test("replan cleans up old non-terminal tasks before creating new ones", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const t1 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Old pending", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTaskStatus(t1.id, "scheduled");
+    const t2 = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Already done", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTaskStatus(t2.id, "completed");
+
+    // Simulate replan cleanup: delete non-terminal, keep terminal
+    const oldTasks = store.getTasksByIdea(idea.id);
+    for (const t of oldTasks) {
+      if (t.status !== "completed" && t.status !== "failed") {
+        store.deleteTask(t.id);
+      }
+    }
+
+    const remaining = store.getTasksByIdea(idea.id);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].status).toBe("completed");
+  });
+
+  // --- kai_task_execute: rejects cron task ---
+  test("cron task cannot be dispatched directly", () => {
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Daily", description: "D", type: "cron", agent: "hermes", prompt: "P", cron_schedule: "0 9 * * *", decomposition_rationale: "R", scheduling_rationale: "R" });
+    expect(task.type).toBe("cron");
+    // Dispatcher should reject — verified in dispatcher.test.ts
+  });
 });

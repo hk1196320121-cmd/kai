@@ -39,9 +39,13 @@ export class HermesAgentBridge implements AgentBridge {
     this.baseDir = baseDir ?? join(homedir(), ".hermes");
   }
 
+  private sanitizeId(id: string): string {
+    return id.replace(/[^a-zA-Z0-9_-]/g, "_");
+  }
+
   private getPendingDir(): string {
     const pendingDir = join(this.baseDir, "cron", "pending");
-    if (!existsSync(pendingDir)) mkdirSync(pendingDir, { recursive: true });
+    mkdirSync(pendingDir, { recursive: true });
     return pendingDir;
   }
 
@@ -50,8 +54,9 @@ export class HermesAgentBridge implements AgentBridge {
     agent: string,
     prompt: string,
   ): Promise<DispatchResult> {
+    const safeId = this.sanitizeId(taskId);
     const pendingDir = this.getPendingDir();
-    const jobFile = join(pendingDir, `${taskId}.json`);
+    const jobFile = join(pendingDir, `${safeId}.json`);
     writeFileSync(
       jobFile,
       JSON.stringify({
@@ -70,8 +75,9 @@ export class HermesAgentBridge implements AgentBridge {
     schedule: string,
     prompt: string,
   ): Promise<DispatchResult> {
+    const safeId = this.sanitizeId(taskId);
     const pendingDir = this.getPendingDir();
-    const jobFile = join(pendingDir, `${taskId}.json`);
+    const jobFile = join(pendingDir, `${safeId}.json`);
     writeFileSync(
       jobFile,
       JSON.stringify({
@@ -86,8 +92,9 @@ export class HermesAgentBridge implements AgentBridge {
   }
 
   async cancelCron(taskId: string): Promise<boolean> {
+    const safeId = this.sanitizeId(taskId);
     const pendingDir = this.getPendingDir();
-    const jobFile = join(pendingDir, `${taskId}.json`);
+    const jobFile = join(pendingDir, `${safeId}.json`);
     if (existsSync(jobFile)) {
       unlinkSync(jobFile);
       return true;
@@ -101,14 +108,25 @@ export class HermesAgentBridge implements AgentBridge {
     const pendingDir = this.getPendingDir();
     if (!existsSync(pendingDir)) return [];
     const files = readdirSync(pendingDir).filter((f) => f.endsWith(".json"));
-    return files.map((f) => {
-      const content = JSON.parse(readFileSync(join(pendingDir, f), "utf-8"));
-      return {
-        id: content.id,
-        type: content.type,
-        schedule: content.schedule,
-        prompt: content.prompt,
-      };
-    });
+    const results: Array<{
+      id: string;
+      type: string;
+      schedule?: string;
+      prompt: string;
+    }> = [];
+    for (const f of files) {
+      try {
+        const content = JSON.parse(readFileSync(join(pendingDir, f), "utf-8"));
+        results.push({
+          id: content.id,
+          type: content.type,
+          schedule: content.schedule,
+          prompt: content.prompt,
+        });
+      } catch {
+        // Skip corrupted files
+      }
+    }
+    return results;
   }
 }

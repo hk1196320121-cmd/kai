@@ -28,7 +28,7 @@ export interface WorkspaceEvent {
   created_at: string;
 }
 
-export type WorkspaceEventType =
+type WorkspaceEventType =
   | "workspace_created"
   | "workspace_archived"
   | "task_created"

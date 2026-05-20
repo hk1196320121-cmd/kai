@@ -1,4 +1,4 @@
-import type { AgentBridge } from "../../bridge/agent-bridge";
+import type { AgentBridge, DispatchResult } from "../../bridge/agent-bridge";
 import type { Trait } from "../profile/types";
 import type { OrchestratorStore } from "./store";
 
@@ -16,7 +16,10 @@ export class Scheduler {
     this.bridge = bridge;
   }
 
-  async scheduleTasks(ideaId: string, traits: Trait[]): Promise<ScheduleResult> {
+  async scheduleTasks(
+    ideaId: string,
+    traits: Trait[],
+  ): Promise<ScheduleResult> {
     const tasks = this.store.getTasksByIdea(ideaId);
     const traitMap = new Map(traits.map((t) => [t.dimension, t.value]));
     let scheduled = 0;
@@ -25,15 +28,28 @@ export class Scheduler {
     for (const task of tasks) {
       if (task.status !== "pending") continue;
       try {
+        let result: DispatchResult;
         if (task.type === "cron") {
           let cronSchedule = task.cron_schedule ?? "0 9 * * *";
           cronSchedule = this.applyTraitAdjustments(cronSchedule, traitMap);
-          await this.bridge.scheduleCron(task.id, cronSchedule, task.cron_prompt ?? task.prompt);
+          result = await this.bridge.scheduleCron(
+            task.id,
+            cronSchedule,
+            task.cron_prompt ?? task.prompt,
+          );
         } else {
-          await this.bridge.dispatchOneOff(task.id, task.agent, task.prompt);
+          result = await this.bridge.dispatchOneOff(
+            task.id,
+            task.agent,
+            task.prompt,
+          );
         }
-        this.store.updateTaskStatus(task.id, "scheduled");
-        scheduled++;
+        if (result.success) {
+          this.store.updateTaskStatus(task.id, "scheduled");
+          scheduled++;
+        } else {
+          errors++;
+        }
       } catch {
         errors++;
       }
@@ -41,13 +57,19 @@ export class Scheduler {
     return { scheduled, errors };
   }
 
-  async pauseTasks(ideaId: string): Promise<{ paused: number; cancelled: number }> {
+  async pauseTasks(
+    ideaId: string,
+  ): Promise<{ paused: number; cancelled: number }> {
     const tasks = this.store.getTasksByIdea(ideaId);
     let paused = 0;
     let cancelled = 0;
 
     for (const task of tasks) {
-      if (task.status === "pending" || task.status === "scheduled" || task.status === "executing") {
+      if (
+        task.status === "pending" ||
+        task.status === "scheduled" ||
+        task.status === "executing"
+      ) {
         if (task.type === "cron") {
           await this.bridge.cancelCron(task.id);
           cancelled++;
@@ -60,7 +82,10 @@ export class Scheduler {
     return { paused, cancelled };
   }
 
-  private applyTraitAdjustments(schedule: string, traitMap: Map<string, number>): string {
+  private applyTraitAdjustments(
+    schedule: string,
+    traitMap: Map<string, number>,
+  ): string {
     const parts = schedule.trim().split(/\s+/);
     if (parts.length < 2) return schedule;
     const earlyRiser = traitMap.get("early_riser") ?? 0.5;

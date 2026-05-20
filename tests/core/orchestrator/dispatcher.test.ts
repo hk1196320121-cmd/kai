@@ -78,4 +78,55 @@ describe("Dispatcher", () => {
     expect(result.success).toBe(true);
     expect(calls).toBe(2);
   });
+
+  test("dispatch returns error for completed task", async () => {
+    const bridge = createMockBridge();
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTaskStatus(task.id, "completed");
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("already completed");
+  });
+
+  test("dispatch returns error when max retries exceeded", async () => {
+    const bridge = createMockBridge();
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    for (let i = 0; i < task.max_retries; i++) store.incrementRetryCount(task.id);
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Max retries");
+  });
+
+  test("dispatch rejects cron task", async () => {
+    const bridge = createMockBridge();
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "Daily", description: "D", type: "cron", cron_schedule: "0 9 * * *", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Cron tasks must be scheduled");
+  });
+
+  test("dispatch returns error when bridge always fails", async () => {
+    const bridge: AgentBridge = {
+      dispatchOneOff: async () => ({ success: false, agent: "hermes" }),
+      scheduleCron: async () => ({ success: true, agent: "hermes" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Bridge dispatch failed");
+  });
 });
