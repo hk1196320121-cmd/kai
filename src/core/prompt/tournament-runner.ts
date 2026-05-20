@@ -1,7 +1,7 @@
 import type { LLMProvider } from "../../llm/provider";
-import type { PromptTask, TournamentWinner } from "./types";
-import { GeneStore } from "./gene-store";
+import type { GeneStore } from "./gene-store";
 import { JudgeEngine } from "./judge-engine";
+import type { PromptTask } from "./types";
 
 export interface TournamentConfig {
   task: PromptTask;
@@ -28,7 +28,11 @@ export class TournamentRunner {
   async run(config: TournamentConfig): Promise<TournamentRunResult> {
     const evalCases = this.store.listEvalCasesByTask(config.task);
     if (evalCases.length === 0) {
-      return { battles_run: 0, tournaments: [], error: "no eval cases in pool" };
+      return {
+        battles_run: 0,
+        tournaments: [],
+        error: "no eval cases in pool",
+      };
     }
 
     const genome = this.store.getGenomeByTask(config.task);
@@ -38,7 +42,11 @@ export class TournamentRunner {
 
     const variants = this.store.listVariantsByGenome(genome.id);
     if (variants.length < 2) {
-      return { battles_run: 0, tournaments: [], error: "need at least 2 variants" };
+      return {
+        battles_run: 0,
+        tournaments: [],
+        error: "need at least 2 variants",
+      };
     }
 
     const sampleSize = config.sample_size ?? Math.min(10, evalCases.length);

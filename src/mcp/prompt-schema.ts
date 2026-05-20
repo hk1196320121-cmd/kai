@@ -14,9 +14,7 @@ export const PromptChampionSchema = {
 };
 
 export const PromptEvolveSchema = {
-  task: z
-    .enum(["planner", "derivator", "observer"])
-    .describe("Task to evolve"),
+  task: z.enum(["planner", "derivator", "observer"]).describe("Task to evolve"),
   rounds: z.number().optional().describe("Number of rounds (default: 1)"),
   auto_approve: z
     .boolean()

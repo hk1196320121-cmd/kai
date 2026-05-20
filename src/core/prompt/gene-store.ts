@@ -1,19 +1,19 @@
-import { randomUUID } from "node:crypto";
 import type { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import type { KaiDB } from "../../db/client";
 import type {
-  PromptGene,
-  PromptGenome,
-  PromptVariant,
-  PromptSegment,
-  PromptEvalCase,
-  PromptTournament,
-  PromptChampion,
-  PromptChampionHistory,
-  PromptTask,
+  EvalSource,
   GeneType,
   MutationType,
-  EvalSource,
+  PromptChampion,
+  PromptChampionHistory,
+  PromptEvalCase,
+  PromptGene,
+  PromptGenome,
+  PromptSegment,
+  PromptTask,
+  PromptTournament,
+  PromptVariant,
   TournamentWinner,
 } from "./types";
 
@@ -58,7 +58,9 @@ export class GeneStore {
   listGenes(task?: PromptTask): PromptGene[] {
     if (task) {
       return this.db
-        .query("SELECT * FROM prompt_genes WHERE task = $task ORDER BY created_at")
+        .query(
+          "SELECT * FROM prompt_genes WHERE task = $task ORDER BY created_at",
+        )
         .all({ $task: task }) as PromptGene[];
     }
     return this.db
@@ -68,7 +70,9 @@ export class GeneStore {
 
   updateGene(
     id: string,
-    fields: Partial<Pick<PromptGene, "content" | "trait_bindings" | "metadata">>,
+    fields: Partial<
+      Pick<PromptGene, "content" | "trait_bindings" | "metadata">
+    >,
   ): void {
     const sets: string[] = [];
     const params: Record<string, string> = { $id: id };
@@ -91,9 +95,7 @@ export class GeneStore {
   }
 
   deleteGene(id: string): void {
-    this.db
-      .query("DELETE FROM prompt_genes WHERE id = $id")
-      .run({ $id: id });
+    this.db.query("DELETE FROM prompt_genes WHERE id = $id").run({ $id: id });
   }
 
   // --- Genomes ---
@@ -219,9 +221,7 @@ export class GeneStore {
 
   countEvalCasesByTask(task: PromptTask): number {
     const row = this.db
-      .query(
-        "SELECT COUNT(*) as c FROM prompt_eval_cases WHERE task = $task",
-      )
+      .query("SELECT COUNT(*) as c FROM prompt_eval_cases WHERE task = $task")
       .get({ $task: task }) as { c: number };
     return row.c;
   }
@@ -344,7 +344,11 @@ export class GeneStore {
       .query(
         "SELECT * FROM prompt_champions WHERE task = $task AND segment_id = $seg AND model = $model",
       )
-      .get({ $task: task, $seg: segmentId, $model: m }) as PromptChampion | null;
+      .get({
+        $task: task,
+        $seg: segmentId,
+        $model: m,
+      }) as PromptChampion | null;
   }
 
   setChampion(input: {
@@ -390,11 +394,7 @@ export class GeneStore {
       });
   }
 
-  lockChampion(
-    task: PromptTask,
-    segmentId: string,
-    model?: string,
-  ): void {
+  lockChampion(task: PromptTask, segmentId: string, model?: string): void {
     const m = model ?? "gpt-4o-mini";
     this.db
       .query(
@@ -403,11 +403,7 @@ export class GeneStore {
       .run({ $task: task, $seg: segmentId, $model: m });
   }
 
-  unlockChampion(
-    task: PromptTask,
-    segmentId: string,
-    model?: string,
-  ): void {
+  unlockChampion(task: PromptTask, segmentId: string, model?: string): void {
     const m = model ?? "gpt-4o-mini";
     this.db
       .query(
@@ -426,7 +422,11 @@ export class GeneStore {
       .query(
         "SELECT * FROM prompt_champion_history WHERE task = $task AND segment_id = $seg AND model = $model ORDER BY promoted_at DESC",
       )
-      .all({ $task: task, $seg: segmentId, $model: m }) as PromptChampionHistory[];
+      .all({
+        $task: task,
+        $seg: segmentId,
+        $model: m,
+      }) as PromptChampionHistory[];
   }
 
   rollbackChampion(
@@ -436,7 +436,7 @@ export class GeneStore {
   ): PromptChampion | null {
     const m = model ?? "gpt-4o-mini";
     const current = this.getChampion(task, segmentId, m);
-    if (!current || !current.previous_variant_id) return null;
+    if (!current?.previous_variant_id) return null;
 
     const history = this.getChampionHistory(task, segmentId, m);
     const prevEntry = history.find(

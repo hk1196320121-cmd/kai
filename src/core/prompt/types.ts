@@ -1,6 +1,13 @@
 export type PromptTask = "planner" | "derivator" | "observer";
 export type GeneType = "intent" | "contract" | "adapter" | "example" | "tone";
-export type MutationType = "seed" | "manual" | "intent_rephrase" | "contract_adjust" | "tone_shift" | "structure_change" | "adapter_tweak";
+export type MutationType =
+  | "seed"
+  | "manual"
+  | "intent_rephrase"
+  | "contract_adjust"
+  | "tone_shift"
+  | "structure_change"
+  | "adapter_tweak";
 export type EvalDifficulty = "easy" | "medium" | "hard";
 export type EvalSource = "synthetic" | "real" | "edge_case";
 export type TournamentWinner = "a" | "b" | "tie";

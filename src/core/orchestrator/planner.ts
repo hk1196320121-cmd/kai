@@ -47,7 +47,11 @@ export class Planner {
   private llm: LLMProvider;
   private compiler: PromptCompiler | null;
 
-  constructor(store: OrchestratorStore, llm: LLMProvider, compiler?: PromptCompiler) {
+  constructor(
+    store: OrchestratorStore,
+    llm: LLMProvider,
+    compiler?: PromptCompiler,
+  ) {
     this.store = store;
     this.llm = llm;
     this.compiler = compiler ?? null;

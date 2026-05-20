@@ -16,10 +16,7 @@ function textContent(data: unknown) {
   };
 }
 
-export function registerPromptHandlers(
-  server: McpServer,
-  db: KaiDB,
-): void {
+export function registerPromptHandlers(server: McpServer, db: KaiDB): void {
   const store = new GeneStore(db);
   const compiler = new PromptCompiler(store);
   const llm = new LLMProvider();

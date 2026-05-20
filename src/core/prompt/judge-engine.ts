@@ -1,5 +1,5 @@
 import type { LLMProvider } from "../../llm/provider";
-import type { TournamentWinner, TournamentResult } from "./types";
+import type { TournamentResult, TournamentWinner } from "./types";
 
 const JUDGE_SYSTEM_PROMPT = `You are a prompt quality judge. Compare two prompt outputs for the same task.
 
@@ -40,7 +40,9 @@ export class JudgeEngine {
     calls = 3,
   ): Promise<TournamentResult> {
     const results = await Promise.allSettled(
-      Array.from({ length: calls }, () => this.judge(outputA, outputB, evalInput)),
+      Array.from({ length: calls }, () =>
+        this.judge(outputA, outputB, evalInput),
+      ),
     );
 
     const successes: TournamentResult[] = [];
@@ -52,7 +54,9 @@ export class JudgeEngine {
     }
 
     if (successes.length < 2) {
-      throw new Error(`Judge majority vote failed: ${failures.length} of ${calls} calls failed`);
+      throw new Error(
+        `Judge majority vote failed: ${failures.length} of ${calls} calls failed`,
+      );
     }
 
     let aWins = 0;
@@ -83,7 +87,9 @@ export class JudgeEngine {
     };
   }
 
-  private parseJudgeResponse(response: Record<string, unknown>): TournamentResult {
+  private parseJudgeResponse(
+    response: Record<string, unknown>,
+  ): TournamentResult {
     const winner = response.winner as string;
     if (winner !== "a" && winner !== "b" && winner !== "tie") {
       throw new Error(`Invalid judge winner: ${winner}`);

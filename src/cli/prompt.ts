@@ -1,9 +1,9 @@
 import type { Command } from "commander";
+import { ProfileEngine } from "../core/profile/engine";
 import { GeneStore } from "../core/prompt/gene-store";
 import { PromptCompiler } from "../core/prompt/prompt-compiler";
 import { PromptEvolver } from "../core/prompt/prompt-evolver";
-import type { PromptTask, GeneType } from "../core/prompt/types";
-import { ProfileEngine } from "../core/profile/engine";
+import type { GeneType, PromptTask } from "../core/prompt/types";
 import { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import { getDbPath } from "./utils";
@@ -41,9 +41,7 @@ function formatGeneSummary(gene: {
   created_at: string;
 }): string {
   const preview =
-    gene.content.length > 60
-      ? `${gene.content.slice(0, 57)}...`
-      : gene.content;
+    gene.content.length > 60 ? `${gene.content.slice(0, 57)}...` : gene.content;
   return `${gene.id.slice(0, 8)}  ${gene.task.padEnd(10)} ${gene.type.padEnd(10)} ${preview}`;
 }
 
@@ -135,9 +133,7 @@ export function registerPromptCommands(program: Command): void {
         }
 
         console.log(`Genes (${genes.length}):\n`);
-        console.log(
-          "ID        Task       Type       Content",
-        );
+        console.log("ID        Task       Type       Content");
         for (const gene of genes) {
           console.log(formatGeneSummary(gene));
         }
@@ -371,9 +367,7 @@ export function registerPromptCommands(program: Command): void {
           console.log("\nEvolution complete.");
         }
       } catch (err) {
-        console.error(
-          `Evolution failed: ${(err as Error).message}`,
-        );
+        console.error(`Evolution failed: ${(err as Error).message}`);
         process.exit(1);
       } finally {
         db.close();

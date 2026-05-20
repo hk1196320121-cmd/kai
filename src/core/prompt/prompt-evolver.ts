@@ -1,7 +1,7 @@
 import type { LLMProvider } from "../../llm/provider";
-import type { PromptTask, EvolutionResult, MutationType } from "./types";
-import { GeneStore } from "./gene-store";
+import type { GeneStore } from "./gene-store";
 import { TournamentRunner } from "./tournament-runner";
+import type { EvolutionResult, MutationType, PromptTask } from "./types";
 
 export interface EvolutionConfig {
   task: PromptTask;
@@ -81,7 +81,8 @@ export class PromptEvolver {
     let championVariantId: string | null = null;
 
     for (const variant of variants) {
-      if (currentChampion && variant.id === currentChampion.variant_id) continue;
+      if (currentChampion && variant.id === currentChampion.variant_id)
+        continue;
       const stats = this.store.countTournamentWins(
         variant.id,
         config.task,
@@ -143,8 +144,11 @@ export class PromptEvolver {
       win_rate: proposal.win_rate,
       battle_count: proposal.battle_count,
       previous_variant_id:
-        this.store.getChampion(proposal.task, proposal.segment_id, proposal.model)
-          ?.variant_id ?? null,
+        this.store.getChampion(
+          proposal.task,
+          proposal.segment_id,
+          proposal.model,
+        )?.variant_id ?? null,
     });
   }
 

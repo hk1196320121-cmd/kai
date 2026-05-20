@@ -6,53 +6,43 @@ import { GeneStore } from "../core/prompt/gene-store";
 import { PromptCompiler } from "../core/prompt/prompt-compiler";
 import type { KaiDB } from "../db/client";
 
-export function registerPromptResources(
-  server: McpServer,
-  db: KaiDB,
-): void {
+export function registerPromptResources(server: McpServer, db: KaiDB): void {
   const store = new GeneStore(db);
   const compiler = new PromptCompiler(store);
 
   // kai://prompt/{task} — compiled prompt for task
-  const promptTaskTemplate = new ResourceTemplate(
-    "kai://prompt/{task}",
-    {
-      list: async () => {
-        const tasks = ["planner", "derivator", "observer"] as const;
-        return {
-          resources: tasks.map((t) => ({
-            uri: `kai://prompt/${t}`,
-            name: `Prompt: ${t}`,
-          })),
-        };
-      },
-    },
-  );
-
-  server.resource(
-    "prompt-task",
-    promptTaskTemplate,
-    async (uri, variables) => {
-      const task = (
-        Array.isArray(variables.task) ? variables.task[0] : variables.task
-      ) as "planner" | "derivator" | "observer";
-      const compiled = await compiler.compile(task, []);
+  const promptTaskTemplate = new ResourceTemplate("kai://prompt/{task}", {
+    list: async () => {
+      const tasks = ["planner", "derivator", "observer"] as const;
       return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify({
-              task,
-              segment: compiled.segment_id,
-              gene_count: compiled.gene_count,
-              prompt_preview: compiled.prompt.slice(0, 200) + "...",
-            }),
-          },
-        ],
+        resources: tasks.map((t) => ({
+          uri: `kai://prompt/${t}`,
+          name: `Prompt: ${t}`,
+        })),
       };
     },
-  );
+  });
+
+  server.resource("prompt-task", promptTaskTemplate, async (uri, variables) => {
+    const task = (
+      Array.isArray(variables.task) ? variables.task[0] : variables.task
+    ) as "planner" | "derivator" | "observer";
+    const compiled = await compiler.compile(task, []);
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify({
+            task,
+            segment: compiled.segment_id,
+            gene_count: compiled.gene_count,
+            prompt_preview: `${compiled.prompt.slice(0, 200)}...`,
+          }),
+        },
+      ],
+    };
+  });
 
   // kai://prompt/champion/{task}
   const championTaskTemplate = new ResourceTemplate(

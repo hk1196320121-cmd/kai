@@ -1,6 +1,6 @@
 import type { Trait } from "../profile/types";
-import { GeneStore } from "./gene-store";
-import type { PromptTask, CompiledPrompt } from "./types";
+import type { GeneStore } from "./gene-store";
+import type { CompiledPrompt, PromptTask } from "./types";
 
 const FALLBACK_PROMPTS: Record<PromptTask, string> = {
   planner: `You are a task decomposition engine. Given an idea and a user's behavioral profile, break the idea into actionable tasks.
@@ -130,16 +130,19 @@ export class PromptCompiler {
 
   private interpolateTraits(content: string, traits: Trait[]): string {
     const traitMap = new Map(traits.map((t) => [t.dimension, t.value]));
-    return content.replace(/\{\{trait:([\w_]+)\}\}/g, (_match, dimension: string) => {
-      const value = traitMap.get(dimension);
-      if (value !== undefined) {
-        const trait = traits.find((t) => t.dimension === dimension);
-        const confidence = trait?.confidence ?? 5;
-        const effectiveWeight = value * (confidence / 10);
-        return effectiveWeight.toFixed(2);
-      }
-      return "0.5";
-    });
+    return content.replace(
+      /\{\{trait:([\w_]+)\}\}/g,
+      (_match, dimension: string) => {
+        const value = traitMap.get(dimension);
+        if (value !== undefined) {
+          const trait = traits.find((t) => t.dimension === dimension);
+          const confidence = trait?.confidence ?? 5;
+          const effectiveWeight = value * (confidence / 10);
+          return effectiveWeight.toFixed(2);
+        }
+        return "0.5";
+      },
+    );
   }
 
   private validateCompiledPrompt(prompt: string): boolean {
@@ -150,6 +153,9 @@ export class PromptCompiler {
 
   private traitHash(traits: Trait[]): string {
     if (traits.length === 0) return "none";
-    return traits.map((t) => `${t.dimension}=${t.value.toFixed(2)}`).sort().join(",");
+    return traits
+      .map((t) => `${t.dimension}=${t.value.toFixed(2)}`)
+      .sort()
+      .join(",");
   }
 }
