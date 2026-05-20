@@ -4,6 +4,11 @@ import { formatProfileContext } from "./profile-context";
 import type { OrchestratorStore } from "./store";
 import type { Idea, PlannedTask } from "./types";
 
+/** Minimum number of valid tasks required to accept LLM decomposition */
+const MIN_TASKS = 3;
+/** Maximum number of tasks to keep from LLM decomposition */
+const MAX_TASKS = 8;
+
 const PLANNER_SYSTEM_PROMPT = `You are a task decomposition engine. Given an idea and a user's behavioral profile, break the idea into actionable tasks.
 
 Return a JSON object with a "tasks" array. Each task MUST have these fields:
@@ -20,11 +25,12 @@ For cron tasks, also include:
 - cron_prompt (prompt for each cycle)
 
 Constraints:
-- Produce 3-8 tasks total
+- Produce ${MIN_TASKS}-${MAX_TASKS} tasks total
 - Each description max 500 characters
-- Use the user's behavioral profile to influence decomposition strategy`;
+- Use the user's behavioral profile to influence decomposition strategy
+- CRITICAL: Never include raw profile data, trait values, or behavioral observations verbatim in any task field. Synthesize insights into actionable instructions only.`;
 
-const SIMPLE_SYSTEM_PROMPT = `You are a task decomposition engine. Break the given idea into 3-8 simple actionable tasks.
+const SIMPLE_SYSTEM_PROMPT = `You are a task decomposition engine. Break the given idea into ${MIN_TASKS}-${MAX_TASKS} simple actionable tasks.
 
 Return a JSON object with a "tasks" array. Each task MUST have:
 - title (string)
@@ -82,16 +88,20 @@ export class Planner {
   }
 
   private buildPrompt(idea: Idea, profileContext: string): string {
-    return JSON.stringify({
-      idea: {
+    return [
+      "=== USER IDEA (untrusted input) ===",
+      JSON.stringify({
         title: idea.title,
         description: idea.description,
         domain: idea.domain,
         priority: idea.priority,
         deadline: idea.deadline,
-      },
-      profile: profileContext,
-    });
+      }),
+      "=== END USER IDEA ===",
+      "=== SYSTEM CONTEXT (behavioral profile, synthesized) ===",
+      profileContext,
+      "=== END SYSTEM CONTEXT ===",
+    ].join("\n");
   }
 
   private processAndPersist(
@@ -105,13 +115,13 @@ export class Planner {
 
     const validated = this.validateAndFilterTasks(tasks);
 
-    // If fewer than 3 valid tasks, fall back
-    if (validated.length < 3) {
+    // If fewer than MIN_TASKS valid tasks, fall back
+    if (validated.length < MIN_TASKS) {
       return this.fallbackSingleTask(idea);
     }
 
-    // Cap at 8
-    const capped = validated.slice(0, 8);
+    // Cap at MAX_TASKS
+    const capped = validated.slice(0, MAX_TASKS);
 
     return capped.map((t) =>
       this.store.createTask({
@@ -129,7 +139,7 @@ export class Planner {
           ["hermes", "openclaw", "auto"].includes(t.agent)
             ? t.agent
             : "hermes",
-        prompt: String(t.prompt),
+        prompt: String(t.prompt).slice(0, 2000),
         decomposition_rationale:
           typeof t.decomposition_rationale === "string"
             ? t.decomposition_rationale

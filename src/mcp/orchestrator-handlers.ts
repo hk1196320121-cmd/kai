@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { HermesAgentBridge } from "../bridge/agent-bridge";
+import { ClosedLoopEngine } from "../core/orchestrator/closed-loop";
 import { IdeaClusterer } from "../core/orchestrator/clustering";
 import { Dispatcher } from "../core/orchestrator/dispatcher";
 import { Observer } from "../core/orchestrator/observer";
@@ -22,6 +23,17 @@ import {
 } from "./orchestrator-schema";
 import { log } from "./utils";
 
+const ALLOWED_UPDATE_FIELDS = [
+  "title",
+  "description",
+  "prompt",
+  "cron_schedule",
+  "agent",
+] as const;
+
+const CRON_FORMAT =
+  /^[0-9*,/-]+\s+[0-9*,/-]+\s+[0-9*,/-]+\s+[0-9*,/-]+\s+[0-9*,/-]+$/;
+
 function textContent(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data) }] };
 }
@@ -35,6 +47,7 @@ export function registerOrchestratorHandlers(
   const workspaceStore = new WorkspaceStore(db);
   const llmProvider = new LLMProvider();
   const bridge = new HermesAgentBridge();
+  const _closedLoopEngine = new ClosedLoopEngine(profileEngine, store);
 
   // --- kai_idea_submit ---
   server.tool("kai_idea_submit", IdeaSubmitSchema, async (params) => {
@@ -138,6 +151,20 @@ export function registerOrchestratorHandlers(
             mod.field &&
             mod.value
           ) {
+            if (
+              !(ALLOWED_UPDATE_FIELDS as readonly string[]).includes(mod.field)
+            ) {
+              return textContent({
+                error: "invalid_field",
+                message: `Field '${mod.field}' is not allowed for update`,
+              });
+            }
+            if (mod.field === "cron_schedule" && !CRON_FORMAT.test(mod.value)) {
+              return textContent({
+                error: "invalid_cron",
+                message: `Invalid cron_schedule format: ${mod.value}`,
+              });
+            }
             store.updateTask(mod.task_id, { [mod.field]: mod.value });
           } else if (mod.action === "add") {
             return textContent({
@@ -222,7 +249,7 @@ export function registerOrchestratorHandlers(
 
       const results = idea_id
         ? store.getResultsByIdea(idea_id)
-        : tasks.flatMap((t) => store.getResultsByTask(t.id));
+        : store.getResultsByTaskIds(tasks.map((t) => t.id));
       const sinceDate = idea_id
         ? (store.getIdea(idea_id)?.created_at ?? new Date().toISOString())
         : "";

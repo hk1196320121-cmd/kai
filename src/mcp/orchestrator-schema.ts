@@ -56,6 +56,7 @@ export const ExecutionStatusSchema = {
   task_id: z.string().optional().describe("Filter by task ID"),
   feedback: z
     .string()
+    .max(2000)
     .optional()
     .describe("Optional feedback for the latest result"),
 };
