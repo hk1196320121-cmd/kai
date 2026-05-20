@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.0.0] - 2026-05-20
+
+### Added
+- **Orchestrator idea-to-execution engine** — submit ideas, decompose into tasks, schedule, dispatch, observe results, and detect behavioral changes in a closed loop
+- **7 MCP tools** — `kai_idea_submit`, `kai_idea_plan`, `kai_plan_approve`, `kai_task_execute`, `kai_idea_pause`, `kai_execution_status`, `kai_replan`
+- **Profile-aware planner** — LLM-powered task decomposition that adapts to behavioral traits (e.g., early risers get morning schedules)
+- **Agent bridge** — Hermes file-based integration for dispatching one-off and cron tasks
+- **Observer pipeline** — converts execution results and feedback into profile observations
+- **Idea clustering** — auto-detects related ideas from observation patterns with TF-IDF tokenization
+- **Closed loop engine** — detects significant trait changes and triggers automatic re-planning
+- **V5 database migration** — `ideas`, `planned_tasks`, `execution_results` tables; removes source CHECK constraint
+- **`execution_result` source type** — observations can now originate from orchestrator execution
+- **LLM max_tokens override** — provider accepts optional `max_tokens` parameter
+- **313 tests** across 46 files (+77 new tests since v0.3.0.0)
+
+### Changed
+- `Observation.source` type union now includes `"execution_result"`
+- Observer `getProfileUpdates` returns current trait state (removed misleading oldValue/newValue fields)
+- Planner validates LLM-generated agent names against an allowlist
+- Error responses from MCP handlers no longer expose internal error details
+
 ## [0.3.0.0] - 2026-05-20
 
 ### Added
