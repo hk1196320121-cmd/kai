@@ -5,7 +5,7 @@ Complete API reference for Kai's Model Context Protocol server. Covers all 12 to
 ## Starting the Server
 
 ```bash
-kai mcp serve                  # Default database: ~/.kai/profile.db
+kai mcp serve                  # Default database: ~/.kai/kai.db
 kai mcp serve --db /path/db    # Custom database path
 ```
 
@@ -272,7 +272,7 @@ System health check. Returns:
 {
   "status": "ok",
   "database": {
-    "path": "~/.kai/profile.db",
+    "path": "~/.kai/kai.db",
     "sizeBytes": 45056,
     "integrity": "ok",
     "observationCount": 234,

@@ -9,7 +9,7 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 kai mcp serve
 
 # Start with custom database path
-kai mcp serve --db /path/to/profile.db
+kai mcp serve --db /path/to/kai.db
 ```
 
 ## MCP Tools — Profile (5)
@@ -228,7 +228,7 @@ Data flows:
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
 - **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
-- All paths share the same database (`~/.kai/profile.db`)
+- All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts
 
@@ -271,7 +271,7 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/profile.db`. Schema versioned (v1–v5). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v5). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 

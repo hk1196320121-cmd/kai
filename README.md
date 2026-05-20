@@ -155,7 +155,7 @@ src/
 
 Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. MCP clients connect via stdio to read profiles, submit observations, and orchestrate tasks.
 
-Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
+Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 ## Documentation
 
@@ -173,6 +173,9 @@ Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
 | [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
 | [How the Orchestrator Works](docs/explanation-orchestrator.md) | Explanation | Profile-aware planning, closed loop, clustering, design trade-offs |
 | [Orchestrator Tutorial](docs/tutorial-first-idea.md) | Tutorial | From idea submission to execution and profile feedback in 10 minutes |
+| [CLI Reference](docs/reference-cli.md) | Reference | All CLI commands, flags, options, and environment variables |
+| [Database Schema Reference](docs/reference-database.md) | Reference | Tables, columns, constraints, indexes, migration history |
+| [How to Configure Kai](docs/howto-configure.md) | How-to | Environment variables, LLM setup, database path, Hermes integration |
 
 ## Development
 
@@ -186,6 +189,8 @@ bun run dev profile bootstrap  # Run CLI in dev mode
 ```
 
 CI runs on every push and PR: typecheck, lint, test. Dependabot checks for dependency updates weekly.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
 
 ## License
 
