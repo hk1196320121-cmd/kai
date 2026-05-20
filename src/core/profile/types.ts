@@ -42,7 +42,8 @@ export interface Observation {
     | "inferred"
     | "mcp"
     | "coldstart"
-    | "workspace";
+    | "workspace"
+    | "execution_result";
   provenance: string; // JSON: { origin_file, extracted_at, extractor_version }
   ts: string; // ISO 8601
 }

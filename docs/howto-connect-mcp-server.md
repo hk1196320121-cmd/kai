@@ -53,7 +53,7 @@ Add Kai to your client's MCP server configuration.
   "mcpServers": {
     "kai": {
       "command": "kai",
-      "args": ["mcp", "serve", "--db", "/custom/path/profile.db"]
+      "args": ["mcp", "serve", "--db", "/custom/path/kai.db"]
     }
   }
 }

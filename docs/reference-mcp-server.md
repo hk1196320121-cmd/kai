@@ -1,11 +1,11 @@
 # MCP Server Reference
 
-Complete API reference for Kai's Model Context Protocol server. Covers all tools, resources, schemas, error handling, and behavior.
+Complete API reference for Kai's Model Context Protocol server. Covers all 12 tools (5 profile + 7 orchestrator), 6 resources, schemas, error handling, and behavior.
 
 ## Starting the Server
 
 ```bash
-kai mcp serve                  # Default database: ~/.kai/profile.db
+kai mcp serve                  # Default database: ~/.kai/kai.db
 kai mcp serve --db /path/db    # Custom database path
 ```
 
@@ -144,6 +144,102 @@ Triggers trait derivation from collected observations.
 
 **Returns:** Array of `{ dimension, value, confidence, source }` for newly derived traits.
 
+## Orchestrator Tools (7)
+
+Tools for the idea-to-execution pipeline: submit ideas, decompose them into tasks, schedule and dispatch work, observe results, and re-plan when behavioral traits change.
+
+### kai_idea_submit
+
+Submit a new idea for planning and execution.
+
+**Input schema:**
+
+| Parameter | Type | Required | Constraints | Description |
+|-----------|------|----------|-------------|-------------|
+| title | `string` | Yes | 1–200 chars | Idea title |
+| description | `string` | No | 1–5000 chars | Detailed description |
+| domain | `"coding"` \| `"writing"` \| `"research"` \| `"creative"` \| `"general"` | No | Default: `general` | Idea domain for context |
+| priority | `"low"` \| `"medium"` \| `"high"` \| `"critical"` | No | Default: `medium` | Idea priority |
+| deadline | `string` | No | ISO date | Optional deadline |
+| workspace_id | `string` | No | — | Existing workspace ID (auto-created if omitted) |
+
+**Returns:** Created idea with `id`, `title`, `status`, `createdAt`.
+
+### kai_idea_plan
+
+Decompose an idea into a plan of tasks. Uses LLM-powered decomposition that adapts to the user's behavioral profile (e.g., morning tasks for early risers, shorter tasks for detail-oriented users).
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| idea_id | `string` | Yes | ID from `kai_idea_submit` |
+
+**Returns:** Plan with array of planned tasks. Each task has `title`, `description`, `scheduledFor` (ISO timestamp), and `agentHint` (target agent name). LLM-generated agent names are validated against an allowlist.
+
+### kai_plan_approve
+
+Approve a plan, scheduling its tasks for execution. Optionally override specific task fields.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| idea_id | `string` | Yes | Idea whose plan to approve |
+| task_modifications | `Array<{ task_id, action, field, value }>` | No | Override fields for specific tasks. Allowed fields: `title`, `prompt`, `cron_schedule`, `agent`, `type`. Cron values validated against format regex. |
+
+**Returns:** Approved tasks with scheduled times and dispatch status.
+
+### kai_task_execute
+
+Dispatch a specific task to the agent bridge for execution.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| task_id | `string` | Yes | Task to execute |
+
+**Returns:** Execution result with `status`, `exitCode`, `output`.
+
+### kai_idea_pause
+
+Pause an active idea and all its pending tasks. Completed tasks are unaffected.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| idea_id | `string` | Yes | Idea to pause |
+
+**Returns:** Updated idea with `status: "paused"`.
+
+### kai_execution_status
+
+Check execution status for all tasks belonging to an idea.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| idea_id | `string` | Yes | Idea to check |
+| task_id | `string` | No | Filter to a specific task |
+| feedback | `string` | No | Max 2000 chars | User feedback (becomes profile observation) |
+
+**Returns:** Array of tasks with execution status (`pending`, `running`, `completed`, `failed`), exit codes, and timestamps.
+
+### kai_replan
+
+Re-plan an idea after closed-loop feedback. Use when the closed-loop engine detects significant trait changes that warrant schedule adjustments, or when the user wants a fresh decomposition.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| idea_id | `string` | Yes | Idea to re-plan |
+
+**Returns:** New plan replacing the previous one, with updated tasks reflecting the current profile state.
+
 ## Resources
 
 Read-only profile access. All return `application/json`.
@@ -176,7 +272,7 @@ System health check. Returns:
 {
   "status": "ok",
   "database": {
-    "path": "~/.kai/profile.db",
+    "path": "~/.kai/kai.db",
     "sizeBytes": 45056,
     "integrity": "ok",
     "observationCount": 234,
@@ -207,6 +303,10 @@ All tools return `{ error: string }` on failure. Common errors:
 | Rate limit exceeded | More than 60 `observe.submit` calls per minute |
 | LLM not configured | `derive.trigger` with `llm` or `both` but no API key |
 | Dimension not found | `profile.why` with unknown dimension |
+| Idea not found | Orchestrator tool with invalid idea ID |
+| Task not found | `kai_task_execute` with invalid task ID |
+| Idea not active | `kai_idea_pause` on idea not in active state |
+| Plan not found | `kai_plan_approve` on idea with no plan |
 | Database error | SQLite issues (locked, corrupt, disk full) |
 
 Logs go to stderr in JSON-line format: `{ ts, msg, data }`.

@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.4.0.0] - 2026-05-20
+
+### Added
+- **Orchestrator idea-to-execution engine** — submit ideas, decompose into tasks, schedule, dispatch, observe results, and detect behavioral changes in a closed loop. Use `kai_idea_submit` to start
+- **7 orchestrator MCP tools** — `kai_idea_submit`, `kai_idea_plan`, `kai_plan_approve`, `kai_task_execute`, `kai_idea_pause`, `kai_execution_status`, `kai_replan`. AI agents can now plan and execute work on your behalf
+- **Profile-aware planner** — LLM-powered task decomposition that adapts to behavioral traits (e.g., early risers get morning schedules). The planner reads your profile to personalize task timing and structure
+- **Agent bridge** — Hermes file-based integration for dispatching one-off and cron tasks to external agents
+- **Observer pipeline** — execution results automatically become profile observations, so your profile evolves as tasks complete
+- **Idea clustering** — auto-groups related ideas from observation patterns using TF-IDF tokenization, so you can see themes across your work
+- **Closed loop engine** — when your behavioral traits shift significantly, the engine triggers automatic re-planning of active ideas
+- **V5 database migration** — `ideas`, `planned_tasks`, `execution_results` tables; removes source CHECK constraint
+- **`execution_result` source type** — observations can now originate from orchestrator execution, appearing alongside cron and MCP sources
+- **LLM max_tokens override** — provider accepts optional `max_tokens` parameter for controlling response length
+- **319 tests** across 46 files (+93 new tests since v0.3.0.0)
+
+### Changed
+- `Observation.source` type union now includes `"execution_result"`
+- Observer `getProfileUpdates` returns current trait state (removed misleading oldValue/newValue fields)
+- Planner validates LLM-generated agent names against an allowlist
+- Error responses from MCP handlers no longer expose internal error details
+- Plan approve handler validates task field updates against an explicit allowlist and cron schedule format
+- LLM-generated task prompts capped at 2000 characters; feedback capped at 2000
+- Planner prompt uses delimiter markers to separate user input from system context
+- Observer `processAllResults` pre-fetches idea and tasks to eliminate N+1 DB queries
+- Clustering uses single batch query instead of 3 separate status lookups
+- Store list methods accept optional `limit` parameter; execution status uses batch result lookup
+- ClosedLoopEngine constructed once per handler registration (not per-request)
+- Magic numbers extracted to named constants across clustering, closed-loop, observer, planner, scheduler
+
+### Security
+- Dynamic task field updates now validated against explicit allowlist (prevents arbitrary column writes)
+- Cron schedule values validated against format regex before persistence
+- Prompt injection mitigated with delimiter markers and anti-exfiltration system instruction
+
 ## [0.3.0.0] - 2026-05-20
 
 ### Added

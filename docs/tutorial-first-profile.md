@@ -18,7 +18,7 @@ Build a behavioral profile from scratch. You'll submit observations through the 
 bun run dev work start
 ```
 
-Answer 4 questions about your work style. Kai also scans your git history (last 30 days) to detect patterns like commit times and branch naming. Review the derived traits, edit any that look wrong, then confirm. The profile is stored at `~/.kai/profile.db`.
+Answer 4 questions about your work style. Kai also scans your git history (last 30 days) to detect patterns like commit times and branch naming. Review the derived traits, edit any that look wrong, then confirm. The profile is stored at `~/.kai/kai.db`.
 
 Verify it worked:
 
@@ -37,7 +37,7 @@ bun run dev mcp serve
 The server starts listening on stdio. You'll see a log message like:
 
 ```
-{"ts":"...","msg":"kai_mcp_server_started","data":{"dbPath":"/home/you/.kai/profile.db"}}
+{"ts":"...","msg":"kai_mcp_server_started","data":{"dbPath":"/home/you/.kai/kai.db"}}
 ```
 
 Leave this running. Open a new terminal for the next steps.

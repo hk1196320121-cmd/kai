@@ -7,7 +7,8 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 Kai watches what you do (cron outputs, daily patterns, explicit preferences) and builds a living user profile: identity, behavioral traits, and preferences. Other AI tools can then ask Kai "who is this person?" and get a rich, evidence-based answer.
 
 Core capabilities:
-- **MCP Server** — Model Context Protocol server via stdio. 5 tools (`profile.read`, `profile.why`, `observe.submit`, `observe.batch`, `derive.trigger`) and 6 resources (`kai://profile/*`, `kai://system/health`)
+- **MCP Server** — Model Context Protocol server via stdio. 12 tools (5 profile + 7 orchestrator) and 6 resources (`kai://profile/*`, `kai://system/health`)
+- **Orchestrator** — idea-to-execution engine with LLM-powered planning, scheduling, dispatching, observation, and closed-loop re-planning
 - **Cold Start** — `kai work start` bootstraps a profile from 4 questions + git history scan with preview/edit/confirm
 - **Profile Engine** — identity, observations, traits, and preferences with full CRUD
 - **Trait Derivation** — 13 rules across 9 dimensions + LLM-based inference, with source precedence protection
@@ -105,7 +106,7 @@ kai mcp serve
 |---------|-------------|
 | `serve` | Start MCP server with stdio transport for AI agent integration |
 
-#### MCP Tools
+#### MCP Tools — Profile (5)
 
 | Tool | Description |
 |------|-------------|
@@ -114,6 +115,18 @@ kai mcp serve
 | `observe.submit` | Submit a single observation (rate-limited, deduped) |
 | `observe.batch` | Submit multiple observations at once |
 | `derive.trigger` | Trigger trait derivation (rules, LLM, or both) |
+
+#### MCP Tools — Orchestrator (7)
+
+| Tool | Description |
+|------|-------------|
+| `kai_idea_submit` | Submit a new idea for planning |
+| `kai_idea_plan` | Decompose an idea into tasks using LLM |
+| `kai_plan_approve` | Approve and schedule a plan |
+| `kai_task_execute` | Dispatch a task to an agent bridge |
+| `kai_idea_pause` | Pause an active idea and its tasks |
+| `kai_execution_status` | Check execution status for an idea |
+| `kai_replan` | Re-plan an idea (after closed-loop feedback) |
 
 #### MCP Resources
 
@@ -132,30 +145,37 @@ kai mcp serve
 src/
   cli/            Commander.js CLI (profile, observe, work, mcp subcommands)
   core/profile/   Profile engine, derivator, decay, provenance, collector
+  core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   workspace/      Workspace/task/event CRUD + event bus for observation collection
   mcp/            MCP server — handlers, resources, schema, stdio transport
-  bridge/         Hermes bridge (file system reads for cron data)
+  bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
   db/             SQLite client with WAL mode and schema migrations
   llm/            OpenAI-compatible LLM provider with transient-error retry
 ```
 
-Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. MCP clients connect via stdio to read profiles and submit observations.
+Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. MCP clients connect via stdio to read profiles, submit observations, and orchestrate tasks.
 
-Profile data is stored in `~/.kai/profile.db` (SQLite with WAL mode).
+Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 ## Documentation
 
 | Document | Type | Description |
 |----------|------|-------------|
-| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 5 tools and 6 resources |
+| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 12 tools and 6 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
 | [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |
 | [How to Use Cold Start](docs/howto-cold-start.md) | How-to | Re-running cold start, editing traits, diff, troubleshooting |
 | [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
 | [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
+| [How to Use the Orchestrator](docs/howto-orchestrator.md) | How-to | Submitting ideas, approving plans, executing tasks, re-planning |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
 | [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
+| [How the Orchestrator Works](docs/explanation-orchestrator.md) | Explanation | Profile-aware planning, closed loop, clustering, design trade-offs |
+| [Orchestrator Tutorial](docs/tutorial-first-idea.md) | Tutorial | From idea submission to execution and profile feedback in 10 minutes |
+| [CLI Reference](docs/reference-cli.md) | Reference | All CLI commands, flags, options, and environment variables |
+| [Database Schema Reference](docs/reference-database.md) | Reference | Tables, columns, constraints, indexes, migration history |
+| [How to Configure Kai](docs/howto-configure.md) | How-to | Environment variables, LLM setup, database path, Hermes integration |
 
 ## Development
 
@@ -169,6 +189,8 @@ bun run dev profile bootstrap  # Run CLI in dev mode
 ```
 
 CI runs on every push and PR: typecheck, lint, test. Dependabot checks for dependency updates weekly.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
 
 ## License
 

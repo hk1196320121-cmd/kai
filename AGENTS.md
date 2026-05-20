@@ -1,6 +1,6 @@
 # Kai — AI Behavioral Profile Engine
 
-MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol (stdio) to read user profiles, submit observations, and derive behavioral traits.
+MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol (stdio) to read user profiles, submit observations, derive behavioral traits, and orchestrate idea-to-execution workflows.
 
 ## Quick Reference
 
@@ -9,10 +9,10 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 kai mcp serve
 
 # Start with custom database path
-kai mcp serve --db /path/to/profile.db
+kai mcp serve --db /path/to/kai.db
 ```
 
-## MCP Tools (5)
+## MCP Tools — Profile (5)
 
 ### profile.read
 
@@ -68,6 +68,79 @@ Trigger trait derivation from collected observations.
 
 **Returns:** Array of newly derived traits with dimensions, values, and confidence scores.
 
+## MCP Tools — Orchestrator (7)
+
+### kai_idea_submit
+
+Submit a new idea for planning and execution.
+
+**Parameters:**
+- `title` (required): `string` (1–200 chars) — idea title
+- `description` (optional): `string` (1–5000 chars) — detailed description
+- `domain` (optional): `"coding"` | `"writing"` | `"research"` | `"creative"` | `"general"` — idea domain (default: `general`)
+- `priority` (optional): `"low"` | `"medium"` | `"high"` | `"critical"` — idea priority (default: `medium`)
+- `deadline` (optional): `string` — ISO date deadline
+- `workspace_id` (optional): `string` — existing workspace ID (auto-created if omitted)
+
+**Returns:** Created idea with `id`, `title`, `status`, `createdAt`.
+
+### kai_idea_plan
+
+Decompose an idea into a plan of tasks using LLM-powered decomposition. The planner uses the user's behavioral profile to adapt scheduling (e.g., morning tasks for early risers).
+
+**Parameters:**
+- `idea_id` (required): `string` — ID from `kai_idea_submit`
+
+**Returns:** Plan with array of planned tasks, each with `title`, `description`, `scheduledFor`, `agentHint`.
+
+### kai_plan_approve
+
+Approve a plan, scheduling its tasks for execution. Validates task field updates against an explicit allowlist.
+
+**Parameters:**
+- `idea_id` (required): `string` — idea whose plan to approve
+- `task_modifications` (optional): `Array<{ task_id, action, field, value }>` — overrides for specific tasks (allowlist: title, prompt, cron_schedule, agent, type)
+
+**Returns:** Approved tasks with scheduled times and dispatch status.
+
+### kai_task_execute
+
+Dispatch a specific task to an agent bridge for execution.
+
+**Parameters:**
+- `task_id` (required): `string` — task to execute
+
+**Returns:** Execution result with `status`, `exitCode`, `output`.
+
+### kai_idea_pause
+
+Pause an active idea and all its pending tasks. Completed tasks are unaffected.
+
+**Parameters:**
+- `idea_id` (required): `string` — idea to pause
+
+**Returns:** Updated idea with `status: "paused"`.
+
+### kai_execution_status
+
+Check execution status for all tasks in an idea.
+
+**Parameters:**
+- `idea_id` (required): `string` — idea to check
+- `task_id` (optional): `string` — filter to specific task
+- `feedback` (optional): `string` — user feedback (max 2000 chars, becomes profile observation)
+
+**Returns:** Array of tasks with execution status, exit codes, and timestamps.
+
+### kai_replan
+
+Re-plan an idea after closed-loop feedback. Used when the closed-loop engine detects significant trait changes that warrant schedule adjustments.
+
+**Parameters:**
+- `idea_id` (required): `string` — idea to re-plan
+
+**Returns:** New plan replacing the previous one, with updated tasks.
+
 ## MCP Resources (6)
 
 Resources are read-only profile access endpoints. All return `application/json`.
@@ -114,9 +187,11 @@ src/
   cli/              Commander.js CLI (profile, observe, work, mcp subcommands)
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
-    handlers.ts     5 tool handlers with rate limiting and dedup
+    handlers.ts     5 profile tool handlers with rate limiting and dedup
+    orchestrator-handlers.ts  7 orchestrator tool handlers
+    orchestrator-schema.ts    Zod schemas for orchestrator tools
     resources.ts    6 resource endpoints
-    schema.ts       Zod input validation schemas
+    schema.ts       Zod input validation schemas (profile tools)
     utils.ts        safeJsonParse, structured logging
   core/profile/     Profile engine core
     engine.ts       CRUD for identity, observations, traits, preferences; source precedence
@@ -127,12 +202,23 @@ src/
     mcp-scale.ts    MCP (0–1) ↔ internal (1–10) confidence conversion
     collector.ts    Hermes cron output parsing and batch collection
     types.ts        Core type definitions
+  core/orchestrator/  Idea-to-execution engine
+    types.ts        Idea, PlannedTask, ExecutionResult types
+    store.ts        CRUD for ideas, tasks, execution results (SQLite)
+    planner.ts      LLM-powered task decomposition with profile context
+    profile-context.ts  Formats behavioral profile for planner prompts
+    scheduler.ts    Profile-aware task scheduling
+    dispatcher.ts   Task dispatch to agent bridges
+    observer.ts     Converts execution results into profile observations
+    clustering.ts   TF-IDF idea clustering from observation patterns
+    closed-loop.ts  Detects trait changes and triggers re-planning
   workspace/        Workspace system
     store.ts        CRUD for workspaces, tasks, and events with SQLite persistence
     event-bus.ts    Converts workspace state changes into profile observations
     types.ts        Workspace, Task, Event type definitions
-  bridge/           Hermes bridge (file system reads for cron data)
-  db/               SQLite client with WAL mode and schema migrations (v1–v4)
+  bridge/           Bridges
+    agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
+  db/               SQLite client with WAL mode and schema migrations (v1–v5)
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
@@ -141,7 +227,8 @@ Data flows:
 - **CLI path**: Hermes cron → Collector (dedup) → Observations (SQLite) → Derivator (rules + LLM) → Traits → Decay → Provenance
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
-- All paths share the same database (`~/.kai/profile.db`)
+- **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
+- All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts
 
@@ -176,7 +263,7 @@ Data flows:
 
 **Identity**: name, role, location, timezone, communication_style, interests (user-editable fields)
 
-**Observation**: text, source (cron_output|session_log|user_stated|inferred|mcp|coldstart|workspace), type (behavior|preference|feedback|context|signal), confidence (1–10), tags, context, timestamp
+**Observation**: text, source (cron_output|session_log|user_stated|inferred|mcp|coldstart|workspace|execution_result), type (behavior|preference|feedback|context|signal), confidence (1–10), tags, context, timestamp
 
 **Trait**: dimension, value (0–1), confidence (1–10), source (declared|observed|inferred|cross-model), timestamp
 
@@ -184,13 +271,13 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/profile.db`. Schema versioned (v1–v4). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v5). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (226 across 33 files)
+bun test             # Run tests (319 across 46 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome
