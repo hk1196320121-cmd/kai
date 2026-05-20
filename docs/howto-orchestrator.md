@@ -76,7 +76,7 @@ await client.callTool({
 });
 ```
 
-**Allowed update fields:** `title`, `description`, `prompt`, `cron_schedule`, `agent`. Cron schedules are validated against a standard 5-field format.
+**Allowed update fields:** `title`, `prompt`, `cron_schedule`, `agent`, `type`. Cron schedules are validated against a standard 5-field format.
 
 One-off tasks are dispatched immediately. Cron tasks are scheduled via the agent bridge with profile-aware hour adjustment: early risers (trait >= 0.6) get morning slots (6-9 AM), night owls (trait <= 0.4) get evening slots (7 PM+).
 

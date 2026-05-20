@@ -186,7 +186,7 @@ Approve a plan, scheduling its tasks for execution. Optionally override specific
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | idea_id | `string` | Yes | Idea whose plan to approve |
-| task_modifications | `Array<{ task_id, action, field, value }>` | No | Override fields for specific tasks. Allowed fields: `title`, `description`, `prompt`, `cron_schedule`, `agent`. Cron values validated against format regex. |
+| task_modifications | `Array<{ task_id, action, field, value }>` | No | Override fields for specific tasks. Allowed fields: `title`, `prompt`, `cron_schedule`, `agent`, `type`. Cron values validated against format regex. |
 
 **Returns:** Approved tasks with scheduled times and dispatch status.
 

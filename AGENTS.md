@@ -99,7 +99,7 @@ Approve a plan, scheduling its tasks for execution. Validates task field updates
 
 **Parameters:**
 - `idea_id` (required): `string` — idea whose plan to approve
-- `task_modifications` (optional): `Array<{ task_id, action, field, value }>` — overrides for specific tasks (allowlist: title, description, prompt, cron_schedule, agent)
+- `task_modifications` (optional): `Array<{ task_id, action, field, value }>` — overrides for specific tasks (allowlist: title, prompt, cron_schedule, agent, type)
 
 **Returns:** Approved tasks with scheduled times and dispatch status.
 
@@ -277,7 +277,7 @@ SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v5).
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (313 across 46 files)
+bun test             # Run tests (319 across 46 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome
