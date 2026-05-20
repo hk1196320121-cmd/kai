@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { KaiDB } from "../db/client";
 import { registerHandlers } from "./handlers";
+import { registerOrchestratorHandlers } from "./orchestrator-handlers";
 import { registerResources } from "./resources";
 import { log } from "./utils";
 
@@ -16,6 +17,7 @@ export function createMcpServer(db: KaiDB): McpServer {
 
   registerResources(server, db);
   registerHandlers(server, db);
+  registerOrchestratorHandlers(server, db);
 
   return server;
 }

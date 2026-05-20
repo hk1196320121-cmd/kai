@@ -23,7 +23,7 @@ describe("MCP Tools", () => {
     }
   });
 
-  test("all 5 tools are registered", () => {
+  test("all tools are registered", () => {
     const server = createMcpServer(db);
     const registered = (server as any)._registeredTools;
     const names = Object.keys(registered);
@@ -32,7 +32,15 @@ describe("MCP Tools", () => {
     expect(names).toContain("observe.submit");
     expect(names).toContain("derive.trigger");
     expect(names).toContain("observe.batch");
-    expect(names.length).toBe(5);
+    // Orchestrator tools
+    expect(names).toContain("kai_idea_submit");
+    expect(names).toContain("kai_idea_plan");
+    expect(names).toContain("kai_plan_approve");
+    expect(names).toContain("kai_task_execute");
+    expect(names).toContain("kai_idea_pause");
+    expect(names).toContain("kai_execution_status");
+    expect(names).toContain("kai_replan");
+    expect(names.length).toBe(12);
   });
 
   test("each tool has a handler function", () => {
