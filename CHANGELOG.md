@@ -13,7 +13,7 @@
 - **V5 database migration** — `ideas`, `planned_tasks`, `execution_results` tables; removes source CHECK constraint
 - **`execution_result` source type** — observations can now originate from orchestrator execution, appearing alongside cron and MCP sources
 - **LLM max_tokens override** — provider accepts optional `max_tokens` parameter for controlling response length
-- **313 tests** across 46 files (+77 new tests since v0.3.0.0)
+- **319 tests** across 46 files (+93 new tests since v0.3.0.0)
 
 ### Changed
 - `Observation.source` type union now includes `"execution_result"`

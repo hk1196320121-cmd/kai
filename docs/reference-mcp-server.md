@@ -157,10 +157,13 @@ Submit a new idea for planning and execution.
 | Parameter | Type | Required | Constraints | Description |
 |-----------|------|----------|-------------|-------------|
 | title | `string` | Yes | 1–200 chars | Idea title |
-| description | `string` | No | — | Detailed description |
-| tags | `string[]` | No | — | Categorization labels |
+| description | `string` | No | 1–5000 chars | Detailed description |
+| domain | `"coding"` \| `"writing"` \| `"research"` \| `"creative"` \| `"general"` | No | Default: `general` | Idea domain for context |
+| priority | `"low"` \| `"medium"` \| `"high"` \| `"critical"` | No | Default: `medium` | Idea priority |
+| deadline | `string` | No | ISO date | Optional deadline |
+| workspace_id | `string` | No | — | Existing workspace ID (auto-created if omitted) |
 
-**Returns:** Created idea with `id`, `title`, `status: "new"`, `createdAt`.
+**Returns:** Created idea with `id`, `title`, `status`, `createdAt`.
 
 ### kai_idea_plan
 
@@ -170,7 +173,7 @@ Decompose an idea into a plan of tasks. Uses LLM-powered decomposition that adap
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| ideaId | `number` | Yes | ID from `kai_idea_submit` |
+| idea_id | `string` | Yes | ID from `kai_idea_submit` |
 
 **Returns:** Plan with array of planned tasks. Each task has `title`, `description`, `scheduledFor` (ISO timestamp), and `agentHint` (target agent name). LLM-generated agent names are validated against an allowlist.
 
@@ -182,8 +185,8 @@ Approve a plan, scheduling its tasks for execution. Optionally override specific
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| ideaId | `number` | Yes | Idea whose plan to approve |
-| taskUpdates | `Array<{ taskId: number, fields: object }>` | No | Override fields for specific tasks. Allowed fields: `title`, `description`, `agentHint`, `cronSchedule`. Cron values validated against format regex. |
+| idea_id | `string` | Yes | Idea whose plan to approve |
+| task_modifications | `Array<{ task_id, action, field, value }>` | No | Override fields for specific tasks. Allowed fields: `title`, `description`, `prompt`, `cron_schedule`, `agent`. Cron values validated against format regex. |
 
 **Returns:** Approved tasks with scheduled times and dispatch status.
 
@@ -195,7 +198,7 @@ Dispatch a specific task to the agent bridge for execution.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| taskId | `number` | Yes | Task to execute |
+| task_id | `string` | Yes | Task to execute |
 
 **Returns:** Execution result with `status`, `exitCode`, `output`.
 
@@ -207,7 +210,7 @@ Pause an active idea and all its pending tasks. Completed tasks are unaffected.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| ideaId | `number` | Yes | Idea to pause |
+| idea_id | `string` | Yes | Idea to pause |
 
 **Returns:** Updated idea with `status: "paused"`.
 
@@ -219,7 +222,9 @@ Check execution status for all tasks belonging to an idea.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| ideaId | `number` | Yes | Idea to check |
+| idea_id | `string` | Yes | Idea to check |
+| task_id | `string` | No | Filter to a specific task |
+| feedback | `string` | No | Max 2000 chars | User feedback (becomes profile observation) |
 
 **Returns:** Array of tasks with execution status (`pending`, `running`, `completed`, `failed`), exit codes, and timestamps.
 
@@ -231,7 +236,7 @@ Re-plan an idea after closed-loop feedback. Use when the closed-loop engine dete
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| ideaId | `number` | Yes | Idea to re-plan |
+| idea_id | `string` | Yes | Idea to re-plan |
 
 **Returns:** New plan replacing the previous one, with updated tasks reflecting the current profile state.
 
@@ -300,6 +305,7 @@ All tools return `{ error: string }` on failure. Common errors:
 | Dimension not found | `profile.why` with unknown dimension |
 | Idea not found | Orchestrator tool with invalid idea ID |
 | Task not found | `kai_task_execute` with invalid task ID |
+| Idea not active | `kai_idea_pause` on idea not in active state |
 | Plan not found | `kai_plan_approve` on idea with no plan |
 | Database error | SQLite issues (locked, corrupt, disk full) |
 

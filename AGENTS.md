@@ -76,17 +76,20 @@ Submit a new idea for planning and execution.
 
 **Parameters:**
 - `title` (required): `string` (1–200 chars) — idea title
-- `description` (optional): `string` — detailed description
-- `tags` (optional): `string[]` — categorization labels
+- `description` (optional): `string` (1–5000 chars) — detailed description
+- `domain` (optional): `"coding"` | `"writing"` | `"research"` | `"creative"` | `"general"` — idea domain (default: `general`)
+- `priority` (optional): `"low"` | `"medium"` | `"high"` | `"critical"` — idea priority (default: `medium`)
+- `deadline` (optional): `string` — ISO date deadline
+- `workspace_id` (optional): `string` — existing workspace ID (auto-created if omitted)
 
-**Returns:** Created idea with `id`, `title`, `status: "new"`, `createdAt`.
+**Returns:** Created idea with `id`, `title`, `status`, `createdAt`.
 
 ### kai_idea_plan
 
 Decompose an idea into a plan of tasks using LLM-powered decomposition. The planner uses the user's behavioral profile to adapt scheduling (e.g., morning tasks for early risers).
 
 **Parameters:**
-- `ideaId` (required): `number` — ID from `kai_idea_submit`
+- `idea_id` (required): `string` — ID from `kai_idea_submit`
 
 **Returns:** Plan with array of planned tasks, each with `title`, `description`, `scheduledFor`, `agentHint`.
 
@@ -95,8 +98,8 @@ Decompose an idea into a plan of tasks using LLM-powered decomposition. The plan
 Approve a plan, scheduling its tasks for execution. Validates task field updates against an explicit allowlist.
 
 **Parameters:**
-- `ideaId` (required): `number` — idea whose plan to approve
-- `taskUpdates` (optional): `Array<{ taskId, fields }>` — overrides for specific tasks (allowlist: title, description, agentHint, cronSchedule)
+- `idea_id` (required): `string` — idea whose plan to approve
+- `task_modifications` (optional): `Array<{ task_id, action, field, value }>` — overrides for specific tasks (allowlist: title, description, prompt, cron_schedule, agent)
 
 **Returns:** Approved tasks with scheduled times and dispatch status.
 
@@ -105,7 +108,7 @@ Approve a plan, scheduling its tasks for execution. Validates task field updates
 Dispatch a specific task to an agent bridge for execution.
 
 **Parameters:**
-- `taskId` (required): `number` — task to execute
+- `task_id` (required): `string` — task to execute
 
 **Returns:** Execution result with `status`, `exitCode`, `output`.
 
@@ -114,7 +117,7 @@ Dispatch a specific task to an agent bridge for execution.
 Pause an active idea and all its pending tasks. Completed tasks are unaffected.
 
 **Parameters:**
-- `ideaId` (required): `number` — idea to pause
+- `idea_id` (required): `string` — idea to pause
 
 **Returns:** Updated idea with `status: "paused"`.
 
@@ -123,7 +126,9 @@ Pause an active idea and all its pending tasks. Completed tasks are unaffected.
 Check execution status for all tasks in an idea.
 
 **Parameters:**
-- `ideaId` (required): `number` — idea to check
+- `idea_id` (required): `string` — idea to check
+- `task_id` (optional): `string` — filter to specific task
+- `feedback` (optional): `string` — user feedback (max 2000 chars, becomes profile observation)
 
 **Returns:** Array of tasks with execution status, exit codes, and timestamps.
 
@@ -132,7 +137,7 @@ Check execution status for all tasks in an idea.
 Re-plan an idea after closed-loop feedback. Used when the closed-loop engine detects significant trait changes that warrant schedule adjustments.
 
 **Parameters:**
-- `ideaId` (required): `number` — idea to re-plan
+- `idea_id` (required): `string` — idea to re-plan
 
 **Returns:** New plan replacing the previous one, with updated tasks.
 
