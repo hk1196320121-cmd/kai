@@ -11,6 +11,7 @@ import type { PlannedTask } from "../core/orchestrator/types";
 import { ProfileEngine } from "../core/profile/engine";
 import { GeneStore } from "../core/prompt/gene-store";
 import { PromptCompiler } from "../core/prompt/prompt-compiler";
+import type { TelemetryRecorder } from "../core/telemetry/recorder";
 import type { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import { WorkspaceStore } from "../workspace/store";
@@ -43,6 +44,7 @@ function textContent(data: unknown) {
 export function registerOrchestratorHandlers(
   server: McpServer,
   db: KaiDB,
+  _telemetry: TelemetryRecorder | null = null,
 ): void {
   const profileEngine = new ProfileEngine(db);
   const store = new OrchestratorStore(db);

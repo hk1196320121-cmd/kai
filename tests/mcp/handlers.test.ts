@@ -44,7 +44,11 @@ describe("MCP Tools", () => {
     expect(names).toContain("prompt.compile");
     expect(names).toContain("prompt.champion");
     expect(names).toContain("prompt.evolve");
-    expect(names.length).toBe(15);
+    // Telemetry tools
+    expect(names).toContain("telemetry.query");
+    expect(names).toContain("telemetry.trace");
+    expect(names).toContain("telemetry.explain");
+    expect(names.length).toBe(18);
   });
 
   test("each tool has a handler function", () => {

@@ -6,6 +6,7 @@ import { internalToMcp, mcpToInternal } from "../core/profile/mcp-scale";
 import { ProvenanceEngine } from "../core/profile/provenance";
 import { GeneStore } from "../core/prompt/gene-store";
 import { PromptCompiler } from "../core/prompt/prompt-compiler";
+import type { TelemetryRecorder } from "../core/telemetry/recorder";
 import type { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import {
@@ -23,7 +24,38 @@ function textContent(data: unknown) {
   };
 }
 
-export function registerHandlers(server: McpServer, db: KaiDB): void {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ToolHandler = (...args: any[]) => Promise<any>;
+
+function withTrace<T extends ToolHandler>(
+  toolName: string,
+  handler: T,
+  telemetry: TelemetryRecorder | null,
+): T {
+  if (!telemetry) return handler;
+  const wrapped = async (args: unknown) => {
+    const trace = telemetry.startTrace("mcp_request", toolName);
+    const span = trace.startSpan("mcp_tool", toolName);
+    try {
+      const result = await handler(args);
+      span.end("ok");
+      trace.end("completed");
+      return result;
+    } catch (err) {
+      span.error(err as Error);
+      span.end("error");
+      trace.end("error");
+      throw err;
+    }
+  };
+  return wrapped as T;
+}
+
+export function registerHandlers(
+  server: McpServer,
+  db: KaiDB,
+  telemetry: TelemetryRecorder | null = null,
+): void {
   const engine = new ProfileEngine(db);
   const provenance = new ProvenanceEngine(engine);
   const llmProvider = new LLMProvider();
@@ -48,7 +80,7 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
   server.tool(
     "profile.read",
     ProfileReadSchema,
-    async ({ scope, dimensions }) => {
+    withTrace("profile.read", async ({ scope, dimensions }) => {
       log("profile.read", { scope, dimensions });
       const identity = engine.getIdentity();
       const allTraits = engine.getTraits();
@@ -124,11 +156,11 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
       }
 
       return textContent(summary);
-    },
+    }, telemetry),
   );
 
   // --- profile.why ---
-  server.tool("profile.why", ProfileWhySchema, async ({ dimension }) => {
+  server.tool("profile.why", ProfileWhySchema, withTrace("profile.why", async ({ dimension }) => {
     log("profile.why", { dimension });
     const explanation = provenance.why(dimension);
     if (!explanation) {
@@ -152,13 +184,13 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
         method: explanation.traitSource === "observed" ? "rule" : "llm",
       },
     });
-  });
+  }, telemetry));
 
   // --- observe.submit ---
   server.tool(
     "observe.submit",
     ObserveSubmitSchema,
-    async ({ text, sourceTool, confidence, tags, context }) => {
+    withTrace("observe.submit", async ({ text, sourceTool, confidence, tags, context }) => {
       log("observe.submit", { textLength: text.length, sourceTool });
 
       if (!checkRateLimit()) {
@@ -209,11 +241,11 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
         timestamp: new Date().toISOString(),
         dedupHash: hash,
       });
-    },
+    }, telemetry),
   );
 
   // --- derive.trigger ---
-  server.tool("derive.trigger", DeriveTriggerSchema, async ({ method }) => {
+  server.tool("derive.trigger", DeriveTriggerSchema, withTrace("derive.trigger", async ({ method }) => {
     log("derive.trigger", { method });
     const derivator = new Derivator(engine);
     const results: { dimension: string; value: number; confidence: number }[] =
@@ -264,13 +296,13 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
     }
 
     return textContent({ derived: results.length, traits: results });
-  });
+  }, telemetry));
 
   // --- observe.batch ---
   server.tool(
     "observe.batch",
     ObserveBatchSchema,
-    async ({ sourceTool, observations }) => {
+    withTrace("observe.batch", async ({ sourceTool, observations }) => {
       log("observe.batch", { sourceTool, count: observations.length });
       let submitted = 0;
       let duplicates = 0;
@@ -323,6 +355,6 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
       }
 
       return textContent({ submitted, duplicates, errors, results });
-    },
+    }, telemetry),
   );
 }

@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { GeneStore } from "../core/prompt/gene-store";
 import { PromptCompiler } from "../core/prompt/prompt-compiler";
 import { PromptEvolver } from "../core/prompt/prompt-evolver";
+import type { TelemetryRecorder } from "../core/telemetry/recorder";
 import type { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import {
@@ -16,7 +17,11 @@ function textContent(data: unknown) {
   };
 }
 
-export function registerPromptHandlers(server: McpServer, db: KaiDB): void {
+export function registerPromptHandlers(
+  server: McpServer,
+  db: KaiDB,
+  _telemetry: TelemetryRecorder | null = null,
+): void {
   const store = new GeneStore(db);
   const compiler = new PromptCompiler(store);
   const llm = new LLMProvider();
