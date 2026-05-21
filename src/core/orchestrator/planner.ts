@@ -1,7 +1,7 @@
 import type { LLMProvider } from "../../llm/provider";
-import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { Trait } from "../profile/types";
 import type { PromptCompiler } from "../prompt/prompt-compiler";
+import type { TelemetryRecorder } from "../telemetry/recorder";
 import { formatProfileContext } from "./profile-context";
 import type { OrchestratorStore } from "./store";
 import type { Idea, PlannedTask } from "./types";

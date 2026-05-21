@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { LLMProvider } from "../llm/provider";
 import { explainTelemetry } from "../core/telemetry/explain";
 import type { TelemetryStore } from "../core/telemetry/store";
+import type { LLMProvider } from "../llm/provider";
 import {
   TelemetryExplainSchema,
   TelemetryQuerySchema,
@@ -50,7 +50,7 @@ export function registerTelemetryHandlers(
       const stateChanges = store.getStateChangesByTrace(traceId);
       const errors = store.getErrorsByTrace(traceId);
 
-      let suggested_actions: Array<{
+      const suggested_actions: Array<{
         description: string;
         past_occurrences: number;
         last_seen: string;

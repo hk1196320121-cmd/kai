@@ -8,9 +8,7 @@ export const TelemetryQuerySchema = {
 };
 
 export const TelemetryTraceSchema = {
-  traceId: z
-    .string()
-    .describe("Trace ID to retrieve full causal trace for"),
+  traceId: z.string().describe("Trace ID to retrieve full causal trace for"),
 };
 
 export const TelemetryExplainSchema = {

@@ -22,9 +22,7 @@ export function getTelemetryStats(
   );
 
   const traceCount = traces.length;
-  const errorCount = traces.filter(
-    (t) => t.status === "error",
-  ).length;
+  const errorCount = traces.filter((t) => t.status === "error").length;
   const errorRate = traceCount > 0 ? errorCount / traceCount : 0;
 
   // P95 latency

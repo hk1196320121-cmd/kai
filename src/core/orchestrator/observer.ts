@@ -30,7 +30,11 @@ export class Observer {
   private profileEngine: ProfileEngine;
   private telemetry: TelemetryRecorder | null;
 
-  constructor(store: OrchestratorStore, profileEngine: ProfileEngine, telemetry: TelemetryRecorder | null = null) {
+  constructor(
+    store: OrchestratorStore,
+    profileEngine: ProfileEngine,
+    telemetry: TelemetryRecorder | null = null,
+  ) {
     this.store = store;
     this.profileEngine = profileEngine;
     this.telemetry = telemetry;
@@ -44,7 +48,10 @@ export class Observer {
       ideaResults: ExecutionResult[];
     },
   ): ProcessedObservation[] {
-    const trace = this.telemetry?.startTrace("internal", "observer.processResult");
+    const trace = this.telemetry?.startTrace(
+      "internal",
+      "observer.processResult",
+    );
     const span = trace?.startSpan("task_exec", "process execution result");
 
     const observations: ProcessedObservation[] = [];

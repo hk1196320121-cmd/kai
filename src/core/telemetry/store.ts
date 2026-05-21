@@ -1,11 +1,11 @@
 import type { Database } from "bun:sqlite";
 import type { KaiDB } from "../../db/client";
 import type {
-  Trace,
   Span,
-  TelemetryEvent,
   StateChange,
   TelemetryError,
+  TelemetryEvent,
+  Trace,
 } from "./types";
 
 interface BatchItem {
@@ -14,7 +14,14 @@ interface BatchItem {
 }
 
 const DENYLIST = [
-  "DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE", "ATTACH", "PRAGMA",
+  "DROP",
+  "DELETE",
+  "INSERT",
+  "UPDATE",
+  "ALTER",
+  "CREATE",
+  "ATTACH",
+  "PRAGMA",
 ];
 
 export class TelemetryStore {
@@ -165,9 +172,7 @@ export class TelemetryStore {
 
   getRecentErrors(lastN: number): TelemetryError[] {
     return this.db
-      .prepare(
-        "SELECT * FROM runtime_errors ORDER BY created_at DESC LIMIT ?",
-      )
+      .prepare("SELECT * FROM runtime_errors ORDER BY created_at DESC LIMIT ?")
       .all(lastN) as TelemetryError[];
   }
 
@@ -205,7 +210,9 @@ export class TelemetryStore {
       // Check for known dangerous keywords for a specific error
       for (const keyword of DENYLIST) {
         if (upper.includes(keyword)) {
-          throw new Error(`Query must start with SELECT — forbidden keyword in query: ${keyword}`);
+          throw new Error(
+            `Query must start with SELECT — forbidden keyword in query: ${keyword}`,
+          );
         }
       }
       throw new Error("Query must start with SELECT");
@@ -277,9 +284,7 @@ export class TelemetryStore {
     const ids = traceIds.map((t) => t.id);
     const placeholders = ids.map(() => "?").join(",");
     this.db
-      .prepare(
-        `DELETE FROM runtime_errors WHERE trace_id IN (${placeholders})`,
-      )
+      .prepare(`DELETE FROM runtime_errors WHERE trace_id IN (${placeholders})`)
       .run(...ids);
     this.db
       .prepare(
@@ -287,19 +292,13 @@ export class TelemetryStore {
       )
       .run(...ids);
     this.db
-      .prepare(
-        `DELETE FROM runtime_events WHERE trace_id IN (${placeholders})`,
-      )
+      .prepare(`DELETE FROM runtime_events WHERE trace_id IN (${placeholders})`)
       .run(...ids);
     this.db
-      .prepare(
-        `DELETE FROM runtime_spans WHERE trace_id IN (${placeholders})`,
-      )
+      .prepare(`DELETE FROM runtime_spans WHERE trace_id IN (${placeholders})`)
       .run(...ids);
     this.db
-      .prepare(
-        `DELETE FROM runtime_traces WHERE id IN (${placeholders})`,
-      )
+      .prepare(`DELETE FROM runtime_traces WHERE id IN (${placeholders})`)
       .run(...ids);
   }
 }

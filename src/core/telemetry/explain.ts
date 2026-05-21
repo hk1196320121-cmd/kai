@@ -1,6 +1,6 @@
 import type { LLMProvider } from "../../llm/provider";
-import type { TelemetryStore } from "./store";
 import { getTelemetryStats } from "./stats";
+import type { TelemetryStore } from "./store";
 import type { ExplainResult } from "./types";
 
 const EXPLAIN_SYSTEM_PROMPT = `You are a telemetry analyst. Analyze the provided telemetry data and answer the question.
@@ -42,7 +42,7 @@ export async function explainTelemetry(
   const recentErrors = store.getRecentErrors(50);
 
   // Stats-only fallback
-  if (!llm || !llm.getConfig().apiKey) {
+  if (!llm?.getConfig().apiKey) {
     const summary = buildStatsSummary(stats, recentErrors.length);
     const result: ExplainResult = { summary, traces: [], insights: [] };
     cache.set(cacheKey, { result, timestamp: now });

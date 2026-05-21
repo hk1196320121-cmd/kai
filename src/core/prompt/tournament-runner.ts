@@ -27,7 +27,11 @@ export class TournamentRunner {
   private llm: LLMProvider;
   private telemetry: TelemetryRecorder | null;
 
-  constructor(store: GeneStore, llm: LLMProvider, telemetry: TelemetryRecorder | null = null) {
+  constructor(
+    store: GeneStore,
+    llm: LLMProvider,
+    telemetry: TelemetryRecorder | null = null,
+  ) {
     this.store = store;
     this.llm = llm;
     this.telemetry = telemetry;

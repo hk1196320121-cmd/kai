@@ -1,8 +1,8 @@
 import type { Command } from "commander";
-import { KaiDB } from "../db/client";
-import { TelemetryStore } from "../core/telemetry/store";
-import { getTelemetryStats } from "../core/telemetry/stats";
 import { explainTelemetry } from "../core/telemetry/explain";
+import { getTelemetryStats } from "../core/telemetry/stats";
+import { TelemetryStore } from "../core/telemetry/store";
+import { KaiDB } from "../db/client";
 import { getDbPath } from "./utils";
 
 function getStore(): { db: KaiDB; store: TelemetryStore } {

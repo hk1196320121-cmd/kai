@@ -12,9 +12,7 @@ function sanitizeRecursive(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeRecursive);
 
   const result: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(
-    value as Record<string, unknown>,
-  )) {
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
     if (SENSITIVE_PATTERN.test(key) && val !== null && val !== undefined) {
       result[key] = "[REDACTED]";
     } else if (SENSITIVE_PATTERN.test(key)) {

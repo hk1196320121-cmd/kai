@@ -34,11 +34,7 @@ interface PendingSpan {
 export interface SpanHandle {
   spanId: string;
   traceId: string;
-  event(
-    type: string,
-    name: string,
-    payload?: Record<string, unknown>,
-  ): void;
+  event(type: string, name: string, payload?: Record<string, unknown>): void;
   stateChange(entity: {
     type: string;
     id: string;
@@ -92,9 +88,7 @@ export class TelemetryRecorder {
       end: (status = "completed") => {
         try {
           const start = this.store.getTrace(traceId)?.started_at;
-          const duration = start
-            ? Date.now() - new Date(start).getTime()
-            : 0;
+          const duration = start ? Date.now() - new Date(start).getTime() : 0;
           this.flushPendingForTrace(traceId);
           this.store.updateTrace(traceId, duration, status);
         } catch {
@@ -131,7 +125,7 @@ export class TelemetryRecorder {
       traceId,
       event: (type, eventName, payload) => {
         if (this.pendingSpans.has(spanId)) {
-          this.pendingSpans.get(spanId)!.events.push({
+          this.pendingSpans.get(spanId)?.events.push({
             type,
             name: eventName,
             payload: sanitize(payload ?? {}),
@@ -140,7 +134,7 @@ export class TelemetryRecorder {
       },
       stateChange: (entity) => {
         if (this.pendingSpans.has(spanId)) {
-          this.pendingSpans.get(spanId)!.stateChanges.push({
+          this.pendingSpans.get(spanId)?.stateChanges.push({
             entity_type: entity.type,
             entity_id: entity.id,
             field: entity.field,
@@ -152,7 +146,7 @@ export class TelemetryRecorder {
       },
       error: (err, recoverable = false, context) => {
         if (this.pendingSpans.has(spanId)) {
-          this.pendingSpans.get(spanId)!.errors.push({
+          this.pendingSpans.get(spanId)?.errors.push({
             error: err,
             recoverable,
             context,
@@ -163,7 +157,8 @@ export class TelemetryRecorder {
         const pending = this.pendingSpans.get(spanId);
         if (pending) {
           try {
-            const duration = Date.now() - new Date(pending.started_at).getTime();
+            const duration =
+              Date.now() - new Date(pending.started_at).getTime();
             pending.status = status;
             this.flushSpan(pending, duration);
           } catch {
@@ -249,8 +244,7 @@ export class TelemetryRecorder {
     for (const [spanId, pending] of this.pendingSpans.entries()) {
       if (pending.trace_id === traceId) {
         try {
-          const duration =
-            Date.now() - new Date(pending.started_at).getTime();
+          const duration = Date.now() - new Date(pending.started_at).getTime();
           this.flushSpan(pending, duration);
         } catch {
           // Fire-and-forget

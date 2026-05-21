@@ -26,35 +26,31 @@ export function registerTelemetryResources(
       },
     },
   );
-  server.resource(
-    "telemetry-trace",
-    traceTemplate,
-    async (uri, variables) => {
-      const traceId = Array.isArray(variables.traceId)
-        ? variables.traceId[0]
-        : variables.traceId;
-      const trace = store.getTrace(traceId);
-      const spans = store.getSpansByTrace(traceId);
-      const events = store.getEventsByTrace(traceId);
-      const stateChanges = store.getStateChangesByTrace(traceId);
-      const errors = store.getErrorsByTrace(traceId);
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify({
-              trace,
-              spans,
-              events,
-              stateChanges,
-              errors,
-            }),
-          },
-        ],
-      };
-    },
-  );
+  server.resource("telemetry-trace", traceTemplate, async (uri, variables) => {
+    const traceId = Array.isArray(variables.traceId)
+      ? variables.traceId[0]
+      : variables.traceId;
+    const trace = store.getTrace(traceId);
+    const spans = store.getSpansByTrace(traceId);
+    const events = store.getEventsByTrace(traceId);
+    const stateChanges = store.getStateChangesByTrace(traceId);
+    const errors = store.getErrorsByTrace(traceId);
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify({
+            trace,
+            spans,
+            events,
+            stateChanges,
+            errors,
+          }),
+        },
+      ],
+    };
+  });
 
   // 2. kai://telemetry/recent-errors
   server.resource(
@@ -75,20 +71,16 @@ export function registerTelemetryResources(
   );
 
   // 3. kai://telemetry/health
-  server.resource(
-    "telemetry-health",
-    "kai://telemetry/health",
-    async (uri) => {
-      const stats = getTelemetryStats(store, 24);
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify(stats),
-          },
-        ],
-      };
-    },
-  );
+  server.resource("telemetry-health", "kai://telemetry/health", async (uri) => {
+    const stats = getTelemetryStats(store, 24);
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(stats),
+        },
+      ],
+    };
+  });
 }

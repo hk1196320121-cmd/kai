@@ -249,7 +249,10 @@ export class Derivator {
   private engine: ProfileEngine;
   private telemetry: TelemetryRecorder | null;
 
-  constructor(engine: ProfileEngine, telemetry: TelemetryRecorder | null = null) {
+  constructor(
+    engine: ProfileEngine,
+    telemetry: TelemetryRecorder | null = null,
+  ) {
     this.engine = engine;
     this.telemetry = telemetry;
   }
@@ -394,8 +397,11 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
         results.push(derived);
         this.engine.setTrait(derived);
         span?.stateChange({
-          type: "trait", id: t.dimension, field: "value",
-          new: t.value.toString(), reason: t.reasoning,
+          type: "trait",
+          id: t.dimension,
+          field: "value",
+          new: t.value.toString(),
+          reason: t.reasoning,
         });
       }
       span?.end("ok");

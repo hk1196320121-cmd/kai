@@ -13,7 +13,11 @@ export class Dispatcher {
   private bridge: AgentBridge;
   private telemetry: TelemetryRecorder | null;
 
-  constructor(store: OrchestratorStore, bridge: AgentBridge, telemetry: TelemetryRecorder | null = null) {
+  constructor(
+    store: OrchestratorStore,
+    bridge: AgentBridge,
+    telemetry: TelemetryRecorder | null = null,
+  ) {
     this.store = store;
     this.bridge = bridge;
     this.telemetry = telemetry;
