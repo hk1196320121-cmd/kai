@@ -217,6 +217,13 @@ export class TelemetryStore {
       throw new Error("Semicolons are not allowed in queries");
     }
 
+    // Reject commas between table references in FROM clauses to prevent comma-join bypasses
+    // e.g. SELECT * FROM runtime_traces t, observations o
+    // This regex matches FROM followed by word chars, optional alias, then comma (indicating multiple tables)
+    if (/\bFROM\s+\w+(\s+\w+)?\s*,/i.test(trimmed)) {
+      throw new Error("Comma-separated tables are not allowed in FROM clauses");
+    }
+
     // Allowlist: only telemetry tables/views may be referenced
     const tableRefs = upper.match(/\b(FROM|JOIN)\s+(\w+)/g) ?? [];
     for (const ref of tableRefs) {
@@ -233,18 +240,18 @@ export class TelemetryStore {
       throw new Error("UNION is not allowed in telemetry queries");
     }
 
-    this.db.exec("BEGIN");
-    try {
-      const rows = this.db.prepare(trimmed).all() as Record<string, unknown>[];
-      return rows;
-    } finally {
-      this.db.exec("ROLLBACK");
-    }
+    // Limit result set to prevent DoS via huge queries
+    const limitedSql = /\bLIMIT\b/i.test(trimmed)
+      ? trimmed
+      : `${trimmed.replace(/;$/, "")} LIMIT 1000`;
+
+    return this.db.prepare(limitedSql).all() as Record<string, unknown>[];
   }
 
   flushBatch(items: BatchItem[]): void {
-    // Temporarily disable FK checks to allow inserting child spans
-    // before their parent spans exist (deferred parent flush).
+    // Disable FK checks to allow child spans to be inserted before
+    // their parent spans (deferred parent flush). PRAGMA foreign_keys
+    // cannot be toggled inside a transaction, so we scope it tightly here.
     this.db.exec("PRAGMA foreign_keys = OFF");
     try {
       const tx = this.db.transaction(() => {

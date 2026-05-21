@@ -103,7 +103,7 @@ export async function explainTelemetry(
   } catch {
     const summary = buildStatsSummary(stats, recentErrors.length);
     const result: ExplainResult = { summary, traces: [], insights: [] };
-    cache.set(cacheKey, { result, timestamp: now });
+    // Don't cache LLM failures — allow retry on next call
     return result;
   }
 }

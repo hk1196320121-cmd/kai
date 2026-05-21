@@ -61,6 +61,7 @@ export interface TraceHandle {
 export class TelemetryRecorder {
   private store: TelemetryStore;
   private pendingSpans: Map<string, PendingSpan> = new Map();
+  private static readonly MAX_PENDING_SPANS = 10000;
 
   constructor(store: TelemetryStore) {
     this.store = store;
@@ -104,6 +105,11 @@ export class TelemetryRecorder {
     operation: string,
     name: string,
   ): SpanHandle {
+    if (this.pendingSpans.size >= TelemetryRecorder.MAX_PENDING_SPANS) {
+      // Evict oldest entry to prevent unbounded memory growth
+      const firstKey = this.pendingSpans.keys().next().value;
+      if (firstKey) this.pendingSpans.delete(firstKey);
+    }
     const spanId = crypto.randomUUID();
     const pending: PendingSpan = {
       id: spanId,
