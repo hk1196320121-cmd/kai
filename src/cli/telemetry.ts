@@ -3,6 +3,7 @@ import { explainTelemetry } from "../core/telemetry/explain";
 import { getTelemetryStats } from "../core/telemetry/stats";
 import { TelemetryStore } from "../core/telemetry/store";
 import { KaiDB } from "../db/client";
+import { LLMProvider } from "../llm/provider";
 import { getDbPath } from "./utils";
 
 function getStore(): { db: KaiDB; store: TelemetryStore } {
@@ -137,14 +138,13 @@ export function registerTelemetryCommands(program: Command): void {
 
   telemetry
     .command("errors")
-    .option("--last <hours>", "Time window in hours", "24")
-    .option("--entity-type <type>", "Filter by entity type")
+    .option("--last <n>", "Number of recent errors to show", "50")
     .option("--json", "Output as JSON")
     .description("Show recent errors with context")
     .action((opts) => {
       const { db, store } = getStore();
       try {
-        const limit = 50;
+        const limit = Number.parseInt(opts.last, 10) || 50;
         const errors = store.getRecentErrors(limit);
         if (opts.json) {
           console.log(JSON.stringify(errors, null, 2));
@@ -172,7 +172,7 @@ export function registerTelemetryCommands(program: Command): void {
     .action(async (question: string, opts) => {
       const { db, store } = getStore();
       try {
-        const result = await explainTelemetry(store, question, null);
+        const result = await explainTelemetry(store, question, new LLMProvider());
         if (opts.json) {
           console.log(JSON.stringify(result, null, 2));
         } else {

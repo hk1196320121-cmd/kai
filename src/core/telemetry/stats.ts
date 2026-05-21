@@ -17,6 +17,7 @@ export function getTelemetryStats(
   store: TelemetryStore,
   lastHours: number,
 ): TelemetryStatsResult {
+  if (!Number.isFinite(lastHours) || lastHours < 1) lastHours = 24;
   const traces = store.queryTelemetry(
     `SELECT * FROM runtime_traces WHERE started_at >= datetime('now', '-${lastHours} hours')`,
   );

@@ -54,6 +54,7 @@ export class Observer {
     );
     const span = trace?.startSpan("task_exec", "process execution result");
 
+    try {
     const observations: ProcessedObservation[] = [];
     const task = prefetched?.task ?? this.store.getTask(result.task_id);
 
@@ -108,6 +109,12 @@ export class Observer {
     span?.end("ok");
     trace?.end("completed");
     return observations;
+    } catch (err) {
+      span?.error(err as Error);
+      span?.end("error");
+      trace?.end("error");
+      throw err;
+    }
   }
 
   processFeedback(resultId: number, feedback: string): ProcessedObservation[] {

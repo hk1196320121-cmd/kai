@@ -13,16 +13,18 @@ interface BatchItem {
   data: Record<string, unknown>;
 }
 
-const DENYLIST = [
-  "DROP",
-  "DELETE",
-  "INSERT",
-  "UPDATE",
-  "ALTER",
-  "CREATE",
-  "ATTACH",
-  "PRAGMA",
-];
+const ALLOWED_TABLES = new Set([
+  "telemetry_traces_v1",
+  "telemetry_spans_v1",
+  "telemetry_events_v1",
+  "telemetry_state_changes_v1",
+  "telemetry_errors_v1",
+  "runtime_traces",
+  "runtime_spans",
+  "runtime_events",
+  "runtime_state_changes",
+  "runtime_errors",
+]);
 
 export class TelemetryStore {
   private db: Database;
@@ -207,27 +209,33 @@ export class TelemetryStore {
     const upper = trimmed.toUpperCase();
 
     if (!upper.startsWith("SELECT")) {
-      // Check for known dangerous keywords for a specific error
-      for (const keyword of DENYLIST) {
-        if (upper.includes(keyword)) {
-          throw new Error(
-            `Query must start with SELECT — forbidden keyword in query: ${keyword}`,
-          );
-        }
-      }
       throw new Error("Query must start with SELECT");
     }
 
-    // Even SELECT queries may contain injected statements
-    for (const keyword of DENYLIST) {
-      if (upper.includes(keyword)) {
-        throw new Error(`Forbidden keyword in query: ${keyword}`);
+    // Reject semicolons to prevent multi-statement injection
+    if (trimmed.includes(";")) {
+      throw new Error("Semicolons are not allowed in queries");
+    }
+
+    // Allowlist: only telemetry tables/views may be referenced
+    const tableRefs = upper.match(/\b(FROM|JOIN)\s+(\w+)/g) ?? [];
+    for (const ref of tableRefs) {
+      const tableName = ref.replace(/^(FROM|JOIN)\s+/i, "").trim();
+      if (!ALLOWED_TABLES.has(tableName.toLowerCase())) {
+        throw new Error(
+          `Table '${tableName}' is not a telemetry table. Allowed: telemetry_*_v1, runtime_*`,
+        );
       }
+    }
+
+    // Block subqueries that could reference non-telemetry tables
+    if (upper.includes("UNION")) {
+      throw new Error("UNION is not allowed in telemetry queries");
     }
 
     this.db.exec("BEGIN");
     try {
-      const rows = this.db.prepare(trimmed.replace(/;+$/, "")).all() as Record<
+      const rows = this.db.prepare(trimmed).all() as Record<
         string,
         unknown
       >[];
@@ -283,22 +291,25 @@ export class TelemetryStore {
 
     const ids = traceIds.map((t) => t.id);
     const placeholders = ids.map(() => "?").join(",");
-    this.db
-      .prepare(`DELETE FROM runtime_errors WHERE trace_id IN (${placeholders})`)
-      .run(...ids);
-    this.db
-      .prepare(
-        `DELETE FROM runtime_state_changes WHERE trace_id IN (${placeholders})`,
-      )
-      .run(...ids);
-    this.db
-      .prepare(`DELETE FROM runtime_events WHERE trace_id IN (${placeholders})`)
-      .run(...ids);
-    this.db
-      .prepare(`DELETE FROM runtime_spans WHERE trace_id IN (${placeholders})`)
-      .run(...ids);
-    this.db
-      .prepare(`DELETE FROM runtime_traces WHERE id IN (${placeholders})`)
-      .run(...ids);
+    const pruneTx = this.db.transaction(() => {
+      this.db
+        .prepare(`DELETE FROM runtime_errors WHERE trace_id IN (${placeholders})`)
+        .run(...ids);
+      this.db
+        .prepare(
+          `DELETE FROM runtime_state_changes WHERE trace_id IN (${placeholders})`,
+        )
+        .run(...ids);
+      this.db
+        .prepare(`DELETE FROM runtime_events WHERE trace_id IN (${placeholders})`)
+        .run(...ids);
+      this.db
+        .prepare(`DELETE FROM runtime_spans WHERE trace_id IN (${placeholders})`)
+        .run(...ids);
+      this.db
+        .prepare(`DELETE FROM runtime_traces WHERE id IN (${placeholders})`)
+        .run(...ids);
+    });
+    pruneTx();
   }
 }

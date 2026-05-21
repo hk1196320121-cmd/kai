@@ -445,7 +445,10 @@ CREATE INDEX IF NOT EXISTS idx_state_changes_entity ON runtime_state_changes(ent
 CREATE INDEX IF NOT EXISTS idx_errors_trace ON runtime_errors(trace_id);
 CREATE INDEX IF NOT EXISTS idx_errors_created ON runtime_errors(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_created ON runtime_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_span ON runtime_events(span_id);
 CREATE INDEX IF NOT EXISTS idx_state_changes_created ON runtime_state_changes(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_state_changes_trace ON runtime_state_changes(trace_id);
+CREATE INDEX IF NOT EXISTS idx_spans_started ON runtime_spans(started_at DESC);
 
 CREATE VIEW IF NOT EXISTS telemetry_traces_v1 AS
   SELECT id, trigger, tool_name, started_at, duration_ms, status FROM runtime_traces;

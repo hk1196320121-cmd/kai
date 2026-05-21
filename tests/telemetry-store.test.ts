@@ -166,8 +166,31 @@ describe("TelemetryStore", () => {
       /must start with SELECT/i,
     );
     expect(() => store.queryTelemetry("DELETE FROM runtime_traces")).toThrow(
-      /forbidden keyword/i,
+      /must start with SELECT/i,
     );
+  });
+
+  test("queryTelemetry rejects queries targeting non-telemetry tables", () => {
+    expect(() => store.queryTelemetry("SELECT * FROM observations")).toThrow(
+      /not a telemetry table/i,
+    );
+    expect(() => store.queryTelemetry("SELECT * FROM traits")).toThrow(
+      /not a telemetry table/i,
+    );
+  });
+
+  test("queryTelemetry rejects UNION-based injection", () => {
+    expect(() =>
+      store.queryTelemetry(
+        "SELECT * FROM runtime_traces UNION SELECT * FROM runtime_traces",
+      ),
+    ).toThrow(/UNION is not allowed/i);
+  });
+
+  test("queryTelemetry rejects semicolons", () => {
+    expect(() =>
+      store.queryTelemetry("SELECT * FROM runtime_traces; DROP TABLE x"),
+    ).toThrow(/Semicolons/i);
   });
 
   test("flushBatch writes multiple spans in one transaction", () => {

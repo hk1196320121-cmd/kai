@@ -9,8 +9,14 @@ Keep summary under 200 words. Max 5 insights. Each insight: one claim + one evid
 
 const cache = new Map<string, { result: ExplainResult; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 100;
 const CALLS: number[] = [];
 const MAX_CALLS_PER_HOUR = 10;
+
+export function _resetForTesting(): void {
+  cache.clear();
+  CALLS.length = 0;
+}
 
 export async function explainTelemetry(
   store: TelemetryStore,
@@ -85,6 +91,12 @@ export async function explainTelemetry(
     };
 
     cache.set(cacheKey, { result, timestamp: now });
+    if (cache.size > CACHE_MAX_SIZE) {
+      const oldest = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+      for (let i = 0; i < oldest.length - CACHE_MAX_SIZE; i++) {
+        cache.delete(oldest[i][0]);
+      }
+    }
     return result;
   } catch {
     const summary = buildStatsSummary(stats, recentErrors.length);

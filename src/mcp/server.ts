@@ -54,12 +54,13 @@ export async function startMcpServer(dbPath: string): Promise<void> {
   const pruneInterval = setInterval(
     () => {
       try {
-        const retentionDays = parseInt(
+        let retentionDays = parseInt(
           process.env.KAI_TELEMETRY_RETENTION_DAYS ?? "30",
           10,
         );
-        const store = new TelemetryStore(db);
-        store.pruneTelemetry(retentionDays);
+        if (!Number.isFinite(retentionDays) || retentionDays < 1)
+          retentionDays = 30;
+        new TelemetryStore(db).pruneTelemetry(retentionDays);
       } catch {
         // Fire-and-forget
       }

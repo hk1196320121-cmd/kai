@@ -261,6 +261,7 @@ export class Derivator {
     const trace = this.telemetry?.startTrace("internal", "derive.rules");
     const span = trace?.startSpan("derivation", "rule-based derivation");
 
+    try {
     const observations = this.engine.getObservations();
     if (observations.length === 0) {
       span?.end("ok");
@@ -319,6 +320,12 @@ export class Derivator {
     span?.end("ok");
     trace?.end("completed");
     return results;
+    } catch (err) {
+      span?.error(err as Error);
+      span?.end("error");
+      trace?.end("error");
+      throw err;
+    }
   }
 
   async deriveFromLLM(

@@ -24,7 +24,7 @@ function textContent(data: unknown) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: generic handler wrapper needs any for SDK type compatibility
 type ToolHandler = (...args: any[]) => Promise<any>;
 
 function withTrace<T extends ToolHandler>(
