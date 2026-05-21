@@ -336,7 +336,7 @@ SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v6).
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (402 across 53 files)
+bun test             # Run tests (440 across 59 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

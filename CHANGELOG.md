@@ -14,13 +14,13 @@
 - **TournamentRunner** — pairwise variant battles with judge evaluation and automatic champion promotion
 - **PromptEvolver** — mutation generation via LLM, champion promotion, and rollback support
 - **V6 database migration** — 8 new tables for the prompt genome system with proper foreign keys, CHECK constraints, and indexes
-- **LLMProvider.callWithModel()** — model override per-call, enabling different models for evolution vs. judging
+- **LLMProvider model override** — per-call model parameter via options, enabling different models for evolution vs. judging
 - **Derivator gene integration** — derivator now uses gene-based prompts when available, with rule-based fallback
 - **Planner compiler injection** — planner receives PromptCompiler via constructor injection
-- **83 new tests** across 7 test files — 402 total tests across 53 files
+- **121 new tests** across 14 test files — 440 total tests across 59 files
 
 ### Changed
-- LLMProvider supports per-call model override via `callWithModel()`
+- LLMProvider supports per-call model override via options parameter
 - Derivator integrates gene-based prompt compilation with transparent fallback to inline rules
 - Planner uses PromptCompiler for profile-aware prompt generation
 
