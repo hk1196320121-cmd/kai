@@ -231,31 +231,38 @@ export class TelemetryStore {
   }
 
   flushBatch(items: BatchItem[]): void {
-    const tx = this.db.transaction(() => {
-      for (const item of items) {
-        switch (item.type) {
-          case "span":
-            this.insertSpan(item.data as Omit<Span, never>);
-            break;
-          case "event":
-            this.insertEvent(
-              item.data as Omit<TelemetryEvent, "id" | "created_at">,
-            );
-            break;
-          case "state_change":
-            this.insertStateChange(
-              item.data as Omit<StateChange, "id" | "created_at">,
-            );
-            break;
-          case "error":
-            this.insertError(
-              item.data as Omit<TelemetryError, "id" | "created_at">,
-            );
-            break;
+    // Temporarily disable FK checks to allow inserting child spans
+    // before their parent spans exist (deferred parent flush).
+    this.db.exec("PRAGMA foreign_keys = OFF");
+    try {
+      const tx = this.db.transaction(() => {
+        for (const item of items) {
+          switch (item.type) {
+            case "span":
+              this.insertSpan(item.data as Omit<Span, never>);
+              break;
+            case "event":
+              this.insertEvent(
+                item.data as Omit<TelemetryEvent, "id" | "created_at">,
+              );
+              break;
+            case "state_change":
+              this.insertStateChange(
+                item.data as Omit<StateChange, "id" | "created_at">,
+              );
+              break;
+            case "error":
+              this.insertError(
+                item.data as Omit<TelemetryError, "id" | "created_at">,
+              );
+              break;
+          }
         }
-      }
-    });
-    tx();
+      });
+      tx();
+    } finally {
+      this.db.exec("PRAGMA foreign_keys = ON");
+    }
   }
 
   pruneTelemetry(maxAgeDays: number): void {
