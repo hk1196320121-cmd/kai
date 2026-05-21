@@ -7,7 +7,7 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 Kai watches what you do (cron outputs, daily patterns, explicit preferences) and builds a living user profile: identity, behavioral traits, and preferences. Other AI tools can then ask Kai "who is this person?" and get a rich, evidence-based answer.
 
 Core capabilities:
-- **MCP Server** — Model Context Protocol server via stdio. 15 tools (5 profile + 7 orchestrator + 3 prompt) and 9 resources (`kai://profile/*`, `kai://prompt/*`, `kai://system/health`)
+- **MCP Server** — Model Context Protocol server via stdio. 18 tools (5 profile + 7 orchestrator + 3 prompt + 3 telemetry) and 12 resources (`kai://profile/*`, `kai://prompt/*`, `kai://telemetry/*`, `kai://system/health`)
 - **Orchestrator** — idea-to-execution engine with LLM-powered planning, scheduling, dispatching, observation, and closed-loop re-planning
 - **Prompt Genome** — evolutionary prompt optimization with genes, genomes, tournaments, and LLM-as-judge. Prompts improve over time through automated A/B testing
 - **Cold Start** — `kai work start` bootstraps a profile from 4 questions + git history scan with preview/edit/confirm
@@ -17,6 +17,7 @@ Core capabilities:
 - **Confidence Decay** — traits weaken over time unless reinforced, declared traits are immune
 - **Provenance** — every trait has a chain of evidence. Ask "why?" and get the reasoning
 - **Observation Collection** — SHA-256 dedup, cron schedule parsing, daily batch collection
+- **Flight Recorder** — full causal chain telemetry tracing every MCP request through derivation, orchestration, and prompt genome. SQL query interface, LLM-powered explain, 30-day retention
 
 ## Install
 
@@ -115,6 +116,16 @@ kai mcp serve
 | `prompt evolve --task <task> [--rounds N] [--segment S] [--model M] [--auto]` | Run evolution with tournaments |
 | `prompt tournament results --task <task> [--last N]` | Show tournament history |
 
+### `kai telemetry`
+
+| Command | Description |
+|---------|-------------|
+| `health` | Show telemetry system health (trace/error counts, retention status) |
+| `query <sql>` | Run SQL query against telemetry views (read-only, table allowlist) |
+| `trace <trace-id>` | Show full causal chain for a trace with suggested actions |
+| `errors` | Show recent telemetry errors |
+| `explain [question]` | Natural language telemetry analysis (LLM-powered, rate-limited) |
+
 ### `kai mcp`
 
 | Command | Description |
@@ -143,6 +154,14 @@ kai mcp serve
 | `kai_execution_status` | Check execution status for an idea |
 | `kai_replan` | Re-plan an idea (after closed-loop feedback) |
 
+#### MCP Tools — Telemetry (3)
+
+| Tool | Description |
+|------|-------------|
+| `telemetry.query` | Run SQL query against telemetry views (read-only, table allowlist) |
+| `telemetry.trace` | Show full causal chain for a trace with suggested actions |
+| `telemetry.explain` | Natural language telemetry analysis (LLM-powered, rate-limited 10/hour) |
+
 #### MCP Resources
 
 | Resource | Description |
@@ -153,6 +172,9 @@ kai mcp serve
 | `kai://profile/observations/recent` | Recent observations |
 | `kai://profile/summary` | Profile summary |
 | `kai://system/health` | System health check |
+| `kai://telemetry/trace/{traceId}` | Full causal chain for a specific trace |
+| `kai://telemetry/recent-errors` | Recent telemetry errors |
+| `kai://telemetry/health` | Telemetry system health stats |
 | `kai://prompt/{task}` | Compiled prompt for a task (planner, derivator, observer) |
 | `kai://prompt/champion/{task}` | Current champion variant for a task |
 | `kai://prompt/evolution-history/{task}` | Champion promotion history |
@@ -161,10 +183,11 @@ kai mcp serve
 
 ```
 src/
-  cli/            Commander.js CLI (profile, observe, work, mcp, prompt subcommands)
+  cli/            Commander.js CLI (profile, observe, work, mcp, prompt, telemetry subcommands)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)
+  core/telemetry/ Flight recorder — store, recorder, stats, explain, sanitizer, types
   workspace/      Workspace/task/event CRUD + event bus for observation collection
   mcp/            MCP server — handlers, resources, schema, stdio transport
   bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
@@ -172,7 +195,7 @@ src/
   llm/            OpenAI-compatible LLM provider with transient-error retry
 ```
 
-Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. **Prompt Genome**: Genes -> Genome -> Compiler (profile-aware segments) -> Variants -> Tournament (A/B) -> Judge (LLM) -> Champion promotion -> Evolution loop. MCP clients connect via stdio to read profiles, submit observations, orchestrate tasks, and compile/evolve prompts.
+Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. **Prompt Genome**: Genes -> Genome -> Compiler (profile-aware segments) -> Variants -> Tournament (A/B) -> Judge (LLM) -> Champion promotion -> Evolution loop. **Telemetry**: Every MCP tool call gets a trace with spans, events, state changes, and errors. Traces flow through derivation, orchestration, and prompt genome operations. 30-day retention with automatic pruning. MCP clients connect via stdio to read profiles, submit observations, orchestrate tasks, compile/evolve prompts, and query telemetry.
 
 Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
@@ -180,7 +203,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 | Document | Type | Description |
 |----------|------|-------------|
-| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 15 tools and 9 resources |
+| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 18 tools and 12 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
 | [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |
