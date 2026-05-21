@@ -1,6 +1,28 @@
 # Changelog
 
-## [0.4.0.0] - 2026-05-20
+## [0.5.0.0] - 2026-05-21
+
+### Added
+- **Prompt Genome system** — evolutionary prompt optimization with 5 gene types (intent, contract, adapter, example, tone), profile-aware segments, and tournament-based A/B testing. Prompts improve automatically over time through LLM-as-judge evaluation
+- **3 prompt MCP tools** — `prompt.compile` (assemble prompt from genes), `prompt.champion` (get best variant), `prompt.evolve` (run evolution rounds with auto-promotion). AI agents can now optimize prompts programmatically
+- **3 prompt MCP resources** — `kai://prompt/{task}` (compiled prompt), `kai://prompt/champion/{task}` (current champion), `kai://prompt/evolution-history/{task}` (promotion audit trail)
+- **`kai prompt` CLI** — 9 subcommands for managing genes, genomes, champions, evolution, and tournament history. Use `kai prompt evolve --task planner --rounds 3` to start optimizing
+- **GeneStore CRUD** — full database layer for all 8 prompt genome tables (genes, genomes, variants, segments, eval cases, tournaments, champions, champion history)
+- **PromptCompiler** — assembly pipeline that selects genes by type, matches profile segments, and builds complete prompts with caching and fallback
+- **SegmentMatcher** — profile-to-segment matching algorithm that personalizes prompts based on behavioral traits
+- **JudgeEngine** — LLM-as-judge evaluation with configurable judges and majority vote for tournament battles
+- **TournamentRunner** — pairwise variant battles with judge evaluation and automatic champion promotion
+- **PromptEvolver** — mutation generation via LLM, champion promotion, and rollback support
+- **V6 database migration** — 8 new tables for the prompt genome system with proper foreign keys, CHECK constraints, and indexes
+- **LLMProvider.callWithModel()** — model override per-call, enabling different models for evolution vs. judging
+- **Derivator gene integration** — derivator now uses gene-based prompts when available, with rule-based fallback
+- **Planner compiler injection** — planner receives PromptCompiler via constructor injection
+- **83 new tests** across 7 test files — 402 total tests across 53 files
+
+### Changed
+- LLMProvider supports per-call model override via `callWithModel()`
+- Derivator integrates gene-based prompt compilation with transparent fallback to inline rules
+- Planner uses PromptCompiler for profile-aware prompt generation
 
 ### Added
 - **Orchestrator idea-to-execution engine** — submit ideas, decompose into tasks, schedule, dispatch, observe results, and detect behavioral changes in a closed loop. Use `kai_idea_submit` to start

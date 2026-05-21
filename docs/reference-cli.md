@@ -200,6 +200,146 @@ The server reads JSON-RPC from stdin and writes to stdout. Structured logs go to
 
 See [How to Configure Kai](howto-configure.md) for setup instructions.
 
+## `kai prompt`
+
+Manage prompt genomes, genes, champions, and evolution. The prompt genome system optimizes LLM prompts through evolutionary A/B testing.
+
+### `kai prompt gene list`
+
+List genes with optional filtering by task and type.
+
+```bash
+kai prompt gene list                           # All genes
+kai prompt gene list --task planner            # Genes for planner task
+kai prompt gene list --type intent             # Genes of type intent
+kai prompt gene list --task planner --json     # JSON output
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | No | Filter by task: `planner`, `derivator`, `observer` |
+| `--type <type>` | No | Filter by gene type: `intent`, `contract`, `adapter`, `example`, `tone` |
+| `--json` | No | Output as JSON |
+
+### `kai prompt gene inspect`
+
+Show full gene details as JSON.
+
+```bash
+kai prompt gene inspect <gene-id>
+```
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<gene-id>` | Yes | Gene ID to inspect |
+
+### `kai prompt genome compile`
+
+Compile a prompt for a task using the current genome. Selects the best gene variants and assembles them into a complete prompt.
+
+```bash
+kai prompt genome compile --task planner
+kai prompt genome compile --task derivator --json
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to compile for: `planner`, `derivator`, `observer` |
+| `--json` | No | Output as JSON |
+
+Outputs genome ID, segment, variant, gene count, cache status, and the compiled prompt text.
+
+### `kai prompt genome show`
+
+Show genome details as JSON for a task.
+
+```bash
+kai prompt genome show --task planner
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to show genome for |
+
+### `kai prompt champion show`
+
+Show champion info for a task. Champions are the best-performing variants from tournament battles.
+
+```bash
+kai prompt champion show --task planner
+kai prompt champion show --task planner --segment default
+kai prompt champion show --task planner --all-segments
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to show champion for |
+| `--segment <id>` | No | Segment ID (default: `default`) |
+| `--all-segments` | No | Show champions across all segments |
+
+Outputs variant ID, model, win rate, battle count, promotion date, and lock status.
+
+### `kai prompt champion lock`
+
+Lock the current champion, preventing rollback. Use when you want to pin a known-good variant.
+
+```bash
+kai prompt champion lock --task planner
+kai prompt champion lock --task planner --segment default
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to lock champion for |
+| `--segment <id>` | No | Segment ID (default: `default`) |
+
+### `kai prompt champion rollback`
+
+Rollback to the previous champion variant. Fails if the current champion is locked or there is no previous champion.
+
+```bash
+kai prompt champion rollback --task planner
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to rollback champion for |
+| `--segment <id>` | No | Segment ID (default: `default`) |
+
+### `kai prompt evolve`
+
+Run evolutionary optimization for a task's prompt. Generates new variants via LLM mutations, runs tournament battles with LLM-as-judge, and promotes the winner as champion if it outperforms the current one.
+
+```bash
+kai prompt evolve --task planner
+kai prompt evolve --task planner --rounds 3
+kai prompt evolve --task derivator --model gpt-4o --auto
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to evolve |
+| `--rounds <n>` | No | Number of evolution rounds (default: 1) |
+| `--segment <id>` | No | Segment ID (default: `default`) |
+| `--model <model>` | No | LLM model to use (default: `gpt-4o-mini`) |
+| `--auto` | No | Auto-approve champion promotion |
+
+Outputs battles run, champion promotion status, and new/previous variant IDs.
+
+### `kai prompt tournament results`
+
+Show tournament battle history for a task.
+
+```bash
+kai prompt tournament results --task planner
+kai prompt tournament results --task planner --last 5
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--task <task>` | Yes | Task to show tournaments for |
+| `--last <n>` | No | Number of recent tournaments (default: 10) |
+
 ## Exit codes
 
 | Code | Meaning |
@@ -209,6 +349,6 @@ See [How to Configure Kai](howto-configure.md) for setup instructions.
 
 ## Related
 
-- [MCP Server Reference](reference-mcp-server.md) — complete API for all 12 tools and 6 resources
+- [MCP Server Reference](reference-mcp-server.md) — complete API for all 15 tools and 9 resources
 - [How to Configure Kai](howto-configure.md) — environment variables and LLM setup
 - [Database Schema Reference](reference-database.md) — tables, migrations, and data model
