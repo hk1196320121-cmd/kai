@@ -23,13 +23,18 @@ export interface PromotionProposal {
 }
 
 const MUTATION_TYPES: MutationType[] = ["intent_rephrase", "contract_adjust"];
+const PROMOTION_WIN_RATE_THRESHOLD = 0.6;
+const PROMOTION_MIN_BATTLES = 5;
+const MUTATION_SYSTEM_PROMPT = `You are a prompt engineer. Rephrase the given prompt section to improve clarity and effectiveness while preserving its core intent. Output only the rephrased text, nothing else.`;
 
 export class PromptEvolver {
   private store: GeneStore;
   private tournamentRunner: TournamentRunner;
+  private llm: LLMProvider;
 
   constructor(store: GeneStore, llm: LLMProvider) {
     this.store = store;
+    this.llm = llm;
     this.tournamentRunner = new TournamentRunner(store, llm);
   }
 
@@ -56,61 +61,69 @@ export class PromptEvolver {
       };
     }
 
-    // Generate mutant variants
-    const mutantCount = config.mutant_count ?? 2;
-    for (let i = 0; i < mutantCount; i++) {
-      const mutationType = MUTATION_TYPES[i % MUTATION_TYPES.length];
-      this.generateMutation(genome.id, mutationType);
-    }
-
-    // Run tournament
-    const tournamentResult = await this.tournamentRunner.run({
-      task: config.task,
-      segment_id: config.segment_id,
-      model: config.model,
-    });
-
-    // Check for promotion
+    const targetRounds = config.rounds ?? 1;
+    let totalBattlesRun = 0;
+    let championPromoted = false;
+    let championVariantId: string | null = null;
     const currentChampion = this.store.getChampion(
       config.task,
       config.segment_id,
       config.model,
     );
-    const variants = this.store.listVariantsByGenome(genome.id);
-    let championPromoted = false;
-    let championVariantId: string | null = null;
 
-    for (const variant of variants) {
-      if (currentChampion && variant.id === currentChampion.variant_id)
-        continue;
-      const stats = this.store.countTournamentWins(
-        variant.id,
-        config.task,
-        config.segment_id,
-      );
-      if (stats.total === 0) continue;
-      const winRate = (stats.wins + stats.ties * 0.5) / stats.total;
-      if (winRate >= 0.6 && stats.total >= 5) {
-        if (config.auto_approve) {
-          this.store.setChampion({
-            task: config.task,
-            segment_id: config.segment_id,
-            variant_id: variant.id,
-            model: config.model,
-            win_rate: winRate,
-            battle_count: stats.total,
-            previous_variant_id: currentChampion?.variant_id ?? null,
-          });
-          championPromoted = true;
-          championVariantId = variant.id;
+    for (let round = 0; round < targetRounds; round++) {
+      // Generate mutant variants
+      const mutantCount = config.mutant_count ?? 2;
+      for (let i = 0; i < mutantCount; i++) {
+        const mutationType = MUTATION_TYPES[i % MUTATION_TYPES.length];
+        await this.generateMutation(genome.id, mutationType);
+      }
+
+      // Run tournament
+      const tournamentResult = await this.tournamentRunner.run({
+        task: config.task,
+        segment_id: config.segment_id,
+        model: config.model,
+      });
+      totalBattlesRun += tournamentResult.battles_run;
+
+      // Check for promotion
+      const variants = this.store.listVariantsByGenome(genome.id);
+      for (const variant of variants) {
+        if (currentChampion && variant.id === currentChampion.variant_id)
+          continue;
+        const stats = this.store.countTournamentWins(
+          variant.id,
+          config.task,
+          config.segment_id,
+        );
+        if (stats.total === 0) continue;
+        const winRate = (stats.wins + stats.ties * 0.5) / stats.total;
+        if (
+          winRate >= PROMOTION_WIN_RATE_THRESHOLD &&
+          stats.total >= PROMOTION_MIN_BATTLES
+        ) {
+          if (config.auto_approve) {
+            const promoted = this.store.setChampion({
+              task: config.task,
+              segment_id: config.segment_id,
+              variant_id: variant.id,
+              model: config.model,
+              win_rate: winRate,
+              battle_count: stats.total,
+              previous_variant_id: currentChampion?.variant_id ?? null,
+            });
+            championPromoted = promoted;
+            championVariantId = promoted ? variant.id : null;
+          }
+          break;
         }
-        break;
       }
     }
 
     return {
-      rounds_completed: 1,
-      battles_run: tournamentResult.battles_run,
+      rounds_completed: targetRounds,
+      battles_run: totalBattlesRun,
       champion_promoted: championPromoted,
       champion_variant_id: championVariantId,
       previous_champion_variant_id: currentChampion?.variant_id ?? null,
@@ -135,8 +148,8 @@ export class PromptEvolver {
     };
   }
 
-  approvePromotion(proposal: PromotionProposal): void {
-    this.store.setChampion({
+  approvePromotion(proposal: PromotionProposal): boolean {
+    return this.store.setChampion({
       task: proposal.task,
       segment_id: proposal.segment_id,
       variant_id: proposal.variant_id,
@@ -152,22 +165,45 @@ export class PromptEvolver {
     });
   }
 
-  private generateMutation(genomeId: string, mutationType: MutationType): void {
+  private async generateMutation(
+    genomeId: string,
+    mutationType: MutationType,
+  ): Promise<void> {
     const genome = this.store.getGenome(genomeId);
     if (!genome) return;
 
-    const geneIds: string[] = JSON.parse(genome.gene_ids);
+    let geneIds: string[] = [];
+    try {
+      geneIds = JSON.parse(genome.gene_ids) as string[];
+    } catch {
+      return;
+    }
+
     const mutatedParts: string[] = [];
 
     for (const geneId of geneIds) {
       const gene = this.store.getGene(geneId);
       if (!gene) continue;
 
-      if (
+      const shouldMutate =
         (mutationType === "intent_rephrase" && gene.type === "intent") ||
-        (mutationType === "contract_adjust" && gene.type === "contract")
-      ) {
-        mutatedParts.push(`[Mutated ${mutationType}] ${gene.content}`);
+        (mutationType === "contract_adjust" && gene.type === "contract");
+
+      if (shouldMutate) {
+        try {
+          const response = await this.llm.call(
+            `Rephrase this prompt section:\n\n${gene.content}`,
+            MUTATION_SYSTEM_PROMPT,
+          );
+          const rephrased = String(
+            (response as Record<string, unknown>).content ??
+              (response as Record<string, unknown>).text ??
+              gene.content,
+          );
+          mutatedParts.push(rephrased || gene.content);
+        } catch {
+          mutatedParts.push(gene.content);
+        }
       } else {
         mutatedParts.push(gene.content);
       }

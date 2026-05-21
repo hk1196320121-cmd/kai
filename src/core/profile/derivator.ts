@@ -329,9 +329,16 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
     let systemPrompt: string;
     if (compiler) {
       try {
-        const compiled = await compiler.compile("derivator", []);
+        const compiled = await compiler.compile(
+          "derivator",
+          this.engine.getTraits(),
+        );
         systemPrompt = compiled.prompt;
-      } catch {
+      } catch (err) {
+        console.error(
+          "Prompt compilation failed for derivator, using fallback:",
+          err,
+        );
         systemPrompt = DERIVATOR_FALLBACK;
       }
     } else {

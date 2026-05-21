@@ -1,6 +1,10 @@
 import type { Trait } from "../profile/types";
 import type { GeneStore } from "./gene-store";
+import { SegmentMatcher } from "./segment-matcher";
 import type { CompiledPrompt, PromptTask } from "./types";
+
+const MAX_CACHE_SIZE = 100;
+const MIN_PROMPT_LENGTH = 50;
 
 const FALLBACK_PROMPTS: Record<PromptTask, string> = {
   planner: `You are a task decomposition engine. Given an idea and a user's behavioral profile, break the idea into actionable tasks.
@@ -31,33 +35,36 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
 
 export class PromptCompiler {
   private store: GeneStore;
+  private segmentMatcher: SegmentMatcher;
   private cache: Map<string, CompiledPrompt> = new Map();
 
   constructor(store: GeneStore) {
     this.store = store;
+    this.segmentMatcher = new SegmentMatcher(store);
   }
 
   async compile(task: PromptTask, traits: Trait[]): Promise<CompiledPrompt> {
-    const cacheKey = `${task}:${this.traitHash(traits)}`;
+    const segment = this.segmentMatcher.match(traits);
+    const cacheKey = `${task}:${segment.segment_id}:${this.traitHash(traits)}`;
     const cached = this.cache.get(cacheKey);
     if (cached) {
       return { ...cached, cached: true };
     }
 
-    // 1. Check for champion variant
-    const champion = this.store.getChampion(task, "default");
+    // 1. Check for champion variant for this segment
+    const champion = this.store.getChampion(task, segment.segment_id);
     if (champion) {
       const variant = this.store.getVariant(champion.variant_id);
       if (variant && this.validateCompiledPrompt(variant.compiled_prompt)) {
         const result: CompiledPrompt = {
           prompt: variant.compiled_prompt,
-          segment_id: "default",
+          segment_id: segment.segment_id,
           genome_id: variant.genome_id,
           variant_id: variant.id,
           gene_count: -1,
           cached: false,
         };
-        this.cache.set(cacheKey, result);
+        this.evictAndSet(cacheKey, result);
         return result;
       }
     }
@@ -67,7 +74,7 @@ export class PromptCompiler {
     if (!genome) {
       return {
         prompt: FALLBACK_PROMPTS[task],
-        segment_id: "default",
+        segment_id: segment.segment_id,
         genome_id: "",
         variant_id: null,
         gene_count: 0,
@@ -75,7 +82,20 @@ export class PromptCompiler {
       };
     }
 
-    const geneIds: string[] = JSON.parse(genome.gene_ids);
+    let geneIds: string[] = [];
+    try {
+      geneIds = JSON.parse(genome.gene_ids) as string[];
+    } catch {
+      return {
+        prompt: FALLBACK_PROMPTS[task],
+        segment_id: segment.segment_id,
+        genome_id: genome.id,
+        variant_id: null,
+        gene_count: 0,
+        cached: false,
+      };
+    }
+
     const parts: string[] = [];
     let geneCount = 0;
 
@@ -83,20 +103,12 @@ export class PromptCompiler {
       const gene = this.store.getGene(geneId);
       if (!gene) continue;
 
-      if (gene.type === "intent" || gene.type === "contract") {
+      if (gene.type === "adapter") {
+        parts.push(this.interpolateTraits(gene.content, traits));
+      } else {
         parts.push(gene.content);
-        geneCount++;
-      } else if (gene.type === "adapter") {
-        const interpolated = this.interpolateTraits(gene.content, traits);
-        parts.push(interpolated);
-        geneCount++;
-      } else if (gene.type === "tone") {
-        parts.push(gene.content);
-        geneCount++;
-      } else if (gene.type === "example") {
-        parts.push(gene.content);
-        geneCount++;
       }
+      geneCount++;
     }
 
     const compiled = parts.join("\n\n");
@@ -104,7 +116,7 @@ export class PromptCompiler {
     if (!this.validateCompiledPrompt(compiled)) {
       return {
         prompt: FALLBACK_PROMPTS[task],
-        segment_id: "default",
+        segment_id: segment.segment_id,
         genome_id: genome.id,
         variant_id: null,
         gene_count: 0,
@@ -114,18 +126,26 @@ export class PromptCompiler {
 
     const result: CompiledPrompt = {
       prompt: compiled,
-      segment_id: "default",
+      segment_id: segment.segment_id,
       genome_id: genome.id,
       variant_id: null,
       gene_count: geneCount,
       cached: false,
     };
-    this.cache.set(cacheKey, result);
+    this.evictAndSet(cacheKey, result);
     return result;
   }
 
   clearCache(): void {
     this.cache.clear();
+  }
+
+  private evictAndSet(key: string, value: CompiledPrompt): void {
+    if (this.cache.size >= MAX_CACHE_SIZE) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, value);
   }
 
   private interpolateTraits(content: string, traits: Trait[]): string {
@@ -146,7 +166,7 @@ export class PromptCompiler {
   }
 
   private validateCompiledPrompt(prompt: string): boolean {
-    if (prompt.length <= 50) return false;
+    if (prompt.length <= MIN_PROMPT_LENGTH) return false;
     if (/\{\{.*?\}\}/.test(prompt)) return false;
     return true;
   }

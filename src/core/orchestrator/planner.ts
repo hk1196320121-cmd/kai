@@ -73,7 +73,8 @@ export class Planner {
       } else {
         systemPrompt = PLANNER_SYSTEM_PROMPT;
       }
-    } catch {
+    } catch (err) {
+      console.error("Prompt compilation failed, using fallback:", err);
       systemPrompt = PLANNER_SYSTEM_PROMPT;
     }
 

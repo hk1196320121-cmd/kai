@@ -359,9 +359,12 @@ export class GeneStore {
     win_rate: number;
     battle_count: number;
     previous_variant_id: string | null;
-  }): void {
-    const id = randomUUID();
+  }): boolean {
     const current = this.getChampion(input.task, input.segment_id, input.model);
+    if (current?.is_locked) {
+      return false;
+    }
+    const id = randomUUID();
     if (current) {
       this.db
         .query(
@@ -392,6 +395,7 @@ export class GeneStore {
         $bc: input.battle_count,
         $prev: input.previous_variant_id ?? current?.variant_id ?? null,
       });
+    return true;
   }
 
   lockChampion(task: PromptTask, segmentId: string, model?: string): void {

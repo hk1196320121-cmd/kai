@@ -104,16 +104,6 @@ export class LLMProvider {
     throw new Error("LLM call failed after retries");
   }
 
-  async callWithModel(
-    model: string,
-    prompt: string,
-    systemPrompt: string,
-    retries = 1,
-    options?: { max_tokens?: number },
-  ): Promise<Record<string, unknown>> {
-    return this.call(prompt, systemPrompt, retries, { ...options, model });
-  }
-
   async parseResponse(response: {
     choices: { message: { content: string } }[];
   }): Promise<Record<string, unknown>> {

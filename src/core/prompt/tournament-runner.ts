@@ -8,6 +8,7 @@ export interface TournamentConfig {
   segment_id: string;
   model: string;
   sample_size?: number;
+  max_variants?: number;
 }
 
 export interface TournamentRunResult {
@@ -16,12 +17,17 @@ export interface TournamentRunResult {
   error?: string;
 }
 
+const MAX_VARIANTS = 10;
+const DEFAULT_SAMPLE_SIZE = 10;
+
 export class TournamentRunner {
   private store: GeneStore;
   private judge: JudgeEngine;
+  private llm: LLMProvider;
 
   constructor(store: GeneStore, llm: LLMProvider) {
     this.store = store;
+    this.llm = llm;
     this.judge = new JudgeEngine(llm);
   }
 
@@ -40,7 +46,9 @@ export class TournamentRunner {
       return { battles_run: 0, tournaments: [], error: "no genome found" };
     }
 
-    const variants = this.store.listVariantsByGenome(genome.id);
+    const allVariants = this.store.listVariantsByGenome(genome.id);
+    const maxVariants = config.max_variants ?? MAX_VARIANTS;
+    const variants = allVariants.slice(-maxVariants);
     if (variants.length < 2) {
       return {
         battles_run: 0,
@@ -49,7 +57,8 @@ export class TournamentRunner {
       };
     }
 
-    const sampleSize = config.sample_size ?? Math.min(10, evalCases.length);
+    const sampleSize =
+      config.sample_size ?? Math.min(DEFAULT_SAMPLE_SIZE, evalCases.length);
     const sampledCases = evalCases.slice(0, sampleSize);
 
     const tournamentIds: string[] = [];
@@ -71,9 +80,15 @@ export class TournamentRunner {
           });
 
           try {
+            // Generate outputs from each variant prompt, then compare
+            const [outputA, outputB] = await Promise.all([
+              this.llm.call(evalCase.input, variantA.compiled_prompt),
+              this.llm.call(evalCase.input, variantB.compiled_prompt),
+            ]);
+
             const result = await this.judge.majorityVote(
-              variantA.compiled_prompt,
-              variantB.compiled_prompt,
+              JSON.stringify(outputA),
+              JSON.stringify(outputB),
               evalCase.input,
             );
 

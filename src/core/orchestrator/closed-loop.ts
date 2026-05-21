@@ -26,13 +26,10 @@ type TraitSnapshot = { value: number; confidence: number; updatedAt: string };
 
 export class ClosedLoopEngine {
   private profileEngine: ProfileEngine;
-  // TODO: store will be needed for persisting trait snapshots across restarts (planned feature)
-  private _store: OrchestratorStore;
   private previousTraits: Map<string, TraitSnapshot>;
 
-  constructor(profileEngine: ProfileEngine, store: OrchestratorStore) {
+  constructor(profileEngine: ProfileEngine, _store: OrchestratorStore) {
     this.profileEngine = profileEngine;
-    this._store = store;
     this.previousTraits = this.snapshotTraits();
   }
 

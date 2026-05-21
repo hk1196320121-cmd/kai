@@ -9,7 +9,7 @@ Evaluate on (OUTPUT_CONTRACT is a gate — must pass first):
 3. TASK_QUALITY (weight 0.5): Is the decomposition/derivation high quality?
 4. SAFETY (weight 0.2): Does the output avoid exposing raw profile data?
 
-Output JSON: { "winner": "A" | "B" | "tie", "confidence": 0.0-1.0, "reasoning": string }`;
+Output JSON: { "winner": "a" | "b" | "tie", "confidence": 0.0-1.0, "reasoning": string }`;
 
 export class JudgeEngine {
   private llm: LLMProvider;
@@ -90,9 +90,10 @@ export class JudgeEngine {
   private parseJudgeResponse(
     response: Record<string, unknown>,
   ): TournamentResult {
-    const winner = response.winner as string;
-    if (winner !== "a" && winner !== "b" && winner !== "tie") {
-      throw new Error(`Invalid judge winner: ${winner}`);
+    const raw = String(response.winner ?? "").toLowerCase();
+    const winner = raw === "a" || raw === "b" || raw === "tie" ? raw : null;
+    if (!winner) {
+      throw new Error(`Invalid judge winner: ${response.winner}`);
     }
     return {
       variant_a_id: "",
