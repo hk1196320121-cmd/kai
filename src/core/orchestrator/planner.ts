@@ -1,6 +1,7 @@
 import type { LLMProvider } from "../../llm/provider";
 import type { Trait } from "../profile/types";
 import type { PromptCompiler } from "../prompt/prompt-compiler";
+import type { TelemetryRecorder } from "../telemetry/recorder";
 import { formatProfileContext } from "./profile-context";
 import type { OrchestratorStore } from "./store";
 import type { Idea, PlannedTask } from "./types";
@@ -46,20 +47,30 @@ export class Planner {
   private store: OrchestratorStore;
   private llm: LLMProvider;
   private compiler: PromptCompiler | null;
+  private telemetry: TelemetryRecorder | null;
 
   constructor(
     store: OrchestratorStore,
     llm: LLMProvider,
     compiler?: PromptCompiler,
+    telemetry: TelemetryRecorder | null = null,
   ) {
     this.store = store;
     this.llm = llm;
     this.compiler = compiler ?? null;
+    this.telemetry = telemetry;
   }
 
   async decomposeIdea(ideaId: string, traits: Trait[]): Promise<PlannedTask[]> {
+    const trace = this.telemetry?.startTrace("internal", "planner.decompose");
+    const span = trace?.startSpan("task_exec", "decompose idea into tasks");
+
     const idea = this.store.getIdea(ideaId);
-    if (!idea) throw new Error("Idea not found");
+    if (!idea) {
+      span?.end("error");
+      trace?.end("error");
+      throw new Error("Idea not found");
+    }
 
     const profileContext = formatProfileContext(traits);
     const prompt = this.buildPrompt(idea, profileContext);
@@ -86,7 +97,10 @@ export class Planner {
         this.llm.validateWithSchema(response as Record<string, unknown>, [
           "tasks",
         ]);
-        return this.processAndPersist(idea, response);
+        const result = this.processAndPersist(idea, response);
+        span?.end("ok");
+        trace?.end("completed");
+        return result;
       } catch {
         // Retry once with simpler prompt
         try {
@@ -98,12 +112,21 @@ export class Planner {
             retryResponse as Record<string, unknown>,
             ["tasks"],
           );
-          return this.processAndPersist(idea, retryResponse);
+          const result = this.processAndPersist(idea, retryResponse);
+          span?.end("ok");
+          trace?.end("completed");
+          return result;
         } catch {
-          return this.fallbackSingleTask(idea);
+          const result = this.fallbackSingleTask(idea);
+          span?.end("ok");
+          trace?.end("completed");
+          return result;
         }
       }
-    } catch {
+    } catch (err) {
+      span?.error(err as Error);
+      span?.end("error");
+      trace?.end("error");
       return this.fallbackSingleTask(idea);
     }
   }

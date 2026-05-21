@@ -1,4 +1,5 @@
 import type { LLMProvider } from "../../llm/provider";
+import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { GeneStore } from "./gene-store";
 import { JudgeEngine } from "./judge-engine";
 import type { PromptTask } from "./types";
@@ -24,16 +25,27 @@ export class TournamentRunner {
   private store: GeneStore;
   private judge: JudgeEngine;
   private llm: LLMProvider;
+  private telemetry: TelemetryRecorder | null;
 
-  constructor(store: GeneStore, llm: LLMProvider) {
+  constructor(
+    store: GeneStore,
+    llm: LLMProvider,
+    telemetry: TelemetryRecorder | null = null,
+  ) {
     this.store = store;
     this.llm = llm;
+    this.telemetry = telemetry;
     this.judge = new JudgeEngine(llm);
   }
 
   async run(config: TournamentConfig): Promise<TournamentRunResult> {
+    const trace = this.telemetry?.startTrace("internal", "tournament.run");
+    const span = trace?.startSpan("genome_evolve", "prompt tournament");
+
     const evalCases = this.store.listEvalCasesByTask(config.task);
     if (evalCases.length === 0) {
+      span?.end("ok");
+      trace?.end("completed");
       return {
         battles_run: 0,
         tournaments: [],
@@ -43,6 +55,8 @@ export class TournamentRunner {
 
     const genome = this.store.getGenomeByTask(config.task);
     if (!genome) {
+      span?.end("ok");
+      trace?.end("completed");
       return { battles_run: 0, tournaments: [], error: "no genome found" };
     }
 
@@ -50,6 +64,8 @@ export class TournamentRunner {
     const maxVariants = config.max_variants ?? MAX_VARIANTS;
     const variants = allVariants.slice(-maxVariants);
     if (variants.length < 2) {
+      span?.end("ok");
+      trace?.end("completed");
       return {
         battles_run: 0,
         tournaments: [],
@@ -108,6 +124,8 @@ export class TournamentRunner {
       }
     }
 
+    span?.end("ok");
+    trace?.end("completed");
     return { battles_run: battlesRun, tournaments: tournamentIds };
   }
 }

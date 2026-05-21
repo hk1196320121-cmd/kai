@@ -1,6 +1,6 @@
 # MCP Server Reference
 
-Complete API reference for Kai's Model Context Protocol server. Covers all 15 tools (5 profile + 7 orchestrator + 3 prompt), 9 resources, schemas, error handling, and behavior.
+Complete API reference for Kai's Model Context Protocol server. Covers all 18 tools (5 profile + 7 orchestrator + 3 prompt + 3 telemetry), 12 resources, schemas, error handling, and behavior.
 
 ## Starting the Server
 
@@ -283,6 +283,70 @@ Run evolutionary optimization for a task's prompt. Generates new variants via LL
 
 **Returns:** Evolution result with `rounds_completed`, `battles_run`, `champion_promoted`, `champion_variant_id`, and `previous_champion_variant_id`.
 
+## Telemetry Tools (3)
+
+Tools for the flight recorder telemetry system: query trace data, inspect causal chains, and analyze performance with LLM-powered explanations.
+
+### telemetry.query
+
+Run a SQL query against telemetry views. Read-only with strict table allowlist and injection protection.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| sql | `string` | Yes | SQL query (must start with SELECT, semicolons blocked) |
+
+**Allowed tables:** `telemetry_traces_v1`, `telemetry_spans_v1`, `telemetry_events_v1`, `telemetry_state_changes_v1`, `telemetry_errors_v1`, `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors`. Results capped at 1000 rows. UNION, comma-joins, and non-telemetry tables are blocked.
+
+**Returns:** Array of result rows as JSON objects.
+
+### telemetry.trace
+
+Show the full causal chain for a trace: all spans, events, state changes, errors, and suggested actions for failures.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| trace_id | `string` | Yes | Trace ID to inspect |
+
+**Returns:**
+
+```json
+{
+  "trace": { "id", "trigger", "tool_name", "status", "started_at", "duration_ms" },
+  "spans": [{ "id", "operation", "name", "status", "duration_ms", "events", "stateChanges", "errors" }],
+  "suggestedActions": ["string"]
+}
+```
+
+Spans are sorted by start time. Each span includes nested events, state changes, and errors. `suggestedActions` provides recovery guidance when errors are present.
+
+### telemetry.explain
+
+Natural language analysis of telemetry data. Uses LLM to answer questions about traces, errors, and performance patterns.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| question | `string` | Yes | Question about telemetry data |
+
+**Rate limit:** 10 calls per hour. Results cached for 5 minutes.
+
+**Returns:**
+
+```json
+{
+  "summary": "string",
+  "traces": ["trace_id"],
+  "insights": [{ "claim": "string", "evidence": "string" }]
+}
+```
+
+Falls back to a stats-only summary when no LLM API key is configured. LLM failures are not cached to allow retry.
+
 ## Resources
 
 Read-only profile access. All return `application/json`.
@@ -341,6 +405,31 @@ Current champion variant for a task's default segment. Returns champion metadata
 Champion promotion history for a task. Returns an array of champion history entries showing how the champion changed over time.
 
 **Template:** Replace `{task}` with `planner`, `derivator`, or `observer`.
+
+### kai://telemetry/trace/{traceId}
+
+Full causal chain for a specific trace. Returns the trace, all spans with nested events/state changes/errors, and suggested actions.
+
+**Template:** Replace `{traceId}` with a valid trace ID.
+
+### kai://telemetry/recent-errors
+
+Recent telemetry errors. Returns the 20 most recent errors with type, message, recoverability, and timestamp.
+
+### kai://telemetry/health
+
+Telemetry system health stats. Returns:
+
+```json
+{
+  "status": "ok",
+  "traceCount": 42,
+  "errorCount": 3,
+  "errorRate": 0.071,
+  "p95LatencyMs": 150,
+  "retentionDays": 30
+}
+```
 
 ## Confidence Scale Conversion
 

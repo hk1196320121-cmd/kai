@@ -4,6 +4,7 @@ import { registerMcpCommands } from "./mcp";
 import { registerObserveCommands } from "./observe";
 import { registerProfileCommands } from "./profile";
 import { registerPromptCommands } from "./prompt";
+import { registerTelemetryCommands } from "./telemetry";
 import { registerWorkCommands } from "./work";
 
 const program = new Command();
@@ -18,6 +19,7 @@ registerObserveCommands(program);
 registerMcpCommands(program);
 registerWorkCommands(program);
 registerPromptCommands(program);
+registerTelemetryCommands(program);
 
 export { program };
 

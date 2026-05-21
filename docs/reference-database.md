@@ -8,7 +8,7 @@ Default path: `$KAI_DB` or `~/.kai/kai.db`. Override with the `KAI_DB` environme
 
 The database uses WAL (write-ahead logging) mode for concurrent read/write safety. Foreign keys are enabled. Busy timeout is 5000ms.
 
-Migrations run automatically on startup. The schema is versioned from v1 to v6.
+Migrations run automatically on startup. The schema is versioned from v1 to v7.
 
 ## Tables
 
@@ -20,7 +20,7 @@ Tracks the current database schema version.
 |--------|------|-------------|
 | version | INTEGER | PRIMARY KEY |
 
-Always contains a single row with the highest applied migration number (currently 6).
+Always contains a single row with the highest applied migration number (currently 7).
 
 ### `identity`
 
@@ -327,6 +327,105 @@ Audit trail of champion promotions and demotions.
 
 **Index:** `idx_prompt_champion_history_task` on `task`.
 
+### `runtime_traces` (v7)
+
+Top-level telemetry traces. Each trace represents a complete MCP request lifecycle.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| trigger | TEXT | — | NOT NULL |
+| tool_name | TEXT | NULL | The MCP tool that triggered this trace |
+| root_cause | TEXT | NULL | Root cause for error traces |
+| started_at | TEXT | `datetime('now')` | NOT NULL |
+| duration_ms | INTEGER | NULL | Duration in milliseconds |
+| status | TEXT | `'running'` | NOT NULL |
+
+**Indexes:** `idx_traces_started` on `started_at DESC`, `idx_traces_status` on `status`.
+
+### `runtime_spans` (v7)
+
+Individual operations within a trace. Spans can be nested via `parent_span_id`.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| trace_id | TEXT | — | NOT NULL, FK → runtime_traces(id) |
+| parent_span_id | TEXT | NULL | FK → runtime_spans(id) |
+| operation | TEXT | — | NOT NULL |
+| name | TEXT | — | NOT NULL |
+| started_at | TEXT | `datetime('now')` | NOT NULL |
+| duration_ms | INTEGER | NULL | Duration in milliseconds |
+| status | TEXT | `'running'` | NOT NULL |
+| attributes | TEXT | `'{}'` | NOT NULL (JSON) |
+
+**Indexes:** `idx_spans_trace` on `trace_id`, `idx_spans_operation` on `operation`, `idx_spans_started` on `started_at DESC`.
+
+### `runtime_events` (v7)
+
+Events recorded within a span (e.g., cache hit, retry, state transition).
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | INTEGER | AUTO | PRIMARY KEY |
+| span_id | TEXT | — | NOT NULL, FK → runtime_spans(id) |
+| trace_id | TEXT | — | NOT NULL, FK → runtime_traces(id) |
+| type | TEXT | — | NOT NULL |
+| name | TEXT | — | NOT NULL |
+| payload | TEXT | `'{}'` | NOT NULL (JSON) |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+**Indexes:** `idx_events_trace` on `trace_id`, `idx_events_span` on `span_id`, `idx_events_created` on `created_at DESC`.
+
+### `runtime_state_changes` (v7)
+
+State mutations recorded during a span (e.g., trait value changed, observation added).
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | INTEGER | AUTO | PRIMARY KEY |
+| span_id | TEXT | — | NOT NULL, FK → runtime_spans(id) |
+| trace_id | TEXT | — | NOT NULL, FK → runtime_traces(id) |
+| entity_type | TEXT | — | NOT NULL |
+| entity_id | TEXT | — | NOT NULL |
+| field | TEXT | — | NOT NULL |
+| old_value | TEXT | NULL | |
+| new_value | TEXT | NULL | |
+| reason | TEXT | NULL | |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+**Indexes:** `idx_state_changes_entity` on `(entity_type, entity_id)`, `idx_state_changes_trace` on `trace_id`, `idx_state_changes_created` on `created_at DESC`.
+
+### `runtime_errors` (v7)
+
+Errors recorded within a span with type, message, stack trace, and recoverability.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | INTEGER | AUTO | PRIMARY KEY |
+| span_id | TEXT | — | NOT NULL, FK → runtime_spans(id) |
+| trace_id | TEXT | — | NOT NULL, FK → runtime_traces(id) |
+| error_type | TEXT | — | NOT NULL |
+| message | TEXT | — | NOT NULL |
+| stack_trace | TEXT | NULL | |
+| recoverable | INTEGER | 0 | NOT NULL (0 or 1) |
+| context | TEXT | `'{}'` | NOT NULL (JSON) |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+**Indexes:** `idx_errors_trace` on `trace_id`, `idx_errors_created` on `created_at DESC`.
+
+### Telemetry Views (v7)
+
+Read-only views that expose telemetry data without internal fields. These are the tables available to `telemetry.query`.
+
+| View | Source | Columns |
+|------|--------|---------|
+| `telemetry_traces_v1` | `runtime_traces` | id, trigger, tool_name, started_at, duration_ms, status |
+| `telemetry_spans_v1` | `runtime_spans` | id, trace_id, parent_span_id, operation, name, started_at, duration_ms, status, attributes |
+| `telemetry_events_v1` | `runtime_events` | id, span_id, trace_id, type, name, payload, created_at |
+| `telemetry_state_changes_v1` | `runtime_state_changes` | id, span_id, trace_id, entity_type, entity_id, field, old_value, new_value, reason, created_at |
+| `telemetry_errors_v1` | `runtime_errors` | id, span_id, trace_id, error_type, message, recoverable, context, created_at |
+
 ## Migration history
 
 | Version | Changes |
@@ -337,6 +436,7 @@ Audit trail of champion promotions and demotions.
 | v4 | Add `workspaces`, `workspace_tasks`, `workspace_events` tables. Add `coldstart`, `workspace` to observation sources. Table rebuild with transaction |
 | v5 | Add `ideas`, `planned_tasks`, `execution_results` tables. Remove source CHECK constraint (accept any string). Supports `execution_result` source |
 | v6 | Add `prompt_genes`, `prompt_genomes`, `prompt_variants`, `prompt_segments`, `prompt_eval_cases`, `prompt_tournaments`, `prompt_champions`, `prompt_champion_history` tables. Prompt genome system for evolutionary prompt optimization |
+| v7 | Add `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors` tables with 10+ indexes. Add 5 telemetry views (`telemetry_*_v1`). Flight recorder telemetry system for full causal chain tracing |
 
 All migrations use `PRAGMA foreign_keys = OFF` during table rebuilds, then re-enable. Transactions wrap destructive operations. `PRAGMA integrity_check` runs after each rebuild migration.
 

@@ -4,10 +4,15 @@ import {
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ProfileEngine } from "../core/profile/engine";
 import { internalToMcp } from "../core/profile/mcp-scale";
+import type { TelemetryRecorder } from "../core/telemetry/recorder";
 import type { KaiDB } from "../db/client";
 import { safeJsonParse } from "./utils";
 
-export function registerResources(server: McpServer, db: KaiDB): void {
+export function registerResources(
+  server: McpServer,
+  db: KaiDB,
+  _telemetry: TelemetryRecorder | null = null,
+): void {
   const engine = new ProfileEngine(db);
 
   // 1. kai://profile/identity

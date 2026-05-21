@@ -18,6 +18,7 @@ All configuration is via environment variables. No config files needed.
 | `LLM_API_KEY` | (empty) | API key for LLM calls. Required for profile derivation (`method: "llm"`) and orchestrator planning |
 | `LLM_BASE_URL` | `http://localhost:11434/v1` | LLM API endpoint. OpenAI-compatible `/chat/completions` format |
 | `LLM_MODEL` | `gpt-4o-mini` | Model name sent to the LLM API |
+| `KAI_TELEMETRY_RETENTION_DAYS` | `30` | Days to keep telemetry data. Pruning runs every 24 hours automatically |
 
 ## Set up LLM for trait derivation
 

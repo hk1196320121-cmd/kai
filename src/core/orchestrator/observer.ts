@@ -1,4 +1,5 @@
 import type { ProfileEngine } from "../profile/engine";
+import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { OrchestratorStore } from "./store";
 import type { ExecutionResult, Idea, PlannedTask } from "./types";
 
@@ -27,10 +28,16 @@ export interface ProcessedObservation {
 export class Observer {
   private store: OrchestratorStore;
   private profileEngine: ProfileEngine;
+  private telemetry: TelemetryRecorder | null;
 
-  constructor(store: OrchestratorStore, profileEngine: ProfileEngine) {
+  constructor(
+    store: OrchestratorStore,
+    profileEngine: ProfileEngine,
+    telemetry: TelemetryRecorder | null = null,
+  ) {
     this.store = store;
     this.profileEngine = profileEngine;
+    this.telemetry = telemetry;
   }
 
   processResult(
@@ -41,58 +48,73 @@ export class Observer {
       ideaResults: ExecutionResult[];
     },
   ): ProcessedObservation[] {
-    const observations: ProcessedObservation[] = [];
-    const task = prefetched?.task ?? this.store.getTask(result.task_id);
-
-    // Task completion observation
-    observations.push(
-      this.emitObservation(
-        "behavior",
-        `execution:task_completion:${result.task_id}`,
-        JSON.stringify({
-          success: result.success,
-          duration_ms: result.duration_ms,
-        }),
-        result.success
-          ? OBSERVATION_CONFIDENCE_SUCCESS
-          : OBSERVATION_CONFIDENCE_FAILURE,
-      ),
+    const trace = this.telemetry?.startTrace(
+      "internal",
+      "observer.processResult",
     );
+    const span = trace?.startSpan("task_exec", "process execution result");
 
-    // Duration observation
-    observations.push(
-      this.emitObservation(
-        "behavior",
-        `execution:duration:${result.task_id}`,
-        JSON.stringify({ duration_ms: result.duration_ms }),
-        OBSERVATION_CONFIDENCE_DURATION,
-      ),
-    );
+    try {
+      const observations: ProcessedObservation[] = [];
+      const task = prefetched?.task ?? this.store.getTask(result.task_id);
 
-    // Domain observation (if task found)
-    if (task) {
-      const idea = prefetched?.idea ?? this.store.getIdea(task.idea_id);
-      if (idea) {
-        const ideaResults =
-          prefetched?.ideaResults ?? this.store.getResultsByIdea(idea.id);
-        const completed = ideaResults.filter((r) => r.success).length;
-        const failed = ideaResults.filter((r) => !r.success).length;
-        observations.push(
-          this.emitObservation(
-            "signal",
-            `execution:domain:${idea.domain}`,
-            JSON.stringify({ completed, failed, total: ideaResults.length }),
-            5,
-          ),
+      // Task completion observation
+      observations.push(
+        this.emitObservation(
+          "behavior",
+          `execution:task_completion:${result.task_id}`,
+          JSON.stringify({
+            success: result.success,
+            duration_ms: result.duration_ms,
+          }),
+          result.success
+            ? OBSERVATION_CONFIDENCE_SUCCESS
+            : OBSERVATION_CONFIDENCE_FAILURE,
+        ),
+      );
+
+      // Duration observation
+      observations.push(
+        this.emitObservation(
+          "behavior",
+          `execution:duration:${result.task_id}`,
+          JSON.stringify({ duration_ms: result.duration_ms }),
+          OBSERVATION_CONFIDENCE_DURATION,
+        ),
+      );
+
+      // Domain observation (if task found)
+      if (task) {
+        const idea = prefetched?.idea ?? this.store.getIdea(task.idea_id);
+        if (idea) {
+          const ideaResults =
+            prefetched?.ideaResults ?? this.store.getResultsByIdea(idea.id);
+          const completed = ideaResults.filter((r) => r.success).length;
+          const failed = ideaResults.filter((r) => !r.success).length;
+          observations.push(
+            this.emitObservation(
+              "signal",
+              `execution:domain:${idea.domain}`,
+              JSON.stringify({ completed, failed, total: ideaResults.length }),
+              5,
+            ),
+          );
+        }
+        this.store.updateTaskStatus(
+          task.id,
+          result.success ? "completed" : "failed",
         );
       }
-      this.store.updateTaskStatus(
-        task.id,
-        result.success ? "completed" : "failed",
-      );
-    }
 
-    return observations;
+      span?.end("ok");
+      trace?.end("completed");
+      return observations;
+    } catch (err) {
+      span?.error(err as Error);
+      span?.end("error");
+      trace?.end("error");
+      throw err;
+    }
   }
 
   processFeedback(resultId: number, feedback: string): ProcessedObservation[] {

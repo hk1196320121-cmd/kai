@@ -1,4 +1,5 @@
 import type { LLMProvider } from "../../llm/provider";
+import type { TelemetryStore } from "../telemetry/store";
 import type { TournamentResult, TournamentWinner } from "./types";
 
 const JUDGE_SYSTEM_PROMPT = `You are a prompt quality judge. Compare two prompt outputs for the same task.
@@ -13,9 +14,30 @@ Output JSON: { "winner": "a" | "b" | "tie", "confidence": 0.0-1.0, "reasoning": 
 
 export class JudgeEngine {
   private llm: LLMProvider;
+  private telemetryStore: TelemetryStore | null;
 
-  constructor(llm: LLMProvider) {
+  constructor(llm: LLMProvider, telemetryStore: TelemetryStore | null = null) {
     this.llm = llm;
+    this.telemetryStore = telemetryStore;
+  }
+
+  telemetryScore(): number {
+    if (!this.telemetryStore) return 0.5;
+
+    try {
+      const recentTraces = this.telemetryStore.queryTelemetry(
+        "SELECT status FROM runtime_traces ORDER BY started_at DESC LIMIT 50",
+      );
+      if (recentTraces.length === 0) return 0.5;
+
+      const errorCount = recentTraces.filter(
+        (r) => r.status === "error",
+      ).length;
+      const errorRate = errorCount / recentTraces.length;
+      return 1 - errorRate * 0.5;
+    } catch {
+      return 0.5;
+    }
   }
 
   async judge(

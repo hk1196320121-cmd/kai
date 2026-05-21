@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.6.0.0] - 2026-05-22
+
+### Added
+- **Flight Recorder telemetry system** — full causal chain tracing from MCP request through derivation, orchestration, and prompt genome operations. Every tool call gets a trace, spans, events, state changes, and error records
+- **TelemetryStore** — SQLite CRUD for 5 telemetry tables with SQL injection protection (table allowlist, semicolon rejection, comma-join blocking, UNION blocking, row limit cap)
+- **TelemetryRecorder** — deferred transaction writes with in-memory pending spans, fire-and-forget error handling, and bounded memory via MAX_PENDING_SPANS cap
+- **Recursive attribute sanitizer** — automatic redaction of API keys, tokens, secrets, passwords, and credentials in telemetry payloads
+- **Statistics layer** — error rate, P95 latency, top operations, and state drift detection over configurable time windows
+- **LLM-powered explain** — natural language telemetry analysis with rate limiting (10 calls/hour), result caching, and stats-only fallback when no API key is available
+- **3 MCP telemetry tools** — `telemetry.query` (SQL against telemetry views), `telemetry.trace` (full causal chain with suggested actions), `telemetry.explain` (LLM analysis)
+- **3 MCP telemetry resources** — `kai://telemetry/trace/{traceId}`, `kai://telemetry/recent-errors`, `kai://telemetry/health`
+- **5 CLI telemetry commands** — `kai telemetry health`, `kai telemetry query`, `kai telemetry trace`, `kai telemetry errors`, `kai telemetry explain`
+- **V7 database migration** — 5 telemetry tables, 10+ indices, 5 views. Upgrades from v6 automatically
+- **Orchestrator instrumentation** — Planner, Dispatcher, Observer, and Derivator all emit traces and spans with status and error tracking
+- **Prompt genome instrumentation** — TournamentRunner and JudgeEngine emit traces; JudgeEngine uses telemetry for scoring
+- **withTrace MCP handler wrapper** — generic instrumentation wrapper for all MCP tool handlers with automatic span/trace lifecycle management
+- **Telemetry-driven judge scoring** — JudgeEngine.telemetryScore() uses recent trace data to inform tournament battles
+- **30-day retention pruning** — automatic telemetry cleanup on 24-hour interval with configurable KAI_TELEMETRY_RETENTION_DAYS env var
+
+### Changed
+- `queryTelemetry` uses table allowlist instead of keyword denylist for stronger SQL injection protection
+- `flushBatch` scopes FK toggle tightly around the transaction to minimize the race window
+- `explainTelemetry` no longer caches LLM failure responses, allowing retry after transient errors
+- `getTelemetryStats` validates `lastHours` parameter (falls back to 24 for NaN/negative/non-finite)
+
+### Fixed
+- Comma-join SQL injection bypass in telemetry query allowlist (reported by Codex adversarial review)
+- Unbounded memory growth in TelemetryRecorder.pendingSpans via MAX_PENDING_SPANS eviction cap
+- LLM failure responses cached with 5-minute TTL, blocking retries after recovery
+- BEGIN/ROLLBACK overhead on read-only telemetry queries removed
+
 ## [0.5.0.0] - 2026-05-21
 
 ### Added

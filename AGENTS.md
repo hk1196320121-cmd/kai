@@ -173,7 +173,7 @@ Run evolutionary optimization for a task's prompt. Generates new variants via LL
 
 **Returns:** Evolution result with rounds completed, battles run, champion promotion status, and variant IDs.
 
-## MCP Resources (9)
+## MCP Resources (12)
 
 Resources are read-only profile access endpoints. All return `application/json`.
 
@@ -188,6 +188,9 @@ Resources are read-only profile access endpoints. All return `application/json`.
 | `kai://prompt/{task}` | Compiled prompt for a task (planner, derivator, observer) |
 | `kai://prompt/champion/{task}` | Current champion variant for a task |
 | `kai://prompt/evolution-history/{task}` | Champion promotion history for a task |
+| `kai://telemetry/trace/{traceId}` | Full causal chain for a specific trace |
+| `kai://telemetry/recent-errors` | Recent telemetry errors |
+| `kai://telemetry/health` | Telemetry system health stats |
 
 ## CLI Commands
 
@@ -225,6 +228,13 @@ kai prompt champion lock --task planner    # Lock champion (prevent rollback)
 kai prompt champion rollback --task planner # Rollback to previous champion
 kai prompt evolve --task planner --rounds 3  # Run 3 evolution rounds
 kai prompt tournament results --task planner --last 5  # Recent tournaments
+
+# Telemetry
+kai telemetry health                   # Show telemetry health
+kai telemetry query "SELECT ..."       # SQL query against telemetry views
+kai telemetry trace <trace-id>         # Full causal chain
+kai telemetry errors                   # Recent errors
+kai telemetry explain "question"       # LLM-powered analysis
 ```
 
 ## Architecture
@@ -237,8 +247,10 @@ src/
     handlers.ts     5 profile tool handlers with rate limiting and dedup
     orchestrator-handlers.ts  7 orchestrator tool handlers
     prompt-handlers.ts   3 prompt genome tool handlers (compile, champion, evolve)
-    prompt-resources.ts  3 prompt resource endpoints (kai://prompt/*)
     prompt-schema.ts     Zod schemas for prompt tools
+    telemetry-handlers.ts  3 telemetry tool handlers (query, trace, explain)
+    telemetry-resources.ts 3 telemetry resource endpoints (kai://telemetry/*)
+    telemetry-schema.ts    Zod schemas for telemetry tools
     orchestrator-schema.ts    Zod schemas for orchestrator tools
     resources.ts    6 profile resource endpoints
     schema.ts       Zod input validation schemas (profile tools)
@@ -276,7 +288,7 @@ src/
     types.ts        Workspace, Task, Event type definitions
   bridge/           Bridges
     agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
-  db/               SQLite client with WAL mode and schema migrations (v1–v6)
+  db/               SQLite client with WAL mode and schema migrations (v1–v7)
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
@@ -287,6 +299,7 @@ Data flows:
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
 - **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
 - **Prompt genome path**: Genes → Genome → Compiler (profile-aware segments) → Variant → Tournament (A/B battle) → Judge (LLM-as-judge) → Champion promotion → Evolution loop
+- **Telemetry path**: MCP tool call → withTrace wrapper → Trace + Spans + Events + State changes + Errors → SQLite telemetry tables → 30-day retention pruning. `telemetry.query`/`trace`/`explain` tools read back telemetry data
 - All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts
@@ -330,13 +343,13 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v6). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v7). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (440 across 59 files)
+bun test             # Run tests (545 across 74 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

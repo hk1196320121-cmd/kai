@@ -188,6 +188,72 @@ kai mcp serve --db /path/db    # Custom database path
 
 The server reads JSON-RPC from stdin and writes to stdout. Structured logs go to stderr in JSON-line format.
 
+## `kai telemetry`
+
+Flight recorder telemetry: query traces, inspect errors, and analyze performance.
+
+### `kai telemetry health`
+
+Show telemetry system health: trace and error counts, retention status.
+
+```bash
+kai telemetry health
+```
+
+No flags. Outputs total traces, error count, error rate, and retention pruning status.
+
+### `kai telemetry query`
+
+Run a SQL query against telemetry views. Read-only with table allowlist enforcement.
+
+```bash
+kai telemetry query "SELECT * FROM runtime_traces LIMIT 10"
+```
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<sql>` | Yes | SQL query (must start with SELECT, only telemetry tables allowed) |
+
+Allowed tables: `telemetry_traces_v1`, `telemetry_spans_v1`, `telemetry_events_v1`, `telemetry_state_changes_v1`, `telemetry_errors_v1`, `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors`. Results capped at 1000 rows.
+
+### `kai telemetry trace`
+
+Show the full causal chain for a trace: spans, events, state changes, errors, and suggested actions.
+
+```bash
+kai telemetry trace <trace-id>
+```
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<trace-id>` | Yes | Trace ID to inspect |
+
+Outputs spans sorted by start time, nested events and state changes per span, errors with recoverability, and suggested actions for failures.
+
+### `kai telemetry errors`
+
+Show recent telemetry errors.
+
+```bash
+kai telemetry errors
+```
+
+No flags. Outputs the 20 most recent errors with type, message, recoverability, and timestamp.
+
+### `kai telemetry explain`
+
+Natural language analysis of telemetry data. LLM-powered with rate limiting (10 calls/hour).
+
+```bash
+kai telemetry explain "What's causing the most errors?"
+```
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<question>` | No | Question about telemetry data (uses stats-only fallback if omitted or no LLM key) |
+
+Falls back to a stats summary when no LLM API key is configured. Caches results for 5 minutes.
+
 ## Environment variables
 
 | Variable | Default | Description |
@@ -197,6 +263,7 @@ The server reads JSON-RPC from stdin and writes to stdout. Structured logs go to
 | `LLM_API_KEY` | (empty) | API key for LLM calls (OpenAI-compatible) |
 | `LLM_BASE_URL` | `http://localhost:11434/v1` | LLM API endpoint |
 | `LLM_MODEL` | `gpt-4o-mini` | Model name for LLM calls |
+| `KAI_TELEMETRY_RETENTION_DAYS` | `30` | Days to retain telemetry data before automatic pruning |
 
 See [How to Configure Kai](howto-configure.md) for setup instructions.
 
@@ -349,6 +416,6 @@ kai prompt tournament results --task planner --last 5
 
 ## Related
 
-- [MCP Server Reference](reference-mcp-server.md) — complete API for all 15 tools and 9 resources
+- [MCP Server Reference](reference-mcp-server.md) — complete API for all 18 tools and 12 resources
 - [How to Configure Kai](howto-configure.md) — environment variables and LLM setup
 - [Database Schema Reference](reference-database.md) — tables, migrations, and data model
