@@ -95,4 +95,32 @@ describe("TelemetryStats", () => {
     expect(stats.topMutatedEntities.length).toBeGreaterThan(0);
     expect(stats.topMutatedEntities[0].entity_type).toBe("trait");
   });
+
+  test("invalid lastHours: 0 falls back to 24", () => {
+    store.insertTrace({
+      id: "t1", trigger: "mcp_request", tool_name: "test",
+      started_at: new Date().toISOString(), duration_ms: 10, status: "completed",
+    });
+    const stats = getTelemetryStats(store, 0);
+    // With fallback to 24h, the recent trace should be found
+    expect(stats.traceCount).toBe(1);
+  });
+
+  test("invalid lastHours: -1 falls back to 24", () => {
+    store.insertTrace({
+      id: "t1", trigger: "mcp_request", tool_name: "test",
+      started_at: new Date().toISOString(), duration_ms: 10, status: "completed",
+    });
+    const stats = getTelemetryStats(store, -1);
+    expect(stats.traceCount).toBe(1);
+  });
+
+  test("invalid lastHours: NaN falls back to 24", () => {
+    store.insertTrace({
+      id: "t1", trigger: "mcp_request", tool_name: "test",
+      started_at: new Date().toISOString(), duration_ms: 10, status: "completed",
+    });
+    const stats = getTelemetryStats(store, NaN);
+    expect(stats.traceCount).toBe(1);
+  });
 });
