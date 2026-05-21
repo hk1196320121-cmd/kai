@@ -1,6 +1,6 @@
 {
   "name": "kai",
-  "version": "0.5.0.0",
+  "version": "0.6.0.0",
   "description": "Intelligent task orchestration and personal assistant system",
   "type": "module",
   "bin": {

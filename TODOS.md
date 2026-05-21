@@ -2,6 +2,10 @@
 
 ## Completed
 
+### Flight Recorder Telemetry System
+- **What**: Full causal chain telemetry — trace every MCP request through derivation, orchestration, and prompt genome with spans, events, state changes, and error records
+- **Completed**: v0.6.0.0 (2026-05-22) — TelemetryStore, TelemetryRecorder, Sanitizer, Stats, LLM Explain, 3 MCP tools, 3 MCP resources, 5 CLI commands, V7 migration, orchestrator/prompt instrumentation, 545 tests across 74 files
+
 ### MCP Server 设计 (TODO 1)
 - **What**: 为 Kai 设计 MCP Server 接口，暴露画像/上下文为 MCP tools/resources
 - **Completed**: v0.2.0.0 (2026-05-19) — 5 tools (profile.read, profile.why, observe.submit, observe.batch, derive.trigger), 6 resources (kai://profile/*), stdio transport, persistent corrections, 152 tests
@@ -17,6 +21,12 @@
 ### LLM Prompt 演化策略 (TODO 4)
 - **What**: 为 profile-derive.md 建立 prompt 版本管理和回归测试
 - **Completed**: v0.5.0.0 (2026-05-21) — Prompt Genome system with GeneStore, PromptCompiler, SegmentMatcher, JudgeEngine, TournamentRunner, PromptEvolver, 3 MCP tools, 3 MCP resources, 8 DB tables (V6 migration), 402 tests across 53 files
+
+## Telemetry: Extend kai://system/health with telemetry stats
+- **What**: The health resource (`src/mcp/resources.ts`) accepts `_telemetry` parameter but doesn't include telemetry statistics in its output body
+- **Priority:** P1
+- **Context:** Deferred from Flight Recorder plan (T13). Signature plumbing exists, body integration missing
+- **Added**: 2026-05-22 by /ship
 
 ## TODO 2: Pattern Intelligence 设计
 - **What**: 设计观察数据的主动模式发现引擎
