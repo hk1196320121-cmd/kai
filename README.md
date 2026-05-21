@@ -188,7 +188,9 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
 | [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
 | [How to Use the Orchestrator](docs/howto-orchestrator.md) | How-to | Submitting ideas, approving plans, executing tasks, re-planning |
+| [How to Run Prompt Evolution](docs/howto-prompt-evolution.md) | How-to | Running evolution rounds, managing champions, troubleshooting |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
+| [How the Prompt Genome Works](docs/explanation-prompt-genome.md) | Explanation | Genes, segments, tournaments, judge criteria, design trade-offs |
 | [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
 | [How the Orchestrator Works](docs/explanation-orchestrator.md) | Explanation | Profile-aware planning, closed loop, clustering, design trade-offs |
 | [Orchestrator Tutorial](docs/tutorial-first-idea.md) | Tutorial | From idea submission to execution and profile feedback in 10 minutes |
