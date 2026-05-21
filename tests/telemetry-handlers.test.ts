@@ -114,4 +114,31 @@ describe("Telemetry MCP Handlers", () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.summary).toBeDefined();
   });
+
+  test("telemetry.trace suggested_actions populated when errors present", async () => {
+    const { server, tools } = createMockServer();
+    registerTelemetryHandlers(server, store, null);
+
+    store.insertTrace({
+      id: "t-err", trigger: "mcp_request", tool_name: "test",
+      started_at: new Date().toISOString(), duration_ms: 50, status: "error",
+    });
+    store.insertSpan({
+      id: "s-err", trace_id: "t-err", parent_span_id: null, operation: "mcp_tool",
+      name: "test", started_at: new Date().toISOString(),
+      duration_ms: 50, status: "error", attributes: {},
+    });
+    store.insertError({
+      span_id: "s-err", trace_id: "t-err",
+      error_type: "Error", message: "something failed",
+      stack_trace: null, recoverable: 0, context: {},
+    });
+
+    const handler = tools.get("telemetry.trace")!.handler;
+    const result = await handler({ traceId: "t-err" });
+    const data = JSON.parse(result.content[0].text);
+    expect(data.errors).toHaveLength(1);
+    expect(data.suggested_actions.length).toBeGreaterThan(0);
+    expect(data.suggested_actions[0].description).toContain("something failed");
+  });
 });
