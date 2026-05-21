@@ -8,7 +8,7 @@ Default path: `$KAI_DB` or `~/.kai/kai.db`. Override with the `KAI_DB` environme
 
 The database uses WAL (write-ahead logging) mode for concurrent read/write safety. Foreign keys are enabled. Busy timeout is 5000ms.
 
-Migrations run automatically on startup. The schema is versioned from v1 to v5.
+Migrations run automatically on startup. The schema is versioned from v1 to v6.
 
 ## Tables
 
@@ -20,7 +20,7 @@ Tracks the current database schema version.
 |--------|------|-------------|
 | version | INTEGER | PRIMARY KEY |
 
-Always contains a single row with the highest applied migration number (currently 5).
+Always contains a single row with the highest applied migration number (currently 6).
 
 ### `identity`
 
@@ -206,6 +206,127 @@ Results from task execution.
 
 **Index:** `idx_execution_results_task`.
 
+### `prompt_genes` (v6)
+
+Prompt gene library — each gene is a reusable prompt fragment typed by function (intent, contract, adapter, example, tone).
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task | TEXT | — | NOT NULL, CHECK(IN ('planner','derivator','observer')) |
+| type | TEXT | — | NOT NULL, CHECK(IN ('intent','contract','adapter','example','tone')) |
+| content | TEXT | — | NOT NULL |
+| trait_bindings | TEXT | `'{}'` | NOT NULL (JSON) |
+| metadata | TEXT | `'{}'` | NOT NULL (JSON) |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+### `prompt_genomes` (v6)
+
+Assembled genomes — ordered collections of gene IDs for a task.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task | TEXT | — | NOT NULL |
+| gene_ids | TEXT | — | NOT NULL (JSON array of gene IDs) |
+| compiler_config | TEXT | `'{}'` | NOT NULL (JSON) |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+### `prompt_variants` (v6)
+
+Compiled prompt variants — the output of assembling a genome into a full prompt string. Tracks lineage via parent_variant_id.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| genome_id | TEXT | — | NOT NULL, FK → prompt_genomes(id) |
+| compiled_prompt | TEXT | — | NOT NULL |
+| generation | INTEGER | 1 | NOT NULL |
+| parent_variant_id | TEXT | NULL | FK → prompt_variants(id) |
+| mutation_type | TEXT | NULL | Seed, rephrase, adjust, etc. |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+### `prompt_segments` (v6)
+
+Profile-based segments for prompt personalization. Each segment defines trait constraints that match user profiles.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| name | TEXT | — | NOT NULL |
+| trait_constraints | TEXT | `'{}'` | NOT NULL (JSON) |
+| description | TEXT | `''` | NOT NULL |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+### `prompt_eval_cases` (v6)
+
+Test cases for tournament evaluation. Each case has an input, optional expected output, and difficulty/source classification.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task | TEXT | — | NOT NULL |
+| input | TEXT | — | NOT NULL |
+| expected_output | TEXT | NULL | Optional expected result |
+| difficulty | TEXT | `'medium'` | NOT NULL, CHECK(IN ('easy','medium','hard')) |
+| source | TEXT | `'synthetic'` | NOT NULL, CHECK(IN ('synthetic','real','edge_case')) |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+### `prompt_tournaments` (v6)
+
+Pairwise battle records between two variants, judged by LLM.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task | TEXT | — | NOT NULL |
+| variant_a_id | TEXT | — | NOT NULL, FK → prompt_variants(id) |
+| variant_b_id | TEXT | — | NOT NULL, FK → prompt_variants(id) |
+| eval_case_id | TEXT | — | NOT NULL, FK → prompt_eval_cases(id) |
+| segment_id | TEXT | NULL | FK → prompt_segments(id) |
+| model | TEXT | `'gpt-4o-mini'` | NOT NULL |
+| winner | TEXT | NULL | CHECK(IN ('a','b','tie')) |
+| judge_reasoning | TEXT | NULL | LLM judge explanation |
+| judge_confidence | REAL | NULL | CHECK(0.0–1.0) |
+| judged_at | TEXT | NULL | |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+
+### `prompt_champions` (v6)
+
+Current champion variant per task and segment. Only one champion per task/segment pair.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task | TEXT | — | NOT NULL |
+| segment_id | TEXT | — | NOT NULL, FK → prompt_segments(id) |
+| variant_id | TEXT | — | NOT NULL, FK → prompt_variants(id) |
+| model | TEXT | `'gpt-4o-mini'` | NOT NULL |
+| win_rate | REAL | — | NOT NULL |
+| battle_count | INTEGER | — | NOT NULL |
+| promoted_at | TEXT | `datetime('now')` | NOT NULL |
+| previous_variant_id | TEXT | NULL | The variant this champion replaced |
+| is_locked | INTEGER | 0 | NOT NULL — locked champions cannot be rolled back |
+
+### `prompt_champion_history` (v6)
+
+Audit trail of champion promotions and demotions.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task | TEXT | — | NOT NULL |
+| segment_id | TEXT | — | NOT NULL |
+| variant_id | TEXT | — | NOT NULL |
+| model | TEXT | — | NOT NULL |
+| win_rate | REAL | — | NOT NULL |
+| battle_count | INTEGER | — | NOT NULL |
+| promoted_at | TEXT | — | NOT NULL |
+| demoted_at | TEXT | NULL | |
+| demotion_reason | TEXT | NULL | |
+
+**Index:** `idx_prompt_champion_history_task` on `task`.
+
 ## Migration history
 
 | Version | Changes |
@@ -215,6 +336,7 @@ Results from task execution.
 | v3 | Add `corrections` table for persistent trait corrections |
 | v4 | Add `workspaces`, `workspace_tasks`, `workspace_events` tables. Add `coldstart`, `workspace` to observation sources. Table rebuild with transaction |
 | v5 | Add `ideas`, `planned_tasks`, `execution_results` tables. Remove source CHECK constraint (accept any string). Supports `execution_result` source |
+| v6 | Add `prompt_genes`, `prompt_genomes`, `prompt_variants`, `prompt_segments`, `prompt_eval_cases`, `prompt_tournaments`, `prompt_champions`, `prompt_champion_history` tables. Prompt genome system for evolutionary prompt optimization |
 
 All migrations use `PRAGMA foreign_keys = OFF` during table rebuilds, then re-enable. Transactions wrap destructive operations. `PRAGMA integrity_check` runs after each rebuild migration.
 

@@ -1,6 +1,6 @@
 # MCP Server Reference
 
-Complete API reference for Kai's Model Context Protocol server. Covers all 12 tools (5 profile + 7 orchestrator), 6 resources, schemas, error handling, and behavior.
+Complete API reference for Kai's Model Context Protocol server. Covers all 15 tools (5 profile + 7 orchestrator + 3 prompt), 9 resources, schemas, error handling, and behavior.
 
 ## Starting the Server
 
@@ -240,6 +240,49 @@ Re-plan an idea after closed-loop feedback. Use when the closed-loop engine dete
 
 **Returns:** New plan replacing the previous one, with updated tasks reflecting the current profile state.
 
+## Prompt Genome Tools (3)
+
+Tools for the prompt optimization system: compile prompts from gene libraries, check champion variants, and run evolutionary A/B testing.
+
+### prompt.compile
+
+Compile a prompt for a given task using the current genome. The compiler selects the best gene variants for each type (intent, contract, adapter, example, tone) and assembles them into a complete prompt tailored to the user's profile segment.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| task | `"planner"` \| `"derivator"` \| `"observer"` | Yes | Task to compile prompt for |
+
+**Returns:** Object with `task`, `segment`, `gene_count`, `cached`, and `prompt_length`.
+
+### prompt.champion
+
+Get the current champion variant for a task and optional segment. Champions are the best-performing variants from tournament battles.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| task | `"planner"` \| `"derivator"` \| `"observer"` | Yes | Task to get champion for |
+| segment | `string` | No | Segment ID (default: `"default"`) |
+
+**Returns:** Champion object with variant ID, model, win rate, battle count, promotion date, and lock status. Returns `{ champion: null }` if no champion exists.
+
+### prompt.evolve
+
+Run evolutionary optimization for a task's prompt. Generates new variants via LLM mutations, runs pairwise tournament battles with LLM-as-judge evaluation, and promotes the winner as champion if it outperforms the current one.
+
+**Input schema:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| task | `"planner"` \| `"derivator"` \| `"observer"` | Yes | Task to evolve |
+| rounds | `number` | No | Number of evolution rounds (default: 1) |
+| auto_approve | `boolean` | No | Auto-approve champion promotion (default: false) |
+
+**Returns:** Evolution result with `rounds_completed`, `battles_run`, `champion_promoted`, `champion_variant_id`, and `previous_champion_variant_id`.
+
 ## Resources
 
 Read-only profile access. All return `application/json`.
@@ -280,6 +323,24 @@ System health check. Returns:
   }
 }
 ```
+
+### kai://prompt/{task}
+
+Compiled prompt for a task. Returns a JSON object with the task name, segment, gene count, and a 200-character prompt preview.
+
+**Template:** Replace `{task}` with `planner`, `derivator`, or `observer`.
+
+### kai://prompt/champion/{task}
+
+Current champion variant for a task's default segment. Returns champion metadata or `{ champion: null }` if no champion exists.
+
+**Template:** Replace `{task}` with `planner`, `derivator`, or `observer`.
+
+### kai://prompt/evolution-history/{task}
+
+Champion promotion history for a task. Returns an array of champion history entries showing how the champion changed over time.
+
+**Template:** Replace `{task}` with `planner`, `derivator`, or `observer`.
 
 ## Confidence Scale Conversion
 

@@ -47,4 +47,16 @@ describe("LLMProvider", () => {
     expect(() => provider.validateWithSchema({ dimension: "test", value: 0.5, reasoning: "test" }, ["dimension", "value", "reasoning"]))
       .not.toThrow();
   });
+
+  test("buildRequestBody overrides model when provided", () => {
+    const provider = new LLMProvider({ apiKey: "key", baseUrl: "http://localhost:11434/v1", model: "default-model" });
+    const body = provider.buildRequestBody("prompt", "system", { model: "gpt-4o" });
+    expect(body.model).toBe("gpt-4o");
+  });
+
+  test("buildRequestBody uses default model when no override", () => {
+    const provider = new LLMProvider({ apiKey: "key", baseUrl: "http://localhost:11434/v1", model: "default-model" });
+    const body = provider.buildRequestBody("prompt", "system");
+    expect(body.model).toBe("default-model");
+  });
 });

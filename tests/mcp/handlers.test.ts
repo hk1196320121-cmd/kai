@@ -40,7 +40,11 @@ describe("MCP Tools", () => {
     expect(names).toContain("kai_idea_pause");
     expect(names).toContain("kai_execution_status");
     expect(names).toContain("kai_replan");
-    expect(names.length).toBe(12);
+    // Prompt genome tools
+    expect(names).toContain("prompt.compile");
+    expect(names).toContain("prompt.champion");
+    expect(names).toContain("prompt.evolve");
+    expect(names.length).toBe(15);
   });
 
   test("each tool has a handler function", () => {

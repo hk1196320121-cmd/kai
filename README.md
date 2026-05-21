@@ -7,8 +7,9 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 Kai watches what you do (cron outputs, daily patterns, explicit preferences) and builds a living user profile: identity, behavioral traits, and preferences. Other AI tools can then ask Kai "who is this person?" and get a rich, evidence-based answer.
 
 Core capabilities:
-- **MCP Server** — Model Context Protocol server via stdio. 12 tools (5 profile + 7 orchestrator) and 6 resources (`kai://profile/*`, `kai://system/health`)
+- **MCP Server** — Model Context Protocol server via stdio. 15 tools (5 profile + 7 orchestrator + 3 prompt) and 9 resources (`kai://profile/*`, `kai://prompt/*`, `kai://system/health`)
 - **Orchestrator** — idea-to-execution engine with LLM-powered planning, scheduling, dispatching, observation, and closed-loop re-planning
+- **Prompt Genome** — evolutionary prompt optimization with genes, genomes, tournaments, and LLM-as-judge. Prompts improve over time through automated A/B testing
 - **Cold Start** — `kai work start` bootstraps a profile from 4 questions + git history scan with preview/edit/confirm
 - **Profile Engine** — identity, observations, traits, and preferences with full CRUD
 - **Trait Derivation** — 13 rules across 9 dimensions + LLM-based inference, with source precedence protection
@@ -100,6 +101,20 @@ kai mcp serve
 | `from-cron <file>` | Extract observations from a cron output markdown file |
 | `daily` | Scan all Hermes cron outputs and collect new observations |
 
+### `kai prompt`
+
+| Command | Description |
+|---------|-------------|
+| `prompt gene list [--task T] [--type T] [--json]` | List genes with optional filtering |
+| `prompt gene inspect <gene-id>` | Show full gene details as JSON |
+| `prompt genome compile --task <task> [--json]` | Compile prompt for a task |
+| `prompt genome show --task <task>` | Show genome details as JSON |
+| `prompt champion show --task <task> [--segment S] [--all-segments]` | Show champion info |
+| `prompt champion lock --task <task> [--segment S]` | Lock current champion |
+| `prompt champion rollback --task <task> [--segment S]` | Rollback to previous champion |
+| `prompt evolve --task <task> [--rounds N] [--segment S] [--model M] [--auto]` | Run evolution with tournaments |
+| `prompt tournament results --task <task> [--last N]` | Show tournament history |
+
 ### `kai mcp`
 
 | Command | Description |
@@ -138,14 +153,18 @@ kai mcp serve
 | `kai://profile/observations/recent` | Recent observations |
 | `kai://profile/summary` | Profile summary |
 | `kai://system/health` | System health check |
+| `kai://prompt/{task}` | Compiled prompt for a task (planner, derivator, observer) |
+| `kai://prompt/champion/{task}` | Current champion variant for a task |
+| `kai://prompt/evolution-history/{task}` | Champion promotion history |
 
 ## Architecture
 
 ```
 src/
-  cli/            Commander.js CLI (profile, observe, work, mcp subcommands)
+  cli/            Commander.js CLI (profile, observe, work, mcp, prompt subcommands)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
+  core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)
   workspace/      Workspace/task/event CRUD + event bus for observation collection
   mcp/            MCP server — handlers, resources, schema, stdio transport
   bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
@@ -153,7 +172,7 @@ src/
   llm/            OpenAI-compatible LLM provider with transient-error retry
 ```
 
-Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. MCP clients connect via stdio to read profiles, submit observations, and orchestrate tasks.
+Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. **Prompt Genome**: Genes -> Genome -> Compiler (profile-aware segments) -> Variants -> Tournament (A/B) -> Judge (LLM) -> Champion promotion -> Evolution loop. MCP clients connect via stdio to read profiles, submit observations, orchestrate tasks, and compile/evolve prompts.
 
 Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
@@ -161,7 +180,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 | Document | Type | Description |
 |----------|------|-------------|
-| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 12 tools and 6 resources |
+| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 15 tools and 9 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
 | [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |
@@ -169,7 +188,9 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
 | [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
 | [How to Use the Orchestrator](docs/howto-orchestrator.md) | How-to | Submitting ideas, approving plans, executing tasks, re-planning |
+| [How to Run Prompt Evolution](docs/howto-prompt-evolution.md) | How-to | Running evolution rounds, managing champions, troubleshooting |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
+| [How the Prompt Genome Works](docs/explanation-prompt-genome.md) | Explanation | Genes, segments, tournaments, judge criteria, design trade-offs |
 | [Event Bus](docs/explanation-event-bus.md) | Explanation | How workspace events become profile observations |
 | [How the Orchestrator Works](docs/explanation-orchestrator.md) | Explanation | Profile-aware planning, closed loop, clustering, design trade-offs |
 | [Orchestrator Tutorial](docs/tutorial-first-idea.md) | Tutorial | From idea submission to execution and profile feedback in 10 minutes |

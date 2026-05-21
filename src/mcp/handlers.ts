@@ -4,6 +4,8 @@ import { Derivator } from "../core/profile/derivator";
 import { ProfileEngine } from "../core/profile/engine";
 import { internalToMcp, mcpToInternal } from "../core/profile/mcp-scale";
 import { ProvenanceEngine } from "../core/profile/provenance";
+import { GeneStore } from "../core/prompt/gene-store";
+import { PromptCompiler } from "../core/prompt/prompt-compiler";
 import type { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import {
@@ -235,7 +237,13 @@ export function registerHandlers(server: McpServer, db: KaiDB): void {
         }
       } else {
         try {
-          const llmResults = await derivator.deriveFromLLM(llmProvider);
+          const geneStore = new GeneStore(db);
+          const compiler = new PromptCompiler(geneStore);
+          engine.getTraits();
+          const llmResults = await derivator.deriveFromLLM(
+            llmProvider,
+            compiler,
+          );
           for (const t of llmResults) {
             results.push({
               dimension: t.dimension,

@@ -41,10 +41,10 @@ export class LLMProvider {
   buildRequestBody(
     prompt: string,
     systemPrompt: string,
-    options?: { max_tokens?: number },
+    options?: { max_tokens?: number; model?: string },
   ): Record<string, unknown> {
     return {
-      model: this.config.model,
+      model: options?.model ?? this.config.model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
@@ -59,7 +59,7 @@ export class LLMProvider {
     prompt: string,
     systemPrompt: string,
     retries = 1,
-    options?: { max_tokens?: number },
+    options?: { max_tokens?: number; model?: string },
   ): Promise<Record<string, unknown>> {
     const url = `${this.config.baseUrl}/chat/completions`;
     const body = this.buildRequestBody(prompt, systemPrompt, options);

@@ -1,6 +1,6 @@
 # Kai — AI Behavioral Profile Engine
 
-MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol (stdio) to read user profiles, submit observations, derive behavioral traits, and orchestrate idea-to-execution workflows.
+MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol (stdio) to read user profiles, submit observations, derive behavioral traits, orchestrate idea-to-execution workflows, and optimize prompts through evolutionary A/B testing.
 
 ## Quick Reference
 
@@ -141,7 +141,39 @@ Re-plan an idea after closed-loop feedback. Used when the closed-loop engine det
 
 **Returns:** New plan replacing the previous one, with updated tasks.
 
-## MCP Resources (6)
+## MCP Tools — Prompt Genome (3)
+
+### prompt.compile
+
+Compile a prompt for a given task using the current genome and profile context. The compiler selects the best gene variants for each type (intent, contract, adapter, example, tone) and assembles them into a complete prompt.
+
+**Parameters:**
+- `task` (required): `"planner"` | `"derivator"` | `"observer"` — task to compile prompt for
+
+**Returns:** Compiled prompt metadata with task, segment, gene count, cache status, and prompt length.
+
+### prompt.champion
+
+Get the current champion variant for a task and optional segment. Champions are the best-performing variants from tournament battles.
+
+**Parameters:**
+- `task` (required): `"planner"` | `"derivator"` | `"observer"` — task to get champion for
+- `segment` (optional): `string` — segment ID (default: `"default"`)
+
+**Returns:** Champion object with variant ID, model, win rate, battle count, and lock status. Returns `null` if no champion exists.
+
+### prompt.evolve
+
+Run evolutionary optimization for a task's prompt. Generates new variants via LLM mutations, runs pairwise tournament battles with LLM-as-judge, and promotes the winner as champion if it outperforms the current one.
+
+**Parameters:**
+- `task` (required): `"planner"` | `"derivator"` | `"observer"` — task to evolve
+- `rounds` (optional): `number` — number of evolution rounds (default: 1)
+- `auto_approve` (optional): `boolean` — auto-approve champion promotion (default: false)
+
+**Returns:** Evolution result with rounds completed, battles run, champion promotion status, and variant IDs.
+
+## MCP Resources (9)
 
 Resources are read-only profile access endpoints. All return `application/json`.
 
@@ -153,6 +185,9 @@ Resources are read-only profile access endpoints. All return `application/json`.
 | `kai://profile/observations/recent` | 50 most recent observations |
 | `kai://profile/summary` | Profile summary: identity + top 5 traits by confidence |
 | `kai://system/health` | Database integrity check + observation/trait counts |
+| `kai://prompt/{task}` | Compiled prompt for a task (planner, derivator, observer) |
+| `kai://prompt/champion/{task}` | Current champion variant for a task |
+| `kai://prompt/evolution-history/{task}` | Champion promotion history for a task |
 
 ## CLI Commands
 
@@ -178,19 +213,34 @@ kai observe daily                  # Scan all Hermes cron outputs
 # MCP server
 kai mcp serve                      # Start MCP server (stdio)
 kai mcp serve --db <path>          # Custom database path
+
+# Prompt genome
+kai prompt gene list               # List all genes
+kai prompt gene list --task planner --type intent  # Filter genes
+kai prompt gene inspect <id>       # Show full gene details
+kai prompt genome compile --task planner   # Compile prompt for planner
+kai prompt genome show --task derivator    # Show genome details
+kai prompt champion show --task planner    # Show current champion
+kai prompt champion lock --task planner    # Lock champion (prevent rollback)
+kai prompt champion rollback --task planner # Rollback to previous champion
+kai prompt evolve --task planner --rounds 3  # Run 3 evolution rounds
+kai prompt tournament results --task planner --last 5  # Recent tournaments
 ```
 
 ## Architecture
 
 ```
 src/
-  cli/              Commander.js CLI (profile, observe, work, mcp subcommands)
+  cli/              Commander.js CLI (profile, observe, work, mcp, prompt subcommands)
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
     handlers.ts     5 profile tool handlers with rate limiting and dedup
     orchestrator-handlers.ts  7 orchestrator tool handlers
+    prompt-handlers.ts   3 prompt genome tool handlers (compile, champion, evolve)
+    prompt-resources.ts  3 prompt resource endpoints (kai://prompt/*)
+    prompt-schema.ts     Zod schemas for prompt tools
     orchestrator-schema.ts    Zod schemas for orchestrator tools
-    resources.ts    6 resource endpoints
+    resources.ts    6 profile resource endpoints
     schema.ts       Zod input validation schemas (profile tools)
     utils.ts        safeJsonParse, structured logging
   core/profile/     Profile engine core
@@ -212,13 +262,21 @@ src/
     observer.ts     Converts execution results into profile observations
     clustering.ts   TF-IDF idea clustering from observation patterns
     closed-loop.ts  Detects trait changes and triggers re-planning
+  core/prompt/      Prompt genome system
+    types.ts        Gene, Genome, Variant, Segment, Tournament, Champion types
+    gene-store.ts   CRUD for all 8 prompt genome tables (SQLite)
+    prompt-compiler.ts  Assembly pipeline: select genes, match segments, build prompt
+    segment-matcher.ts  Profile-to-segment matching algorithm
+    prompt-evolver.ts   Mutation generation, champion promotion, rollback
+    tournament-runner.ts  Pairwise variant battles with judge
+    judge-engine.ts  LLM-as-judge evaluation with majority vote
   workspace/        Workspace system
     store.ts        CRUD for workspaces, tasks, and events with SQLite persistence
     event-bus.ts    Converts workspace state changes into profile observations
     types.ts        Workspace, Task, Event type definitions
   bridge/           Bridges
     agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
-  db/               SQLite client with WAL mode and schema migrations (v1–v5)
+  db/               SQLite client with WAL mode and schema migrations (v1–v6)
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
@@ -228,6 +286,7 @@ Data flows:
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
 - **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
+- **Prompt genome path**: Genes → Genome → Compiler (profile-aware segments) → Variant → Tournament (A/B battle) → Judge (LLM-as-judge) → Champion promotion → Evolution loop
 - All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts
@@ -271,13 +330,13 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v5). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v6). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (319 across 46 files)
+bun test             # Run tests (440 across 59 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

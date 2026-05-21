@@ -9,6 +9,8 @@ import { Scheduler } from "../core/orchestrator/scheduler";
 import { OrchestratorStore } from "../core/orchestrator/store";
 import type { PlannedTask } from "../core/orchestrator/types";
 import { ProfileEngine } from "../core/profile/engine";
+import { GeneStore } from "../core/prompt/gene-store";
+import { PromptCompiler } from "../core/prompt/prompt-compiler";
 import type { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import { WorkspaceStore } from "../workspace/store";
@@ -48,6 +50,8 @@ export function registerOrchestratorHandlers(
   const llmProvider = new LLMProvider();
   const bridge = new HermesAgentBridge();
   const _closedLoopEngine = new ClosedLoopEngine(profileEngine, store);
+  const geneStore = new GeneStore(db);
+  const promptCompiler = new PromptCompiler(geneStore);
 
   // --- kai_idea_submit ---
   server.tool("kai_idea_submit", IdeaSubmitSchema, async (params) => {
@@ -91,7 +95,7 @@ export function registerOrchestratorHandlers(
     if (!idea) return textContent({ error: "idea_not_found" });
 
     const traits = profileEngine.getTraits();
-    const planner = new Planner(store, llmProvider);
+    const planner = new Planner(store, llmProvider, promptCompiler);
 
     try {
       const tasks = await planner.decomposeIdea(idea_id, traits);
@@ -290,7 +294,7 @@ export function registerOrchestratorHandlers(
       }
     }
     const traits = profileEngine.getTraits();
-    const planner = new Planner(store, llmProvider);
+    const planner = new Planner(store, llmProvider, promptCompiler);
 
     try {
       const newTasks = await planner.decomposeIdea(idea_id, traits);
