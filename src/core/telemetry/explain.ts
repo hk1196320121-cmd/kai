@@ -92,7 +92,9 @@ export async function explainTelemetry(
 
     cache.set(cacheKey, { result, timestamp: now });
     if (cache.size > CACHE_MAX_SIZE) {
-      const oldest = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+      const oldest = [...cache.entries()].sort(
+        (a, b) => a[1].timestamp - b[1].timestamp,
+      );
       for (let i = 0; i < oldest.length - CACHE_MAX_SIZE; i++) {
         cache.delete(oldest[i][0]);
       }

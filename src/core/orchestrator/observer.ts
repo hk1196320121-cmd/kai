@@ -55,60 +55,60 @@ export class Observer {
     const span = trace?.startSpan("task_exec", "process execution result");
 
     try {
-    const observations: ProcessedObservation[] = [];
-    const task = prefetched?.task ?? this.store.getTask(result.task_id);
+      const observations: ProcessedObservation[] = [];
+      const task = prefetched?.task ?? this.store.getTask(result.task_id);
 
-    // Task completion observation
-    observations.push(
-      this.emitObservation(
-        "behavior",
-        `execution:task_completion:${result.task_id}`,
-        JSON.stringify({
-          success: result.success,
-          duration_ms: result.duration_ms,
-        }),
-        result.success
-          ? OBSERVATION_CONFIDENCE_SUCCESS
-          : OBSERVATION_CONFIDENCE_FAILURE,
-      ),
-    );
+      // Task completion observation
+      observations.push(
+        this.emitObservation(
+          "behavior",
+          `execution:task_completion:${result.task_id}`,
+          JSON.stringify({
+            success: result.success,
+            duration_ms: result.duration_ms,
+          }),
+          result.success
+            ? OBSERVATION_CONFIDENCE_SUCCESS
+            : OBSERVATION_CONFIDENCE_FAILURE,
+        ),
+      );
 
-    // Duration observation
-    observations.push(
-      this.emitObservation(
-        "behavior",
-        `execution:duration:${result.task_id}`,
-        JSON.stringify({ duration_ms: result.duration_ms }),
-        OBSERVATION_CONFIDENCE_DURATION,
-      ),
-    );
+      // Duration observation
+      observations.push(
+        this.emitObservation(
+          "behavior",
+          `execution:duration:${result.task_id}`,
+          JSON.stringify({ duration_ms: result.duration_ms }),
+          OBSERVATION_CONFIDENCE_DURATION,
+        ),
+      );
 
-    // Domain observation (if task found)
-    if (task) {
-      const idea = prefetched?.idea ?? this.store.getIdea(task.idea_id);
-      if (idea) {
-        const ideaResults =
-          prefetched?.ideaResults ?? this.store.getResultsByIdea(idea.id);
-        const completed = ideaResults.filter((r) => r.success).length;
-        const failed = ideaResults.filter((r) => !r.success).length;
-        observations.push(
-          this.emitObservation(
-            "signal",
-            `execution:domain:${idea.domain}`,
-            JSON.stringify({ completed, failed, total: ideaResults.length }),
-            5,
-          ),
+      // Domain observation (if task found)
+      if (task) {
+        const idea = prefetched?.idea ?? this.store.getIdea(task.idea_id);
+        if (idea) {
+          const ideaResults =
+            prefetched?.ideaResults ?? this.store.getResultsByIdea(idea.id);
+          const completed = ideaResults.filter((r) => r.success).length;
+          const failed = ideaResults.filter((r) => !r.success).length;
+          observations.push(
+            this.emitObservation(
+              "signal",
+              `execution:domain:${idea.domain}`,
+              JSON.stringify({ completed, failed, total: ideaResults.length }),
+              5,
+            ),
+          );
+        }
+        this.store.updateTaskStatus(
+          task.id,
+          result.success ? "completed" : "failed",
         );
       }
-      this.store.updateTaskStatus(
-        task.id,
-        result.success ? "completed" : "failed",
-      );
-    }
 
-    span?.end("ok");
-    trace?.end("completed");
-    return observations;
+      span?.end("ok");
+      trace?.end("completed");
+      return observations;
     } catch (err) {
       span?.error(err as Error);
       span?.end("error");

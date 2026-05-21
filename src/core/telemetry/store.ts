@@ -235,10 +235,7 @@ export class TelemetryStore {
 
     this.db.exec("BEGIN");
     try {
-      const rows = this.db.prepare(trimmed).all() as Record<
-        string,
-        unknown
-      >[];
+      const rows = this.db.prepare(trimmed).all() as Record<string, unknown>[];
       return rows;
     } finally {
       this.db.exec("ROLLBACK");
@@ -293,7 +290,9 @@ export class TelemetryStore {
     const placeholders = ids.map(() => "?").join(",");
     const pruneTx = this.db.transaction(() => {
       this.db
-        .prepare(`DELETE FROM runtime_errors WHERE trace_id IN (${placeholders})`)
+        .prepare(
+          `DELETE FROM runtime_errors WHERE trace_id IN (${placeholders})`,
+        )
         .run(...ids);
       this.db
         .prepare(
@@ -301,10 +300,14 @@ export class TelemetryStore {
         )
         .run(...ids);
       this.db
-        .prepare(`DELETE FROM runtime_events WHERE trace_id IN (${placeholders})`)
+        .prepare(
+          `DELETE FROM runtime_events WHERE trace_id IN (${placeholders})`,
+        )
         .run(...ids);
       this.db
-        .prepare(`DELETE FROM runtime_spans WHERE trace_id IN (${placeholders})`)
+        .prepare(
+          `DELETE FROM runtime_spans WHERE trace_id IN (${placeholders})`,
+        )
         .run(...ids);
       this.db
         .prepare(`DELETE FROM runtime_traces WHERE id IN (${placeholders})`)

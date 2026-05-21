@@ -262,64 +262,64 @@ export class Derivator {
     const span = trace?.startSpan("derivation", "rule-based derivation");
 
     try {
-    const observations = this.engine.getObservations();
-    if (observations.length === 0) {
+      const observations = this.engine.getObservations();
+      if (observations.length === 0) {
+        span?.end("ok");
+        trace?.end("completed");
+        return [];
+      }
+
+      // Collect all matching observations per dimension across all rules.
+      // Multiple rules can target the same dimension (e.g. detail_oriented
+      // from MCP keywords and from coldstart signal). Observations from
+      // all matching rules are merged so the derive function sees the
+      // combined count.
+      const dimMatches = new Map<
+        string,
+        {
+          observations: typeof observations;
+          derive: (typeof RULES)[number]["derive"];
+        }
+      >();
+
+      for (const rule of RULES) {
+        if (this.engine.isCorrected(rule.dimension)) continue;
+        const matches = observations.filter((obs) =>
+          rule.match(obs.key, obs.value),
+        );
+        if (matches.length === 0) continue;
+
+        const existing = dimMatches.get(rule.dimension);
+        if (existing) {
+          existing.observations.push(...matches);
+        } else {
+          dimMatches.set(rule.dimension, {
+            observations: [...matches],
+            derive: rule.derive,
+          });
+        }
+      }
+
+      const results: DerivedTrait[] = [];
+
+      for (const [dimension, { observations: obs, derive }] of dimMatches) {
+        const derived = derive(obs.length);
+        const trait: DerivedTrait = {
+          dimension,
+          value: Math.round(derived.value * 100) / 100,
+          confidence: Math.max(1, derived.confidence),
+          source: "observed",
+          reasoning: derived.reasoning,
+        };
+        results.push(trait);
+        if (persist) {
+          this.engine.setTrait(trait);
+        }
+      }
+
       span?.end("ok");
       trace?.end("completed");
-      return [];
-    }
-
-    // Collect all matching observations per dimension across all rules.
-    // Multiple rules can target the same dimension (e.g. detail_oriented
-    // from MCP keywords and from coldstart signal). Observations from
-    // all matching rules are merged so the derive function sees the
-    // combined count.
-    const dimMatches = new Map<
-      string,
-      {
-        observations: typeof observations;
-        derive: (typeof RULES)[number]["derive"];
-      }
-    >();
-
-    for (const rule of RULES) {
-      if (this.engine.isCorrected(rule.dimension)) continue;
-      const matches = observations.filter((obs) =>
-        rule.match(obs.key, obs.value),
-      );
-      if (matches.length === 0) continue;
-
-      const existing = dimMatches.get(rule.dimension);
-      if (existing) {
-        existing.observations.push(...matches);
-      } else {
-        dimMatches.set(rule.dimension, {
-          observations: [...matches],
-          derive: rule.derive,
-        });
-      }
-    }
-
-    const results: DerivedTrait[] = [];
-
-    for (const [dimension, { observations: obs, derive }] of dimMatches) {
-      const derived = derive(obs.length);
-      const trait: DerivedTrait = {
-        dimension,
-        value: Math.round(derived.value * 100) / 100,
-        confidence: Math.max(1, derived.confidence),
-        source: "observed",
-        reasoning: derived.reasoning,
-      };
-      results.push(trait);
-      if (persist) {
-        this.engine.setTrait(trait);
-      }
-    }
-
-    span?.end("ok");
-    trace?.end("completed");
-    return results;
+      return results;
     } catch (err) {
       span?.error(err as Error);
       span?.end("error");

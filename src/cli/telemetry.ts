@@ -172,7 +172,11 @@ export function registerTelemetryCommands(program: Command): void {
     .action(async (question: string, opts) => {
       const { db, store } = getStore();
       try {
-        const result = await explainTelemetry(store, question, new LLMProvider());
+        const result = await explainTelemetry(
+          store,
+          question,
+          new LLMProvider(),
+        );
         if (opts.json) {
           console.log(JSON.stringify(result, null, 2));
         } else {
