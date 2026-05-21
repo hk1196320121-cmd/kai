@@ -1,4 +1,5 @@
 import type { ProfileEngine } from "../profile/engine";
+import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { OrchestratorStore } from "./store";
 import type { ExecutionResult, Idea, PlannedTask } from "./types";
 
@@ -27,10 +28,12 @@ export interface ProcessedObservation {
 export class Observer {
   private store: OrchestratorStore;
   private profileEngine: ProfileEngine;
+  private telemetry: TelemetryRecorder | null;
 
-  constructor(store: OrchestratorStore, profileEngine: ProfileEngine) {
+  constructor(store: OrchestratorStore, profileEngine: ProfileEngine, telemetry: TelemetryRecorder | null = null) {
     this.store = store;
     this.profileEngine = profileEngine;
+    this.telemetry = telemetry;
   }
 
   processResult(
@@ -41,6 +44,9 @@ export class Observer {
       ideaResults: ExecutionResult[];
     },
   ): ProcessedObservation[] {
+    const trace = this.telemetry?.startTrace("internal", "observer.processResult");
+    const span = trace?.startSpan("task_exec", "process execution result");
+
     const observations: ProcessedObservation[] = [];
     const task = prefetched?.task ?? this.store.getTask(result.task_id);
 
@@ -92,6 +98,8 @@ export class Observer {
       );
     }
 
+    span?.end("ok");
+    trace?.end("completed");
     return observations;
   }
 

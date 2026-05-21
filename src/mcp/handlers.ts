@@ -247,7 +247,7 @@ export function registerHandlers(
   // --- derive.trigger ---
   server.tool("derive.trigger", DeriveTriggerSchema, withTrace("derive.trigger", async ({ method }) => {
     log("derive.trigger", { method });
-    const derivator = new Derivator(engine);
+    const derivator = new Derivator(engine, telemetry);
     const results: { dimension: string; value: number; confidence: number }[] =
       [];
 

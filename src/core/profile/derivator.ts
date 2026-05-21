@@ -1,3 +1,4 @@
+import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { ProfileEngine } from "./engine";
 
 interface Rule {
@@ -246,14 +247,23 @@ export interface DerivedTrait {
 
 export class Derivator {
   private engine: ProfileEngine;
+  private telemetry: TelemetryRecorder | null;
 
-  constructor(engine: ProfileEngine) {
+  constructor(engine: ProfileEngine, telemetry: TelemetryRecorder | null = null) {
     this.engine = engine;
+    this.telemetry = telemetry;
   }
 
   deriveFromRules(persist: boolean = true): DerivedTrait[] {
+    const trace = this.telemetry?.startTrace("internal", "derive.rules");
+    const span = trace?.startSpan("derivation", "rule-based derivation");
+
     const observations = this.engine.getObservations();
-    if (observations.length === 0) return [];
+    if (observations.length === 0) {
+      span?.end("ok");
+      trace?.end("completed");
+      return [];
+    }
 
     // Collect all matching observations per dimension across all rules.
     // Multiple rules can target the same dimension (e.g. detail_oriented
@@ -303,6 +313,8 @@ export class Derivator {
       }
     }
 
+    span?.end("ok");
+    trace?.end("completed");
     return results;
   }
 
@@ -310,8 +322,15 @@ export class Derivator {
     provider: import("../../llm/provider").LLMProvider,
     compiler?: import("../prompt/prompt-compiler").PromptCompiler,
   ): Promise<DerivedTrait[]> {
+    const trace = this.telemetry?.startTrace("internal", "derive.llm");
+    const span = trace?.startSpan("derivation", "LLM derivation");
+
     const observations = this.engine.getObservations();
-    if (observations.length === 0) return [];
+    if (observations.length === 0) {
+      span?.end("ok");
+      trace?.end("completed");
+      return [];
+    }
 
     const prompt = JSON.stringify(
       observations.slice(0, 20).map((o) => ({
@@ -374,9 +393,18 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
         };
         results.push(derived);
         this.engine.setTrait(derived);
+        span?.stateChange({
+          type: "trait", id: t.dimension, field: "value",
+          new: t.value.toString(), reason: t.reasoning,
+        });
       }
+      span?.end("ok");
+      trace?.end("completed");
       return results;
-    } catch {
+    } catch (err) {
+      span?.error(err as Error);
+      span?.end("error");
+      trace?.end("error");
       return [];
     }
   }

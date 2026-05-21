@@ -44,7 +44,7 @@ function textContent(data: unknown) {
 export function registerOrchestratorHandlers(
   server: McpServer,
   db: KaiDB,
-  _telemetry: TelemetryRecorder | null = null,
+  telemetry: TelemetryRecorder | null = null,
 ): void {
   const profileEngine = new ProfileEngine(db);
   const store = new OrchestratorStore(db);
@@ -97,7 +97,7 @@ export function registerOrchestratorHandlers(
     if (!idea) return textContent({ error: "idea_not_found" });
 
     const traits = profileEngine.getTraits();
-    const planner = new Planner(store, llmProvider, promptCompiler);
+    const planner = new Planner(store, llmProvider, promptCompiler, telemetry);
 
     try {
       const tasks = await planner.decomposeIdea(idea_id, traits);
@@ -201,7 +201,7 @@ export function registerOrchestratorHandlers(
   // --- kai_task_execute ---
   server.tool("kai_task_execute", TaskExecuteSchema, async ({ task_id }) => {
     log("kai_task_execute", { task_id });
-    const dispatcher = new Dispatcher(store, bridge);
+    const dispatcher = new Dispatcher(store, bridge, telemetry);
     const result = await dispatcher.dispatch(task_id);
     return textContent({
       success: result.success,
@@ -233,7 +233,7 @@ export function registerOrchestratorHandlers(
         hasFeedback: !!feedback,
       });
 
-      const observer = new Observer(store, profileEngine);
+      const observer = new Observer(store, profileEngine, telemetry);
 
       if (feedback) {
         const results = task_id
@@ -296,7 +296,7 @@ export function registerOrchestratorHandlers(
       }
     }
     const traits = profileEngine.getTraits();
-    const planner = new Planner(store, llmProvider, promptCompiler);
+    const planner = new Planner(store, llmProvider, promptCompiler, telemetry);
 
     try {
       const newTasks = await planner.decomposeIdea(idea_id, traits);
