@@ -3,6 +3,7 @@ export type IdeaDomain =
   | "writing"
   | "research"
   | "creative"
+  | "management"
   | "general";
 export type IdeaPriority = "low" | "medium" | "high" | "critical";
 export type IdeaStatus =
