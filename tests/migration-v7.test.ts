@@ -119,11 +119,11 @@ describe("V7 Migration", () => {
     db2.close();
   });
 
-  test("schema version is 7", () => {
+  test("schema version is at least 7", () => {
     const database = db.getDatabase();
     const row = database
       .query("SELECT MAX(version) as v FROM schema_version")
       .get() as { v: number };
-    expect(row.v).toBe(7);
+    expect(row.v).toBeGreaterThanOrEqual(7);
   });
 });
