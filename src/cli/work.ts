@@ -5,6 +5,12 @@ import { createInterface } from "node:readline";
 import type { Command } from "commander";
 import { Derivator } from "../core/profile/derivator";
 import type { AddObservationInput } from "../core/profile/engine";
+import { InterviewEngine } from "../core/profile/interview";
+import { QUESTIONS } from "../core/profile/interview-questions";
+import { recommendTasks } from "../core/orchestrator/recommend";
+import { OrchestratorStore } from "../core/orchestrator/store";
+import { Dispatcher } from "../core/orchestrator/dispatcher";
+import { HermesAgentBridge } from "../bridge/agent-bridge";
 import { WorkspaceStore } from "../workspace/store";
 import { getEngine } from "./utils";
 
@@ -17,12 +23,6 @@ const MORNING_HOUR_END = 8;
 const MORNING_RATIO_THRESHOLD = 0.3;
 const DETAIL_LEVEL_HIGH_CHARS = 50;
 const DETAIL_LEVEL_MED_CHARS = 20;
-
-// Signal extraction thresholds
-const WORD_COUNT_DETAIL_HIGH = 30;
-const WORD_COUNT_DETAIL_MED = 10;
-const WORD_COUNT_VERBOSE = 40;
-const WORD_COUNT_MODERATE = 15;
 
 export interface GitScanResult {
   observations: AddObservationInput[];
@@ -166,113 +166,6 @@ export function scanGitHistory(repoPath: string): GitScanResult {
   return { observations, traits };
 }
 
-// --- Cold Start Signal Extraction ---
-
-interface ColdStartAnswer {
-  slug: string;
-  text: string;
-}
-
-export function extractColdStartSignals(
-  answers: ColdStartAnswer[],
-  gitHints: { dimension: string; hints: string[] }[],
-  workspaceId: string,
-): AddObservationInput[] {
-  const observations: AddObservationInput[] = [];
-
-  // Collect word counts and specifics across all answers for aggregate signals
-  const wordCounts: number[] = [];
-  let anySpecifics = false;
-
-  for (const { slug, text } of answers) {
-    observations.push({
-      type: "signal",
-      key: `coldstart:${slug}`,
-      value: JSON.stringify({ answer: text, workspace_id: workspaceId }),
-      confidence: 8,
-      source: "coldstart",
-      provenance: makeProvenance(),
-    });
-
-    const wordCount = text.split(/\s+/).filter(Boolean).length;
-    wordCounts.push(wordCount);
-    if (/\d+|specific|exactly|precisely/.test(text)) anySpecifics = true;
-  }
-
-  // Emit one aggregate detail_level signal (not per-answer)
-  if (wordCounts.length === 0) return observations;
-  const avgWordCount =
-    wordCounts.reduce((a, b) => a + b, 0) / wordCounts.length;
-  observations.push({
-    type: "signal",
-    key: "coldstart:signal.detail_level",
-    value: JSON.stringify({
-      level:
-        avgWordCount > WORD_COUNT_DETAIL_HIGH
-          ? "high"
-          : avgWordCount > WORD_COUNT_DETAIL_MED
-            ? "medium"
-            : "low",
-      word_count: Math.round(avgWordCount),
-      has_specifics: anySpecifics,
-    }),
-    confidence: 7,
-    source: "coldstart",
-    provenance: makeProvenance("detail_level"),
-  });
-
-  // Emit one aggregate comm_style signal (not per-answer)
-  observations.push({
-    type: "signal",
-    key: "coldstart:signal.comm_style",
-    value: JSON.stringify({
-      style:
-        avgWordCount > WORD_COUNT_VERBOSE
-          ? "verbose"
-          : avgWordCount > WORD_COUNT_MODERATE
-            ? "moderate"
-            : "terse",
-      word_count: Math.round(avgWordCount),
-    }),
-    confidence: 6,
-    source: "coldstart",
-    provenance: makeProvenance("comm_style"),
-  });
-
-  const allText = answers
-    .map((a) => a.text)
-    .join(" ")
-    .toLowerCase();
-  const domainSignals: string[] = [];
-  if (/code|debug|deploy|api|git|build|test/i.test(allText))
-    domainSignals.push("engineering");
-  if (/design|ux|ui|wireframe|prototype/i.test(allText))
-    domainSignals.push("design");
-  if (/manage|team|sprint|roadmap|stakeholder/i.test(allText))
-    domainSignals.push("management");
-  if (/research|paper|study|analysis|data/i.test(allText))
-    domainSignals.push("research");
-  if (/write|document|content|blog|report/i.test(allText))
-    domainSignals.push("writing");
-
-  if (domainSignals.length > 0) {
-    if (gitHints.some((h) => h.dimension === "detail_oriented")) {
-      domainSignals.push("engineering");
-    }
-
-    observations.push({
-      type: "signal",
-      key: "coldstart:signal.domain",
-      value: JSON.stringify({ domains: [...new Set(domainSignals)] }),
-      confidence: 7,
-      source: "coldstart",
-      provenance: makeProvenance("domain"),
-    });
-  }
-
-  return observations;
-}
-
 // --- Profile Preview Display ---
 
 function formatTraitBar(value: number, confidence: number): string {
@@ -310,28 +203,29 @@ function displayPreview(
 
 // --- CLI Commands ---
 
-const QUESTIONS = [
-  { slug: "goal", prompt: "What are you trying to get done?\n> " },
-  { slug: "success", prompt: "What would a good result look like?\n> " },
-  {
-    slug: "constraints",
-    prompt: "Any constraints — people, tools, deadlines?\n> ",
-  },
-  {
-    slug: "format",
-    prompt:
-      "How should Kai organize this?\n  ▸ Checklist    ▸ Brief    ▸ Plan    ▸ Decision log\n> ",
-  },
-];
-
 export function registerWorkCommands(program: Command): void {
   const work = program.command("work").description("Workspace management");
 
   work
     .command("start")
     .description("Start a new workspace with cold start profile bootstrapping")
-    .action(async () => {
+    .option("--reset", "Force re-interview even if coldstart data exists")
+    .action(async (options: { reset?: boolean }) => {
       const { db, engine } = getEngine();
+
+      // --reset: clear existing coldstart observations
+      if (options.reset) {
+        const existingObs = engine.getObservations({ type: "signal" });
+        const raw = db.getDatabase();
+        for (const obs of existingObs) {
+          if (obs.source === "coldstart") {
+            raw.query("DELETE FROM observations WHERE id = $id").run({
+              $id: obs.id,
+            });
+          }
+        }
+        console.log("Cleared existing cold start data.");
+      }
 
       // Check/create identity (merged bootstrap per D2)
       let identity = engine.getIdentity();
@@ -361,6 +255,53 @@ export function registerWorkCommands(program: Command): void {
         identity = engine.getIdentity();
         console.log(`\nWelcome, ${identity?.name}!\n`);
         rl.close();
+      }
+
+      // Re-run detection: skip interview if coldstart data already exists
+      const existingColdstart = engine
+        .getObservations({ type: "signal" })
+        .filter((o) => o.source === "coldstart");
+      if (existingColdstart.length > 0 && !options.reset) {
+        console.log(
+          "Cold start already completed. Showing recommendations from existing profile...",
+        );
+        const savedTraits = engine.getTraits();
+        const domainObs = engine.getObservations({
+          key: "coldstart:signal.domain",
+        });
+        const domainValue =
+          domainObs.length > 0
+            ? JSON.parse(domainObs[0].value).domains?.[0] ?? "general"
+            : "general";
+        const domainMap: Record<string, string> = {
+          engineering: "coding",
+          design: "creative",
+          management: "general",
+          research: "research",
+          writing: "writing",
+          other: "general",
+        };
+        const ideaDomain = (
+          domainMap[domainValue] ?? "general"
+        ) as
+          | "coding"
+          | "writing"
+          | "research"
+          | "creative"
+          | "general";
+
+        const recommendations = recommendTasks(savedTraits, ideaDomain);
+
+        console.log("\n=== Recommended Workflows ===\n");
+        for (let i = 0; i < recommendations.length; i++) {
+          const r = recommendations[i];
+          console.log(`  ${i + 1}. ${r.title} (score: ${r.score})`);
+          console.log(`     ${r.description}`);
+          console.log(`     Why: ${r.explanation}`);
+        }
+
+        db.close();
+        return;
       }
 
       // Step 1: Git scan
@@ -397,7 +338,7 @@ export function registerWorkCommands(program: Command): void {
       };
       process.on("SIGINT", onSigInt);
 
-      // Step 3: 4-question flow
+      // Step 3: 10-question flow using imported QUESTIONS
       const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -407,15 +348,23 @@ export function registerWorkCommands(program: Command): void {
 
       console.log(`\nWorkspace: ${workspace.id}\n`);
 
-      const answers: ColdStartAnswer[] = [];
+      const answers: { slug: string; text: string }[] = [];
       for (const q of QUESTIONS) {
-        let answer = (await ask(q.prompt)).trim();
+        let promptText = q.prompt;
+        if (q.options && q.options.length > 0) {
+          promptText +=
+            "\n  " + q.options.map((o) => `▸ ${o}`).join("    ") + "\n> ";
+        } else {
+          promptText += "\n> ";
+        }
 
-        if (!answer && q.slug === "goal") {
-          console.log("This one's required — tell me what you're working on.");
-          answer = (await ask(q.prompt)).trim();
+        let answer = (await ask(promptText)).trim();
+
+        if (!answer && q.required) {
+          console.log("This one's required.");
+          answer = (await ask(promptText)).trim();
           if (!answer) {
-            console.log("Goal is required. Cleaning up and aborting.");
+            console.log("Required answer missing. Cleaning up and aborting.");
             store.deleteWorkspace(workspace.id);
             rl.close();
             process.removeListener("SIGINT", onSigInt);
@@ -438,8 +387,9 @@ export function registerWorkCommands(program: Command): void {
 
       if (cancelled) return;
 
-      // Step 4: Signal extraction
-      const signals = extractColdStartSignals(
+      // Step 4: Signal extraction via InterviewEngine
+      const interview = new InterviewEngine();
+      const signals = interview.extractSignalsFromAnswers(
         answers,
         gitResult.traits,
         workspace.id,
@@ -474,7 +424,8 @@ export function registerWorkCommands(program: Command): void {
 
       let confirmed = false;
       while (!confirmed && !cancelled) {
-        const response = (await confirmAsk("> ")).trim().toLowerCase() || "y";
+        const response =
+          (await confirmAsk("> ")).trim().toLowerCase() || "y";
 
         if (response === "y" || response === "yes") {
           for (const trait of previewTraits) {
@@ -545,6 +496,149 @@ export function registerWorkCommands(program: Command): void {
       }
 
       confirmRl.close();
+
+      // Step 8: Show recommendations and auto-execute
+      if (confirmed) {
+        const savedTraits = engine.getTraits();
+        const domainObs = engine.getObservations({
+          key: "coldstart:signal.domain",
+        });
+        const domainValue =
+          domainObs.length > 0
+            ? JSON.parse(domainObs[0].value).domains?.[0] ?? "general"
+            : "general";
+        const domainMap: Record<string, string> = {
+          engineering: "coding",
+          design: "creative",
+          management: "general",
+          research: "research",
+          writing: "writing",
+          other: "general",
+        };
+        const ideaDomain = (
+          domainMap[domainValue] ?? "general"
+        ) as
+          | "coding"
+          | "writing"
+          | "research"
+          | "creative"
+          | "general";
+
+        const recommendations = recommendTasks(savedTraits, ideaDomain);
+
+        console.log("\n=== Recommended Workflows ===\n");
+        for (let i = 0; i < recommendations.length; i++) {
+          const r = recommendations[i];
+          console.log(`  ${i + 1}. ${r.title} (score: ${r.score})`);
+          console.log(`     ${r.description}`);
+          console.log(`     Why: ${r.explanation}`);
+        }
+        if (
+          recommendations[0].whyNotOthers &&
+          recommendations[0].whyNotOthers.length > 0
+        ) {
+          console.log("\n  Not shown:");
+          for (const w of recommendations[0].whyNotOthers) {
+            console.log(`    - ${w}`);
+          }
+        }
+
+        console.log(
+          "\nApprove all? [Y]es / [N]o / [number to approve just one]",
+        );
+        const approveResponse =
+          (await confirmAsk("> ")).trim().toLowerCase() || "y";
+        if (
+          approveResponse === "y" ||
+          approveResponse === "yes"
+        ) {
+          // Create idea for first recommendation
+          const orchStore = new OrchestratorStore(db);
+          const idea = orchStore.createIdea({
+            title: recommendations[0].title,
+            description: recommendations[0].description,
+            domain: ideaDomain,
+            workspace_id: workspace.id,
+          });
+
+          // Try LLM path for task decomposition
+          const { LLMProvider } = await import("../llm/provider");
+          const llm = new LLMProvider();
+          if (llm.getConfig().apiKey) {
+            try {
+              const { GeneStore } = await import("../core/prompt/gene-store");
+              const { PromptCompiler } = await import(
+                "../core/prompt/prompt-compiler"
+              );
+              const geneStore = new GeneStore(db);
+              const compiler = new PromptCompiler(geneStore);
+              const { Planner } = await import("../core/orchestrator/planner");
+              const planner = new Planner(orchStore, llm, compiler);
+              const tasks = await planner.decomposeIdea(idea.id, savedTraits);
+              console.log(`\nPlan generated (${tasks.length} tasks):`);
+              for (const t of tasks) {
+                console.log(`  - ${t.title}`);
+              }
+            } catch {
+              console.log(
+                "  Could not generate plan (LLM unavailable), creating task directly.",
+              );
+            }
+          }
+
+          // Create task (works with or without LLM)
+          const task = orchStore.createTask({
+            idea_id: idea.id,
+            workspace_id: workspace.id,
+            title: recommendations[0].title,
+            description: recommendations[0].description,
+            type: "one_off",
+            agent: "hermes",
+            prompt: recommendations[0].description,
+            decomposition_rationale:
+              "Auto-generated from cold start recommendation",
+            scheduling_rationale: "Execute when ready",
+          });
+
+          // Auto-execute via dispatcher
+          try {
+            const bridge = new HermesAgentBridge();
+            const dispatcher = new Dispatcher(orchStore, bridge);
+            const result = await dispatcher.dispatch(task.id);
+            if (result.success) {
+              console.log(`✓ Task dispatched: ${task.title}`);
+              store.addEvent({
+                workspace_id: workspace.id,
+                event_type: "task_auto_executed",
+                payload: JSON.stringify({
+                  task_id: task.id,
+                  idea_id: idea.id,
+                }),
+              });
+            }
+          } catch {
+            console.log(
+              `  Task created but not dispatched (agent unavailable)`,
+            );
+          }
+
+          store.addEvent({
+            workspace_id: workspace.id,
+            event_type: "recommendation_shown",
+            payload: JSON.stringify({
+              recommendations: recommendations.map((r) => r.templateId),
+            }),
+          });
+          store.addEvent({
+            workspace_id: workspace.id,
+            event_type: "recommendation_accepted",
+            payload: JSON.stringify({
+              template_id: recommendations[0].templateId,
+            }),
+          });
+        }
+      }
+
       db.close();
     });
 
