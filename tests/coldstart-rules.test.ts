@@ -171,4 +171,29 @@ describe("Coldstart derivation rules", () => {
 
     db.close();
   });
+
+  test("deriveFromValues is called when present on a rule", () => {
+    dbPath = tempDb();
+    const db = new KaiDB(dbPath);
+    const engine = new ProfileEngine(db);
+
+    engine.addObservation({
+      type: "signal",
+      key: "coldstart:planning_style",
+      value: JSON.stringify({ answer: "detailed plan" }),
+      confidence: 8,
+      source: "coldstart",
+      provenance: '{"origin":"kai work start"}',
+    });
+
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const planning = results.find((r) => r.dimension === "planning_style");
+    expect(planning).toBeDefined();
+    expect(planning!.value).toBe(0.9);
+    expect(planning!.confidence).toBe(8);
+    expect(planning!.reasoning).toContain("detailed plan");
+
+    db.close();
+  });
 });

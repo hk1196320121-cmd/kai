@@ -9,6 +9,14 @@ interface Rule {
     confidence: number;
     reasoning: string;
   };
+  deriveFromValues?: (
+    matches: number,
+    values: string[],
+  ) => {
+    value: number;
+    confidence: number;
+    reasoning: string;
+  };
 }
 
 export const RULES: Rule[] = [
@@ -231,6 +239,51 @@ export const RULES: Rule[] = [
       reasoning: `${count} workspace task events recorded`,
     }),
   },
+  {
+    dimension: "planning_style",
+    match: (key) => key === "coldstart:planning_style",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} planning style signals (fallback count-based)`,
+    }),
+    deriveFromValues: (count, values) => {
+      const answerMap: Record<string, number> = {
+        "detailed plan": 0.9,
+        "rough outline": 0.6,
+        "dive right in": 0.2,
+        "explore first": 0.4,
+      };
+      let total = 0;
+      let matched = 0;
+      const matchedAnswers: string[] = [];
+      for (const v of values) {
+        try {
+          const parsed = JSON.parse(v);
+          const answer = String(parsed.answer ?? "").toLowerCase();
+          if (answerMap[answer] !== undefined) {
+            total += answerMap[answer];
+            matched++;
+            matchedAnswers.push(answer);
+          }
+        } catch {
+          /* skip */
+        }
+      }
+      if (matched === 0) {
+        return {
+          value: 0.5,
+          confidence: 3,
+          reasoning: `Cold start: ${count} planning style signals (no direct match)`,
+        };
+      }
+      return {
+        value: Math.round((total / matched) * 100) / 100,
+        confidence: 8,
+        reasoning: `Cold start: planning style from ${matched} answer(s) [${matchedAnswers.join(", ")}], avg=${(total / matched).toFixed(2)}`,
+      };
+    },
+  },
 ];
 
 const VALID_LLM_DIMENSIONS = new Set(
@@ -279,6 +332,7 @@ export class Derivator {
         {
           observations: typeof observations;
           derive: (typeof RULES)[number]["derive"];
+          deriveFromValues?: (typeof RULES)[number]["deriveFromValues"];
         }
       >();
 
@@ -292,18 +346,28 @@ export class Derivator {
         const existing = dimMatches.get(rule.dimension);
         if (existing) {
           existing.observations.push(...matches);
+          if (rule.deriveFromValues && !existing.deriveFromValues) {
+            existing.deriveFromValues = rule.deriveFromValues;
+          }
         } else {
           dimMatches.set(rule.dimension, {
             observations: [...matches],
             derive: rule.derive,
+            deriveFromValues: rule.deriveFromValues,
           });
         }
       }
 
       const results: DerivedTrait[] = [];
 
-      for (const [dimension, { observations: obs, derive }] of dimMatches) {
-        const derived = derive(obs.length);
+      for (const [dimension, { observations: obs, derive, deriveFromValues }] of dimMatches) {
+        let derived: { value: number; confidence: number; reasoning: string };
+        if (deriveFromValues) {
+          const values = obs.map((o) => o.value);
+          derived = deriveFromValues(obs.length, values);
+        } else {
+          derived = derive(obs.length);
+        }
         const trait: DerivedTrait = {
           dimension,
           value: Math.round(derived.value * 100) / 100,
