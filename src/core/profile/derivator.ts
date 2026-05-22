@@ -284,6 +284,123 @@ export const RULES: Rule[] = [
       };
     },
   },
+  {
+    dimension: "schedule_rhythm",
+    match: (key) => key === "coldstart:schedule_rhythm",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} schedule rhythm signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) => {
+      const answerMap: Record<string, number> = {
+        morning: 0.9,
+        afternoon: 0.5,
+        evening: 0.3,
+        "late night": 0.2,
+        flexible: 0.5,
+      };
+      let total = 0;
+      let matched = 0;
+      for (const v of values) {
+        try {
+          const parsed = JSON.parse(v);
+          const answer = String(parsed.answer ?? "").toLowerCase();
+          if (answerMap[answer] !== undefined) {
+            total += answerMap[answer];
+            matched++;
+          }
+        } catch {
+          /* skip */
+        }
+      }
+      if (matched === 0) {
+        return { value: 0.5, confidence: 3, reasoning: `Cold start: ${count} schedule signals (no direct match)` };
+      }
+      return {
+        value: Math.round((total / matched) * 100) / 100,
+        confidence: 8,
+        reasoning: `Cold start: schedule rhythm from ${matched} answer(s)`,
+      };
+    },
+  },
+  {
+    dimension: "preferred_output_shape",
+    match: (key) => key === "coldstart:preferred_output_shape",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} output shape signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) => {
+      const answerMap: Record<string, number> = {
+        checklist: 0.9,
+        brief: 0.6,
+        plan: 0.3,
+        "decision log": 0.1,
+      };
+      let total = 0;
+      let matched = 0;
+      for (const v of values) {
+        try {
+          const parsed = JSON.parse(v);
+          const answer = String(parsed.answer ?? "").toLowerCase();
+          if (answerMap[answer] !== undefined) {
+            total += answerMap[answer];
+            matched++;
+          }
+        } catch {
+          /* skip */
+        }
+      }
+      if (matched === 0) {
+        return { value: 0.5, confidence: 3, reasoning: `Cold start: ${count} output shape signals (no direct match)` };
+      }
+      return {
+        value: Math.round((total / matched) * 100) / 100,
+        confidence: 8,
+        reasoning: `Cold start: output shape from ${matched} answer(s)`,
+      };
+    },
+  },
+  {
+    dimension: "disliked_behavior",
+    match: (key) => key === "coldstart:disliked_behavior",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.3),
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} disliked behavior signals (count-based)`,
+    }),
+    deriveFromValues: (count, values) => {
+      const patterns: Record<string, string> = {
+        "acts without asking": "autonomy_violation",
+        "too verbose": "verbosity",
+        "too cautious": "overcaution",
+        "asks too many questions": "question_overload",
+        "ignores context": "context_blindness",
+      };
+      const detected: string[] = [];
+      for (const v of values) {
+        try {
+          const parsed = JSON.parse(v);
+          const answer = String(parsed.answer ?? "").toLowerCase();
+          for (const [pattern, label] of Object.entries(patterns)) {
+            if (answer.includes(pattern)) detected.push(label);
+          }
+        } catch {
+          /* skip */
+        }
+      }
+      if (detected.length === 0) {
+        return { value: count * 0.3, confidence: 5, reasoning: `Cold start: ${count} generic disliked behavior signals` };
+      }
+      return {
+        value: Math.min(1.0, detected.length * 0.4),
+        confidence: 8,
+        reasoning: `Cold start: dislikes [${detected.join(", ")}]`,
+      };
+    },
+  },
 ];
 
 const VALID_LLM_DIMENSIONS = new Set(

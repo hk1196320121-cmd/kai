@@ -196,4 +196,73 @@ describe("Coldstart derivation rules", () => {
 
     db.close();
   });
+
+  test("schedule_rhythm: derives from coldstart answer value", () => {
+    dbPath = tempDb();
+    const db = new KaiDB(dbPath);
+    const engine = new ProfileEngine(db);
+
+    engine.addObservation({
+      type: "signal",
+      key: "coldstart:schedule_rhythm",
+      value: JSON.stringify({ answer: "morning" }),
+      confidence: 8,
+      source: "coldstart",
+      provenance: '{"origin":"kai work start"}',
+    });
+
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const schedule = results.find((r) => r.dimension === "schedule_rhythm");
+    expect(schedule).toBeDefined();
+    expect(schedule!.value).toBe(0.9);
+
+    db.close();
+  });
+
+  test("preferred_output_shape: derives from coldstart answer value", () => {
+    dbPath = tempDb();
+    const db = new KaiDB(dbPath);
+    const engine = new ProfileEngine(db);
+
+    engine.addObservation({
+      type: "signal",
+      key: "coldstart:preferred_output_shape",
+      value: JSON.stringify({ answer: "checklist" }),
+      confidence: 8,
+      source: "coldstart",
+      provenance: '{"origin":"kai work start"}',
+    });
+
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const shape = results.find((r) => r.dimension === "preferred_output_shape");
+    expect(shape).toBeDefined();
+    expect(shape!.value).toBe(0.9);
+
+    db.close();
+  });
+
+  test("disliked_behavior: derives from coldstart answer", () => {
+    dbPath = tempDb();
+    const db = new KaiDB(dbPath);
+    const engine = new ProfileEngine(db);
+
+    engine.addObservation({
+      type: "signal",
+      key: "coldstart:disliked_behavior",
+      value: JSON.stringify({ answer: "acts without asking" }),
+      confidence: 8,
+      source: "coldstart",
+      provenance: '{"origin":"kai work start"}',
+    });
+
+    const derivator = new Derivator(engine);
+    const results = derivator.deriveFromRules();
+    const disliked = results.find((r) => r.dimension === "disliked_behavior");
+    expect(disliked).toBeDefined();
+    expect(disliked!.value).toBeGreaterThan(0);
+
+    db.close();
+  });
 });
