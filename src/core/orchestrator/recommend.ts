@@ -1,8 +1,5 @@
+import { matchTemplates, type ScoredRecommendation } from "./templates";
 import type { IdeaDomain } from "./types";
-import {
-  matchTemplates,
-  type ScoredRecommendation,
-} from "./templates";
 
 export interface Recommendation {
   templateId: string;
@@ -30,10 +27,12 @@ export function recommendTasks(
     explanation: buildExplanation(rec),
     whyNotOthers:
       excluded.length > 0
-        ? excluded.slice(0, 2).map(
-            (ex) =>
-              `${ex.template.title} (score: ${ex.score}) — ${ex.matchedTraits.length > 0 ? `matched on ${ex.matchedTraits.join(", ")}` : "generic template, ranked lower"}`,
-          )
+        ? excluded
+            .slice(0, 2)
+            .map(
+              (ex) =>
+                `${ex.template.title} (score: ${ex.score}) — ${ex.matchedTraits.length > 0 ? `matched on ${ex.matchedTraits.join(", ")}` : "generic template, ranked lower"}`,
+            )
         : undefined,
     matchedTraits: rec.matchedTraits,
   }));

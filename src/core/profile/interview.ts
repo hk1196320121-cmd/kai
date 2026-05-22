@@ -1,5 +1,4 @@
 import type { AddObservationInput } from "./engine";
-import { QUESTIONS, type InterviewQuestion } from "./interview-questions";
 
 export interface ColdStartAnswer {
   slug: string;
@@ -84,7 +83,10 @@ export class InterviewEngine {
     });
 
     // Domain detection from all answer text
-    const allText = answers.map((a) => a.text).join(" ").toLowerCase();
+    const allText = answers
+      .map((a) => a.text)
+      .join(" ")
+      .toLowerCase();
     const domainSignals: string[] = [];
     if (/code|debug|deploy|api|git|build|test/i.test(allText))
       domainSignals.push("engineering");

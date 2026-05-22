@@ -3,14 +3,14 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import type { Command } from "commander";
+import { HermesAgentBridge } from "../bridge/agent-bridge";
+import { Dispatcher } from "../core/orchestrator/dispatcher";
+import { recommendTasks } from "../core/orchestrator/recommend";
+import { OrchestratorStore } from "../core/orchestrator/store";
 import { Derivator } from "../core/profile/derivator";
 import type { AddObservationInput } from "../core/profile/engine";
 import { InterviewEngine } from "../core/profile/interview";
 import { QUESTIONS } from "../core/profile/interview-questions";
-import { recommendTasks } from "../core/orchestrator/recommend";
-import { OrchestratorStore } from "../core/orchestrator/store";
-import { Dispatcher } from "../core/orchestrator/dispatcher";
-import { HermesAgentBridge } from "../bridge/agent-bridge";
 import { WorkspaceStore } from "../workspace/store";
 import { getEngine } from "./utils";
 
@@ -271,7 +271,7 @@ export function registerWorkCommands(program: Command): void {
         });
         const domainValue =
           domainObs.length > 0
-            ? JSON.parse(domainObs[0].value).domains?.[0] ?? "general"
+            ? (JSON.parse(domainObs[0].value).domains?.[0] ?? "general")
             : "general";
         const domainMap: Record<string, string> = {
           engineering: "coding",
@@ -281,9 +281,7 @@ export function registerWorkCommands(program: Command): void {
           writing: "writing",
           other: "general",
         };
-        const ideaDomain = (
-          domainMap[domainValue] ?? "general"
-        ) as
+        const ideaDomain = (domainMap[domainValue] ?? "general") as
           | "coding"
           | "writing"
           | "research"
@@ -352,8 +350,7 @@ export function registerWorkCommands(program: Command): void {
       for (const q of QUESTIONS) {
         let promptText = q.prompt;
         if (q.options && q.options.length > 0) {
-          promptText +=
-            "\n  " + q.options.map((o) => `▸ ${o}`).join("    ") + "\n> ";
+          promptText += `\n  ${q.options.map((o) => `▸ ${o}`).join("    ")}\n> `;
         } else {
           promptText += "\n> ";
         }
@@ -424,8 +421,7 @@ export function registerWorkCommands(program: Command): void {
 
       let confirmed = false;
       while (!confirmed && !cancelled) {
-        const response =
-          (await confirmAsk("> ")).trim().toLowerCase() || "y";
+        const response = (await confirmAsk("> ")).trim().toLowerCase() || "y";
 
         if (response === "y" || response === "yes") {
           for (const trait of previewTraits) {
@@ -505,7 +501,7 @@ export function registerWorkCommands(program: Command): void {
         });
         const domainValue =
           domainObs.length > 0
-            ? JSON.parse(domainObs[0].value).domains?.[0] ?? "general"
+            ? (JSON.parse(domainObs[0].value).domains?.[0] ?? "general")
             : "general";
         const domainMap: Record<string, string> = {
           engineering: "coding",
@@ -515,9 +511,7 @@ export function registerWorkCommands(program: Command): void {
           writing: "writing",
           other: "general",
         };
-        const ideaDomain = (
-          domainMap[domainValue] ?? "general"
-        ) as
+        const ideaDomain = (domainMap[domainValue] ?? "general") as
           | "coding"
           | "writing"
           | "research"
@@ -548,10 +542,7 @@ export function registerWorkCommands(program: Command): void {
         );
         const approveResponse =
           (await confirmAsk("> ")).trim().toLowerCase() || "y";
-        if (
-          approveResponse === "y" ||
-          approveResponse === "yes"
-        ) {
+        if (approveResponse === "y" || approveResponse === "yes") {
           // Create idea for first recommendation
           const orchStore = new OrchestratorStore(db);
           const idea = orchStore.createIdea({

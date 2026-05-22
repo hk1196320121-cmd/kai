@@ -315,7 +315,11 @@ export const RULES: Rule[] = [
         }
       }
       if (matched === 0) {
-        return { value: 0.5, confidence: 3, reasoning: `Cold start: ${count} schedule signals (no direct match)` };
+        return {
+          value: 0.5,
+          confidence: 3,
+          reasoning: `Cold start: ${count} schedule signals (no direct match)`,
+        };
       }
       return {
         value: Math.round((total / matched) * 100) / 100,
@@ -354,7 +358,11 @@ export const RULES: Rule[] = [
         }
       }
       if (matched === 0) {
-        return { value: 0.5, confidence: 3, reasoning: `Cold start: ${count} output shape signals (no direct match)` };
+        return {
+          value: 0.5,
+          confidence: 3,
+          reasoning: `Cold start: ${count} output shape signals (no direct match)`,
+        };
       }
       return {
         value: Math.round((total / matched) * 100) / 100,
@@ -392,7 +400,11 @@ export const RULES: Rule[] = [
         }
       }
       if (detected.length === 0) {
-        return { value: count * 0.3, confidence: 5, reasoning: `Cold start: ${count} generic disliked behavior signals` };
+        return {
+          value: count * 0.3,
+          confidence: 5,
+          reasoning: `Cold start: ${count} generic disliked behavior signals`,
+        };
       }
       return {
         value: Math.min(1.0, detected.length * 0.4),
@@ -477,7 +489,10 @@ export class Derivator {
 
       const results: DerivedTrait[] = [];
 
-      for (const [dimension, { observations: obs, derive, deriveFromValues }] of dimMatches) {
+      for (const [
+        dimension,
+        { observations: obs, derive, deriveFromValues },
+      ] of dimMatches) {
         let derived: { value: number; confidence: number; reasoning: string };
         if (deriveFromValues) {
           const values = obs.map((o) => o.value);

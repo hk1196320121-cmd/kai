@@ -47,7 +47,14 @@ export const DeriveTriggerSchema = {
 
 export const WorkRecommendSchema = {
   domain: z
-    .enum(["coding", "writing", "research", "creative", "management", "general"])
+    .enum([
+      "coding",
+      "writing",
+      "research",
+      "creative",
+      "management",
+      "general",
+    ])
     .optional()
     .default("general")
     .describe("Filter recommendations by domain"),

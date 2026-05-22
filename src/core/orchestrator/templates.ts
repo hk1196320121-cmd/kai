@@ -22,7 +22,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Daily Standup Generator",
     description:
       "Generate a daily standup report from git activity and task status",
-    prompt: "Generate a daily standup report covering: what was done yesterday (from git log), what's planned today, and any blockers. Format as a concise 3-bullet summary.",
+    prompt:
+      "Generate a daily standup report covering: what was done yesterday (from git log), what's planned today, and any blockers. Format as a concise 3-bullet summary.",
     domain: "coding",
     agent: "hermes",
     trait_targets: { detail_oriented: 0.7, planning_style: 0.6 },
@@ -32,7 +33,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Code Review Checklist",
     description:
       "Generate a code review checklist tailored to your project patterns",
-    prompt: "Create a code review checklist for the most recent pull request. Cover: correctness, edge cases, error handling, test coverage, and performance.",
+    prompt:
+      "Create a code review checklist for the most recent pull request. Cover: correctness, edge cases, error handling, test coverage, and performance.",
     domain: "coding",
     agent: "hermes",
     trait_targets: { detail_oriented: 0.8, risk_tolerance: 0.3 },
@@ -40,9 +42,9 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
   {
     id: "bug-triage",
     title: "Bug Triage Prioritizer",
-    description:
-      "Prioritize bugs by impact and urgency using project context",
-    prompt: "Analyze open issues/bugs and prioritize them by: user impact, frequency, and fix complexity. Produce a ranked list with rationale.",
+    description: "Prioritize bugs by impact and urgency using project context",
+    prompt:
+      "Analyze open issues/bugs and prioritize them by: user impact, frequency, and fix complexity. Produce a ranked list with rationale.",
     domain: "coding",
     agent: "hermes",
     trait_targets: { planning_style: 0.7, risk_tolerance: 0.5 },
@@ -50,9 +52,9 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
   {
     id: "api-design-review",
     title: "API Design Reviewer",
-    description:
-      "Review API designs for consistency, security, and usability",
-    prompt: "Review the API design for: naming consistency, HTTP method usage, error response format, pagination patterns, and authentication scope.",
+    description: "Review API designs for consistency, security, and usability",
+    prompt:
+      "Review the API design for: naming consistency, HTTP method usage, error response format, pagination patterns, and authentication scope.",
     domain: "coding",
     agent: "hermes",
     trait_targets: { detail_oriented: 0.9, planning_style: 0.8 },
@@ -62,7 +64,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Weekly Research Digest",
     description:
       "Summarize research papers, articles, and findings from the week",
-    prompt: "Compile a weekly research digest: summarize key findings, highlight actionable insights, and note connections to ongoing work.",
+    prompt:
+      "Compile a weekly research digest: summarize key findings, highlight actionable insights, and note connections to ongoing work.",
     domain: "research",
     agent: "hermes",
     trait_targets: { detail_oriented: 0.6 },
@@ -72,7 +75,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Document Outliner",
     description:
       "Generate structured outlines for documents, blog posts, or reports",
-    prompt: "Create a detailed outline for the writing project. Include: sections, key points per section, and a flow that builds a coherent narrative.",
+    prompt:
+      "Create a detailed outline for the writing project. Include: sections, key points per section, and a flow that builds a coherent narrative.",
     domain: "writing",
     agent: "hermes",
     trait_targets: { planning_style: 0.8, preferred_output_shape: 0.3 },
@@ -81,7 +85,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     id: "sprint-planner",
     title: "Sprint Planning Assistant",
     description: "Break down goals into sprint-sized tasks with estimates",
-    prompt: "Decompose the sprint goal into tasks with: description, estimated effort (S/M/L), dependencies, and suggested assignee based on expertise.",
+    prompt:
+      "Decompose the sprint goal into tasks with: description, estimated effort (S/M/L), dependencies, and suggested assignee based on expertise.",
     domain: "management",
     agent: "hermes",
     trait_targets: { planning_style: 0.9, detail_oriented: 0.7 },
@@ -89,9 +94,9 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
   {
     id: "design-system-audit",
     title: "Design System Auditor",
-    description:
-      "Audit a design system for consistency and completeness",
-    prompt: "Audit the design system for: color consistency, typography scale, spacing system, component coverage, and accessibility compliance.",
+    description: "Audit a design system for consistency and completeness",
+    prompt:
+      "Audit the design system for: color consistency, typography scale, spacing system, component coverage, and accessibility compliance.",
     domain: "creative",
     agent: "hermes",
     trait_targets: { detail_oriented: 0.9 },
@@ -101,7 +106,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Personal Learning Path",
     description:
       "Generate a structured learning plan based on goals and current skills",
-    prompt: "Create a learning path: assess current knowledge, identify gaps, recommend resources (ordered by difficulty), and suggest practice projects.",
+    prompt:
+      "Create a learning path: assess current knowledge, identify gaps, recommend resources (ordered by difficulty), and suggest practice projects.",
     domain: "general",
     agent: "hermes",
     trait_targets: { planning_style: 0.7 },
@@ -111,7 +117,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Meeting Notes Formatter",
     description:
       "Transform raw meeting notes into structured action items and decisions",
-    prompt: "Format the meeting notes into: attendees, key decisions (with rationale), action items (with owner and deadline), and open questions.",
+    prompt:
+      "Format the meeting notes into: attendees, key decisions (with rationale), action items (with owner and deadline), and open questions.",
     domain: "general",
     agent: "hermes",
     trait_targets: { preferred_output_shape: 0.9 },
@@ -121,7 +128,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Project Retrospective Guide",
     description:
       "Run a structured retrospective on a completed project or sprint",
-    prompt: "Guide a retrospective covering: what went well, what could improve, and actionable changes for next time. Use the Start-Stop-Continue framework.",
+    prompt:
+      "Guide a retrospective covering: what went well, what could improve, and actionable changes for next time. Use the Start-Stop-Continue framework.",
     domain: "management",
     agent: "hermes",
     trait_targets: {},
@@ -131,7 +139,8 @@ export const TEMPLATE_CATALOG: TaskTemplate[] = [
     title: "Weekly Review Generator",
     description:
       "Compile a weekly review from tasks completed, observations, and goals",
-    prompt: "Generate a weekly review: tasks completed, metrics changed, patterns noticed, and suggestions for next week. Include profile evolution summary.",
+    prompt:
+      "Generate a weekly review: tasks completed, metrics changed, patterns noticed, and suggestions for next week. Include profile evolution summary.",
     domain: "general",
     agent: "hermes",
     trait_targets: {},

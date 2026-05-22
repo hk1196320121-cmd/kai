@@ -40,7 +40,12 @@ export const QUESTIONS: InterviewQuestion[] = [
     prompt: "How do you approach a new project?",
     required: false,
     traitTarget: "planning_style",
-    options: ["detailed plan", "rough outline", "explore first", "dive right in"],
+    options: [
+      "detailed plan",
+      "rough outline",
+      "explore first",
+      "dive right in",
+    ],
   },
   {
     slug: "schedule_rhythm",
@@ -61,11 +66,7 @@ export const QUESTIONS: InterviewQuestion[] = [
     prompt: "How do you feel about trying unproven approaches?",
     required: false,
     traitTarget: "risk_tolerance",
-    options: [
-      "only when confident",
-      "after basic testing",
-      "when it compiles",
-    ],
+    options: ["only when confident", "after basic testing", "when it compiles"],
   },
   {
     slug: "autonomy",
