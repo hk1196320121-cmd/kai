@@ -1,6 +1,6 @@
 # MCP Server Reference
 
-Complete API reference for Kai's Model Context Protocol server. Covers all 18 tools (5 profile + 7 orchestrator + 3 prompt + 3 telemetry), 12 resources, schemas, error handling, and behavior.
+Complete API reference for Kai's Model Context Protocol server. Covers all 19 tools (5 profile + 8 orchestrator + 3 prompt + 3 telemetry), 12 resources, schemas, error handling, and behavior.
 
 ## Starting the Server
 
@@ -128,14 +128,26 @@ Triggers trait derivation from collected observations.
 | Scope appetite | `scope_appetite` | Observations showing broad exploration | value 0–1, confidence based on topic diversity |
 | Risk tolerance | `risk_tolerance` | Observations showing risk-taking behavior | value 0–1, confidence based on risk indicators |
 
-*Coldstart signal rules:*
+*Coldstart signal rules (deriveFromValues):*
+
+| Rule | Dimension | Signal key | Source |
+|------|-----------|------------|--------|
+| Planning style | `planning_style` | `coldstart:planning_style` | Interview answer |
+| Schedule rhythm | `schedule_rhythm` | `coldstart:schedule_rhythm` | Interview answer |
+| Output shape | `preferred_output_shape` | `coldstart:preferred_output_shape` | Interview answer |
+| Disliked behavior | `disliked_behavior` | `coldstart:disliked_behavior` | Interview answer |
+| Risk tolerance | `risk_tolerance` | `coldstart:risk_tolerance` | Interview answer |
+| Autonomy | `autonomy` | `coldstart:autonomy` | Interview answer |
+| Domain context | `domain_context` | `coldstart:domain_context` | Interview answer |
+
+*Coldstart git/aggregate rules:*
 
 | Rule | Dimension | Signal key | Source |
 |------|-----------|------------|--------|
 | Detail level | `detail_oriented` | `coldstart:signal.detail_level` | Self-assessment |
 | Communication style | `comm_style` | `coldstart:signal.comm_style` | Self-assessment |
 | Domain context | `domain_context` | `coldstart:signal.domain` | Self-assessment |
-| Output shape | `preferred_output_shape` | `coldstart:format` | Self-assessment |
+| Output shape | `preferred_output_shape` | `coldstart:preferred_output_shape` | Self-assessment |
 | Commit times | `early_riser` | `coldstart:git.commit_time_distribution` | Git history |
 | Commit messages | `detail_oriented` | `coldstart:git.commit_message_length` | Git history |
 | Branch patterns | `scope_appetite` | `coldstart:git.branch_pattern` | Git history |
@@ -144,7 +156,7 @@ Triggers trait derivation from collected observations.
 
 **Returns:** Array of `{ dimension, value, confidence, source }` for newly derived traits.
 
-## Orchestrator Tools (7)
+## Orchestrator Tools (8)
 
 Tools for the idea-to-execution pipeline: submit ideas, decompose them into tasks, schedule and dispatch work, observe results, and re-plan when behavioral traits change.
 
@@ -158,7 +170,7 @@ Submit a new idea for planning and execution.
 |-----------|------|----------|-------------|-------------|
 | title | `string` | Yes | 1–200 chars | Idea title |
 | description | `string` | No | 1–5000 chars | Detailed description |
-| domain | `"coding"` \| `"writing"` \| `"research"` \| `"creative"` \| `"general"` | No | Default: `general` | Idea domain for context |
+| domain | `"coding"` \| `"writing"` \| `"research"` \| `"creative"` \| `"management"` \| `"general"` | No | Default: `general` | Idea domain for context |
 | priority | `"low"` \| `"medium"` \| `"high"` \| `"critical"` | No | Default: `medium` | Idea priority |
 | deadline | `string` | No | ISO date | Optional deadline |
 | workspace_id | `string` | No | — | Existing workspace ID (auto-created if omitted) |
@@ -239,6 +251,24 @@ Re-plan an idea after closed-loop feedback. Use when the closed-loop engine dete
 | idea_id | `string` | Yes | Idea to re-plan |
 
 **Returns:** New plan replacing the previous one, with updated tasks reflecting the current profile state.
+
+### kai_work_recommend
+
+Get task recommendations based on the user's behavioral profile traits. The recommendation engine matches task templates against the user's trait dimensions, scoring each template by alignment and applying a domain bonus.
+
+**Input schema:**
+
+| Parameter | Type | Required | Constraints | Description |
+|-----------|------|----------|-------------|-------------|
+| domain | `"coding"` \| `"writing"` \| `"research"` \| `"creative"` \| `"management"` \| `"general"` | No | Default: `general` | Filter recommendations by domain |
+| limit | `number` | No | 1–5, default: 3 | Number of recommendations to return |
+
+**Returns:** Array of recommendation objects, each with:
+- `title` — task template title
+- `domain` — matching domain
+- `traitAlignment` — alignment score (0–1)
+- `explanation` — why this task fits the user's profile
+- `traitTargets` — trait dimensions used for matching and feedback loop
 
 ## Prompt Genome Tools (3)
 

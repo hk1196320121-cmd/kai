@@ -8,7 +8,7 @@ Default path: `$KAI_DB` or `~/.kai/kai.db`. Override with the `KAI_DB` environme
 
 The database uses WAL (write-ahead logging) mode for concurrent read/write safety. Foreign keys are enabled. Busy timeout is 5000ms.
 
-Migrations run automatically on startup. The schema is versioned from v1 to v7.
+Migrations run automatically on startup. The schema is versioned from v1 to v8.
 
 ## Tables
 
@@ -20,7 +20,7 @@ Tracks the current database schema version.
 |--------|------|-------------|
 | version | INTEGER | PRIMARY KEY |
 
-Always contains a single row with the highest applied migration number (currently 7).
+Always contains a single row with the highest applied migration number (currently 8).
 
 ### `identity`
 
@@ -134,7 +134,7 @@ Events within workspaces, used by the event bus to generate observations.
 | id | INTEGER | AUTO | PRIMARY KEY |
 | workspace_id | TEXT | — | NOT NULL, FK → workspaces(id) ON DELETE CASCADE |
 | task_id | TEXT | NULL | FK → workspace_tasks(id) ON DELETE SET NULL |
-| event_type | TEXT | — | NOT NULL, CHECK(IN ('workspace_created','task_created','task_updated','task_completed','interaction','coldstart_answer','workspace_archived')) |
+| event_type | TEXT | — | NOT NULL, CHECK(IN ('workspace_created','task_created','task_updated','task_completed','interaction','coldstart_answer','workspace_archived','recommendation_shown','recommendation_accepted','recommendation_rejected','task_auto_executed')) |
 | payload | TEXT | `'{}'` | NOT NULL (JSON) |
 | created_at | TEXT | `datetime('now')` | NOT NULL |
 
@@ -437,6 +437,7 @@ Read-only views that expose telemetry data without internal fields. These are th
 | v5 | Add `ideas`, `planned_tasks`, `execution_results` tables. Remove source CHECK constraint (accept any string). Supports `execution_result` source |
 | v6 | Add `prompt_genes`, `prompt_genomes`, `prompt_variants`, `prompt_segments`, `prompt_eval_cases`, `prompt_tournaments`, `prompt_champions`, `prompt_champion_history` tables. Prompt genome system for evolutionary prompt optimization |
 | v7 | Add `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors` tables with 10+ indexes. Add 5 telemetry views (`telemetry_*_v1`). Flight recorder telemetry system for full causal chain tracing |
+| v8 | Extend `workspace_events` event_type CHECK with `recommendation_shown`, `recommendation_accepted`, `recommendation_rejected`, `task_auto_executed`. Table rebuild with transaction-safe DDL |
 
 All migrations use `PRAGMA foreign_keys = OFF` during table rebuilds, then re-enable. Transactions wrap destructive operations. `PRAGMA integrity_check` runs after each rebuild migration.
 

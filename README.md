@@ -7,12 +7,12 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 Kai watches what you do (cron outputs, daily patterns, explicit preferences) and builds a living user profile: identity, behavioral traits, and preferences. Other AI tools can then ask Kai "who is this person?" and get a rich, evidence-based answer.
 
 Core capabilities:
-- **MCP Server** — Model Context Protocol server via stdio. 18 tools (5 profile + 7 orchestrator + 3 prompt + 3 telemetry) and 12 resources (`kai://profile/*`, `kai://prompt/*`, `kai://telemetry/*`, `kai://system/health`)
+- **MCP Server** — Model Context Protocol server via stdio. 19 tools (5 profile + 8 orchestrator + 3 prompt + 3 telemetry) and 12 resources (`kai://profile/*`, `kai://prompt/*`, `kai://telemetry/*`, `kai://system/health`)
 - **Orchestrator** — idea-to-execution engine with LLM-powered planning, scheduling, dispatching, observation, and closed-loop re-planning
 - **Prompt Genome** — evolutionary prompt optimization with genes, genomes, tournaments, and LLM-as-judge. Prompts improve over time through automated A/B testing
-- **Cold Start** — `kai work start` bootstraps a profile from 4 questions + git history scan with preview/edit/confirm
+- **Cold Start** — `kai work start` bootstraps a profile from a 10-question interview + git history scan, with task recommendations and auto-execution
 - **Profile Engine** — identity, observations, traits, and preferences with full CRUD
-- **Trait Derivation** — 13 rules across 9 dimensions + LLM-based inference, with source precedence protection
+- **Trait Derivation** — 20 rules across 16 dimensions + LLM-based inference, with source precedence protection
 - **Workspace System** — CRUD for workspaces, tasks, and events with event-driven observation collection
 - **Confidence Decay** — traits weaken over time unless reinforced, declared traits are immune
 - **Provenance** — every trait has a chain of evidence. Ask "why?" and get the reasoning
@@ -93,7 +93,7 @@ kai mcp serve
 
 | Command | Description |
 |---------|-------------|
-| `start` | Interactive cold start: 4 questions + git history scan, with preview/edit/confirm |
+| `start` | Interactive cold start: 10-question interview + git history scan, recommendations, and auto-execution |
 
 ### `kai observe`
 
@@ -142,7 +142,7 @@ kai mcp serve
 | `observe.batch` | Submit multiple observations at once |
 | `derive.trigger` | Trigger trait derivation (rules, LLM, or both) |
 
-#### MCP Tools — Orchestrator (7)
+#### MCP Tools — Orchestrator (8)
 
 | Tool | Description |
 |------|-------------|
@@ -153,6 +153,7 @@ kai mcp serve
 | `kai_idea_pause` | Pause an active idea and its tasks |
 | `kai_execution_status` | Check execution status for an idea |
 | `kai_replan` | Re-plan an idea (after closed-loop feedback) |
+| `kai_work_recommend` | Get task recommendations based on profile traits |
 
 #### MCP Tools — Telemetry (3)
 
@@ -203,7 +204,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 | Document | Type | Description |
 |----------|------|-------------|
-| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 18 tools and 12 resources |
+| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 19 tools and 12 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
 | [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |

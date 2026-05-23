@@ -68,7 +68,7 @@ Trigger trait derivation from collected observations.
 
 **Returns:** Array of newly derived traits with dimensions, values, and confidence scores.
 
-## MCP Tools — Orchestrator (7)
+## MCP Tools — Orchestrator (8)
 
 ### kai_idea_submit
 
@@ -77,7 +77,7 @@ Submit a new idea for planning and execution.
 **Parameters:**
 - `title` (required): `string` (1–200 chars) — idea title
 - `description` (optional): `string` (1–5000 chars) — detailed description
-- `domain` (optional): `"coding"` | `"writing"` | `"research"` | `"creative"` | `"general"` — idea domain (default: `general`)
+- `domain` (optional): `"coding"` | `"writing"` | `"research"` | `"creative"` | `"management"` | `"general"` — idea domain (default: `general`)
 - `priority` (optional): `"low"` | `"medium"` | `"high"` | `"critical"` — idea priority (default: `medium`)
 - `deadline` (optional): `string` — ISO date deadline
 - `workspace_id` (optional): `string` — existing workspace ID (auto-created if omitted)
@@ -140,6 +140,16 @@ Re-plan an idea after closed-loop feedback. Used when the closed-loop engine det
 - `idea_id` (required): `string` — idea to re-plan
 
 **Returns:** New plan replacing the previous one, with updated tasks.
+
+### kai_work_recommend
+
+Get task recommendations based on the user's behavioral profile traits. Returns ranked templates with explanations for why each fits the user.
+
+**Parameters:**
+- `domain` (optional): `"coding"` | `"writing"` | `"research"` | `"creative"` | `"management"` | `"general"` — filter by domain (default: `general`)
+- `limit` (optional): `number` (1–5) — number of recommendations (default: 3)
+
+**Returns:** Array of recommendations with `title`, `domain`, `traitAlignment`, `explanation`, and `traitTargets`.
 
 ## MCP Tools — Prompt Genome (3)
 
@@ -257,7 +267,9 @@ src/
     utils.ts        safeJsonParse, structured logging
   core/profile/     Profile engine core
     engine.ts       CRUD for identity, observations, traits, preferences; source precedence
-    derivator.ts    Rule-based + LLM trait derivation (13 rules across 9 dimensions)
+    derivator.ts    Rule-based + LLM trait derivation (20 rules across 16 dimensions, with deriveFromValues)
+    interview-questions.ts  10-question interview catalog with trait targets
+    interview.ts    InterviewEngine — cold start interview flow with signal extraction
     provenance.ts   Trait provenance chain and correction tracking
     dedup.ts        SHA-256 deduplication (content + tags + context)
     decay.ts        Time-based confidence decay (declared traits immune)
@@ -266,6 +278,9 @@ src/
     types.ts        Core type definitions
   core/orchestrator/  Idea-to-execution engine
     types.ts        Idea, PlannedTask, ExecutionResult types
+    recommend.ts    Task recommendation engine — matches templates to profile traits
+    templates.ts    Task template catalog (12 templates, 6 domains) with trait alignment scoring
+    domain-resolver.ts  Resolves idea domain from interview answers and keyword heuristics
     store.ts        CRUD for ideas, tasks, execution results (SQLite)
     planner.ts      LLM-powered task decomposition with profile context
     profile-context.ts  Formats behavioral profile for planner prompts
@@ -288,12 +303,12 @@ src/
     types.ts        Workspace, Task, Event type definitions
   bridge/           Bridges
     agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
-  db/               SQLite client with WAL mode and schema migrations (v1–v7)
+  db/               SQLite client with WAL mode and schema migrations (v1–v8)
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
 Data flows:
-- **Cold start path**: `kai work start` (4 questions + git scan) → Observations → Derivator → Traits → Preview/edit/confirm
+- **Cold start path**: `kai work start` (10-question interview + git scan) → Derivator → Traits → Recommendations → Auto-execute
 - **CLI path**: Hermes cron → Collector (dedup) → Observations (SQLite) → Derivator (rules + LLM) → Traits → Decay → Provenance
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
@@ -308,7 +323,7 @@ Data flows:
 
 **Deduplication**: Observations are hashed (SHA-256) using content + tags + context. Namespace format: `mcp:{tool}:{hash}`. Duplicate submissions return the existing observation.
 
-**Trait derivation rules** (13 rules across 9 unique dimensions):
+**Trait derivation rules** (20 rules across 16 unique dimensions):
 
 *MCP / cron rules (6):*
 - `early_riser`: Matches cron patterns indicating morning activity
@@ -318,11 +333,20 @@ Data flows:
 - `scope_appetite`: Matches observations indicating willingness to explore broadly
 - `risk_tolerance`: Matches observations showing risk-taking or cautious behavior
 
-*Coldstart signal rules (7):*
+*Coldstart signal rules (7, deriveFromValues):*
+- `planning_style` (coldstart:planning_style): From interview answer about planning approach
+- `schedule_rhythm` (coldstart:schedule_rhythm): From interview answer about daily rhythm
+- `preferred_output_shape` (coldstart:preferred_output_shape): From interview answer about output format
+- `disliked_behavior` (coldstart:disliked_behavior): From interview answer about disliked behaviors
+- `risk_tolerance` (coldstart:risk_tolerance): From interview answer about risk preferences
+- `autonomy` (coldstart:autonomy): From interview answer about autonomy level
+- `domain_context` (coldstart:domain_context): From interview answer about domain expertise
+
+*Coldstart git/cron rules (7):*
 - `detail_oriented` (coldstart:signal.detail_level): From self-assessed detail orientation
 - `comm_style` (coldstart:signal.comm_style): From preferred communication style
 - `domain_context` (coldstart:signal.domain): From stated domain expertise
-- `preferred_output_shape` (coldstart:format): From preferred output format
+- `preferred_output_shape` (coldstart:preferred_output_shape): From preferred output format
 - `early_riser` (coldstart:git.commit_time_distribution): From git commit time patterns
 - `detail_oriented` (coldstart:git.commit_message_length): From commit message thoroughness
 - `scope_appetite` (coldstart:git.branch_pattern): From branch naming patterns
@@ -343,13 +367,13 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v7). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v8). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (545 across 74 files)
+bun test             # Run tests (613 across 83 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

@@ -1,8 +1,8 @@
 # Tutorial: Your First Cold Start
 
-Build a behavioral profile from scratch using `kai work start`. You'll answer 4 questions, scan your git history, review the derived traits, and walk away with a working profile.
+Build a behavioral profile from scratch using `kai work start`. You'll answer 10 interview questions, scan your git history, review derived traits, get task recommendations, and walk away with a working profile.
 
-**What you'll build:** A Kai profile with derived traits from both your self-description and your actual git commit patterns.
+**What you'll build:** A Kai profile with derived traits from both your interview answers and your actual git commit patterns, plus personalized task recommendations.
 
 **Time:** ~3 minutes.
 
@@ -46,28 +46,25 @@ The scan detects:
 
 You don't need to do anything here. The scan runs automatically.
 
-## Step 3: Answer 4 questions
+## Step 3: Answer 10 interview questions
 
-Kai asks 4 questions about your current work:
+Kai asks 10 questions covering your planning style, schedule rhythm, output preferences, risk tolerance, autonomy level, and domain focus:
 
 ```
 Workspace: abc123-def456
 
-What are you trying to get done?
-> Building a REST API for user profiles
+1/10: How do you prefer to plan your work?
+  ▸ Detailed step-by-step    ▸ High-level outline    ▸ Adaptive / flexible
+> Detailed step-by-step
 
-What would a good result look like?
-> Endpoints for CRUD, proper validation, and tests covering edge cases
+2/10: When are you most productive?
+  ▸ Early morning (5–9 AM)    ▸ Morning (9–12 PM)    ▸ Afternoon    ▸ Evening / night
+> Early morning (5–9 AM)
 
-Any constraints — people, tools, deadlines?
-> Must ship by Friday, using PostgreSQL, team of 2
-
-How should Kai organize this?
-  ▸ Checklist    ▸ Brief    ▸ Plan    ▸ Decision log
-> Plan
+... (8 more questions)
 ```
 
-The first question (goal) is required. The other three can be left blank if you prefer.
+The first question (goal) is required. The rest can be left blank if you prefer. Each question maps to a specific trait dimension.
 
 ## Step 4: Review your profile draft
 

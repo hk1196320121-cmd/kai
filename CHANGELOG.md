@@ -3,9 +3,9 @@
 ## [0.7.0.0] - 2026-05-23
 
 ### Added
-- **InterviewEngine** — 10-question cold start interview catalog replacing the old signal extractor. Questions cover planning style, schedule rhythm, output preferences, risk tolerance, autonomy, and domain focus. Each question maps to a specific trait dimension via `traitTarget`
-- **Template catalog + recommendation engine** — 12 task templates across 6 domains with trait-target alignment scoring. `matchTemplates()` scores templates by trait match, applies domain bonus, caps at 1.0, and returns ranked results
-- **`kai_work_recommend` MCP tool** — AI agents can request task recommendations by domain. Returns top-3 with explanations ("why this fits you") and "why not others" context
+- **InterviewEngine** — cold start now asks 10 interview questions (planning style, schedule rhythm, output preferences, risk tolerance, autonomy, domain focus) instead of the old 4-question flow. Each answer maps directly to a trait dimension, producing richer profiles on first run
+- **Template catalog + recommendation engine** — after the interview, Kai recommends task templates matched to your profile traits. 12 templates across 6 domains, scored by trait alignment
+- **`kai_work_recommend` MCP tool** — AI agents can request task recommendations by domain via `kai_work_recommend`. Returns top-3 with explanations for why each fits the user's profile
 - **Recommendation feedback loop** — rejected recommendations emit `recommendation_rejected` events and reduce confidence of the trait dimensions that drove the recommendation (floor at 1)
 - **`deriveFromValues` rule interface** — derivator rules can now define explicit answer-to-value mappings instead of relying on observation counts. 7 new rules: `planning_style`, `schedule_rhythm`, `preferred_output_shape`, `disliked_behavior`, `risk_tolerance`, `autonomy`, `domain_context`
 - **`--reset` flag** for `kai work start` — forces a fresh interview even if cold start was already completed
