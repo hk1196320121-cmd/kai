@@ -1,5 +1,4 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { recommendTasks } from "../core/orchestrator/recommend";
 import { checkDuplicate } from "../core/profile/dedup";
 import { Derivator } from "../core/profile/derivator";
 import { ProfileEngine } from "../core/profile/engine";
@@ -16,7 +15,6 @@ import {
   ObserveSubmitSchema,
   ProfileReadSchema,
   ProfileWhySchema,
-  WorkRecommendSchema,
 } from "./schema";
 import { log, safeJsonParse } from "./utils";
 
@@ -388,22 +386,6 @@ export function registerHandlers(
         }
 
         return textContent({ submitted, duplicates, errors, results });
-      },
-      telemetry,
-    ),
-  );
-
-  // --- kai_work_recommend ---
-  server.tool(
-    "kai_work_recommend",
-    WorkRecommendSchema,
-    withTrace(
-      "kai_work_recommend",
-      async ({ domain, limit }) => {
-        log("kai_work_recommend", { domain, limit });
-        const traits = engine.getTraits();
-        const recommendations = recommendTasks(traits, domain).slice(0, limit);
-        return textContent({ recommendations });
       },
       telemetry,
     ),

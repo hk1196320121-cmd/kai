@@ -88,15 +88,15 @@ export class InterviewEngine {
       .join(" ")
       .toLowerCase();
     const domainSignals: string[] = [];
-    if (/code|debug|deploy|api|git|build|test/i.test(allText))
+    if (/\b(?:code|debug|deploy|api|git|build|test)\b/i.test(allText))
       domainSignals.push("engineering");
-    if (/design|ux|ui|wireframe|prototype/i.test(allText))
+    if (/\b(?:design|ux|ui|wireframe|prototype)\b/i.test(allText))
       domainSignals.push("design");
-    if (/manage|team|sprint|roadmap|stakeholder/i.test(allText))
+    if (/\b(?:manage|team|sprint|roadmap|stakeholder)\b/i.test(allText))
       domainSignals.push("management");
-    if (/research|paper|study|analysis|data/i.test(allText))
+    if (/\b(?:research|paper|study|analysis|dataset)\b/i.test(allText))
       domainSignals.push("research");
-    if (/write|document|content|blog|report/i.test(allText))
+    if (/\b(?:write|document|content|blog|report)\b/i.test(allText))
       domainSignals.push("writing");
 
     if (domainSignals.length > 0) {

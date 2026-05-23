@@ -3,6 +3,7 @@ import { InterviewEngine } from "../src/core/profile/interview";
 import { Derivator } from "../src/core/profile/derivator";
 import { ProfileEngine } from "../src/core/profile/engine";
 import { recommendTasks } from "../src/core/orchestrator/recommend";
+import { resolveIdeaDomain } from "../src/core/orchestrator/domain-resolver";
 import { KaiDB } from "../src/db/client";
 import { cleanup, tempDb } from "./helpers/temp-db";
 
@@ -56,20 +57,7 @@ describe("Cold Start Bootstrapper Integration", () => {
     const domainValue = domain
       ? JSON.parse(domain.value).domains?.[0] ?? "general"
       : "general";
-    const domainMap: Record<string, string> = {
-      engineering: "coding",
-      design: "creative",
-      management: "general",
-      research: "research",
-      writing: "writing",
-      other: "general",
-    };
-    const ideaDomain = (domainMap[domainValue] ?? "general") as
-      | "coding"
-      | "writing"
-      | "research"
-      | "creative"
-      | "general";
+    const ideaDomain = resolveIdeaDomain(domainValue);
 
     const recommendations = recommendTasks(savedTraits, ideaDomain);
     expect(recommendations.length).toBe(3);

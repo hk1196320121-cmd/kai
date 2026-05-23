@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 import type { Command } from "commander";
 import { HermesAgentBridge } from "../bridge/agent-bridge";
 import { Dispatcher } from "../core/orchestrator/dispatcher";
+import { resolveIdeaDomain } from "../core/orchestrator/domain-resolver";
 import { recommendTasks } from "../core/orchestrator/recommend";
 import { OrchestratorStore } from "../core/orchestrator/store";
 import { Derivator } from "../core/profile/derivator";
@@ -257,11 +258,12 @@ export function registerWorkCommands(program: Command): void {
         rl.close();
       }
 
-      // Re-run detection: skip interview if coldstart data already exists
-      const existingColdstart = engine
-        .getObservations({ type: "signal" })
-        .filter((o) => o.source === "coldstart");
-      if (existingColdstart.length > 0 && !options.reset) {
+      // Re-run detection: skip interview if interview answers already exist
+      // Only check for interview answers (coldstart:goal is the required first question),
+      // not git scan observations which are written before the interview and could remain
+      // if the interview is interrupted.
+      const existingAnswers = engine.getObservations({ key: "coldstart:goal" });
+      if (existingAnswers.length > 0 && !options.reset) {
         console.log(
           "Cold start already completed. Showing recommendations from existing profile...",
         );
@@ -273,22 +275,15 @@ export function registerWorkCommands(program: Command): void {
           domainObs.length > 0
             ? (JSON.parse(domainObs[0].value).domains?.[0] ?? "general")
             : "general";
-        const domainMap: Record<string, string> = {
-          engineering: "coding",
-          design: "creative",
-          management: "general",
-          research: "research",
-          writing: "writing",
-          other: "general",
-        };
-        const ideaDomain = (domainMap[domainValue] ?? "general") as
-          | "coding"
-          | "writing"
-          | "research"
-          | "creative"
-          | "general";
+        const ideaDomain = resolveIdeaDomain(domainValue);
 
         const recommendations = recommendTasks(savedTraits, ideaDomain);
+
+        if (recommendations.length === 0) {
+          console.log("\nNo matching workflows found for your profile.");
+          db.close();
+          return;
+        }
 
         console.log("\n=== Recommended Workflows ===\n");
         for (let i = 0; i < recommendations.length; i++) {
@@ -491,8 +486,6 @@ export function registerWorkCommands(program: Command): void {
         }
       }
 
-      confirmRl.close();
-
       // Step 8: Show recommendations and auto-execute
       if (confirmed) {
         const savedTraits = engine.getTraits();
@@ -503,22 +496,16 @@ export function registerWorkCommands(program: Command): void {
           domainObs.length > 0
             ? (JSON.parse(domainObs[0].value).domains?.[0] ?? "general")
             : "general";
-        const domainMap: Record<string, string> = {
-          engineering: "coding",
-          design: "creative",
-          management: "general",
-          research: "research",
-          writing: "writing",
-          other: "general",
-        };
-        const ideaDomain = (domainMap[domainValue] ?? "general") as
-          | "coding"
-          | "writing"
-          | "research"
-          | "creative"
-          | "general";
+        const ideaDomain = resolveIdeaDomain(domainValue);
 
         const recommendations = recommendTasks(savedTraits, ideaDomain);
+
+        if (recommendations.length === 0) {
+          console.log("\nNo matching workflows found for your profile.");
+          confirmRl.close();
+          db.close();
+          return;
+        }
 
         console.log("\n=== Recommended Workflows ===\n");
         for (let i = 0; i < recommendations.length; i++) {
@@ -553,6 +540,7 @@ export function registerWorkCommands(program: Command): void {
           });
 
           // Try LLM path for task decomposition
+          let llmTasksCreated = false;
           const { LLMProvider } = await import("../llm/provider");
           const llm = new LLMProvider();
           if (llm.getConfig().apiKey) {
@@ -570,6 +558,7 @@ export function registerWorkCommands(program: Command): void {
               for (const t of tasks) {
                 console.log(`  - ${t.title}`);
               }
+              llmTasksCreated = tasks.length > 0;
             } catch {
               console.log(
                 "  Could not generate plan (LLM unavailable), creating task directly.",
@@ -577,41 +566,43 @@ export function registerWorkCommands(program: Command): void {
             }
           }
 
-          // Create task (works with or without LLM)
-          const task = orchStore.createTask({
-            idea_id: idea.id,
-            workspace_id: workspace.id,
-            title: recommendations[0].title,
-            description: recommendations[0].description,
-            type: "one_off",
-            agent: "hermes",
-            prompt: recommendations[0].description,
-            decomposition_rationale:
-              "Auto-generated from cold start recommendation",
-            scheduling_rationale: "Execute when ready",
-          });
+          // Create fallback task only if LLM decomposition didn't produce tasks
+          if (!llmTasksCreated) {
+            const task = orchStore.createTask({
+              idea_id: idea.id,
+              workspace_id: workspace.id,
+              title: recommendations[0].title,
+              description: recommendations[0].description,
+              type: "one_off",
+              agent: "hermes",
+              prompt: recommendations[0].description,
+              decomposition_rationale:
+                "Auto-generated from cold start recommendation",
+              scheduling_rationale: "Execute when ready",
+            });
 
-          // Auto-execute via dispatcher
-          try {
-            const bridge = new HermesAgentBridge();
-            const dispatcher = new Dispatcher(orchStore, bridge);
-            const result = await dispatcher.dispatch(task.id);
-            if (result.success) {
-              console.log(`✓ Task dispatched: ${task.title}`);
-              store.addEvent({
-                workspace_id: workspace.id,
-                event_type: "task_auto_executed",
-                payload: JSON.stringify({
-                  task_id: task.id,
-                  idea_id: idea.id,
-                }),
-              });
+            // Auto-execute via dispatcher
+            try {
+              const bridge = new HermesAgentBridge();
+              const dispatcher = new Dispatcher(orchStore, bridge);
+              const result = await dispatcher.dispatch(task.id);
+              if (result.success) {
+                console.log(`✓ Task dispatched: ${task.title}`);
+                store.addEvent({
+                  workspace_id: workspace.id,
+                  event_type: "task_auto_executed",
+                  payload: JSON.stringify({
+                    task_id: task.id,
+                    idea_id: idea.id,
+                  }),
+                });
+              }
+            } catch {
+              console.log(
+                `  Task created but not dispatched (agent unavailable)`,
+              );
             }
-          } catch {
-            console.log(
-              `  Task created but not dispatched (agent unavailable)`,
-            );
-          }
+          } // end if (!llmTasksCreated)
 
           store.addEvent({
             workspace_id: workspace.id,
@@ -630,6 +621,7 @@ export function registerWorkCommands(program: Command): void {
         }
       }
 
+      confirmRl.close();
       db.close();
     });
 

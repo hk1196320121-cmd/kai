@@ -19,6 +19,45 @@ interface Rule {
   };
 }
 
+function deriveFromAnswerMap(
+  count: number,
+  values: string[],
+  answerMap: Record<string, number>,
+  dimensionLabel: string,
+): { value: number; confidence: number; reasoning: string } {
+  let total = 0;
+  let matched = 0;
+  const matchedAnswers: string[] = [];
+  for (const v of values) {
+    try {
+      const parsed = JSON.parse(v);
+      const answer = String(parsed.answer ?? "").toLowerCase();
+      if (answerMap[answer] !== undefined) {
+        total += answerMap[answer];
+        matched++;
+        matchedAnswers.push(answer);
+      }
+    } catch {
+      /* skip */
+    }
+  }
+  if (matched === 0) {
+    return {
+      value: 0.5,
+      confidence: 3,
+      reasoning: `Cold start: ${count} ${dimensionLabel} signals (no direct match)`,
+    };
+  }
+  const avg = total / matched;
+  const answerDetail =
+    matchedAnswers.length > 0 ? ` [${matchedAnswers.join(", ")}]` : "";
+  return {
+    value: Math.round(avg * 100) / 100,
+    confidence: 8,
+    reasoning: `Cold start: ${dimensionLabel} from ${matched} answer(s)${answerDetail}, avg=${avg.toFixed(2)}`,
+  };
+}
+
 export const RULES: Rule[] = [
   {
     dimension: "early_riser",
@@ -247,42 +286,18 @@ export const RULES: Rule[] = [
       confidence: Math.min(10, 5 + count),
       reasoning: `Cold start: ${count} planning style signals (fallback count-based)`,
     }),
-    deriveFromValues: (count, values) => {
-      const answerMap: Record<string, number> = {
-        "detailed plan": 0.9,
-        "rough outline": 0.6,
-        "dive right in": 0.2,
-        "explore first": 0.4,
-      };
-      let total = 0;
-      let matched = 0;
-      const matchedAnswers: string[] = [];
-      for (const v of values) {
-        try {
-          const parsed = JSON.parse(v);
-          const answer = String(parsed.answer ?? "").toLowerCase();
-          if (answerMap[answer] !== undefined) {
-            total += answerMap[answer];
-            matched++;
-            matchedAnswers.push(answer);
-          }
-        } catch {
-          /* skip */
-        }
-      }
-      if (matched === 0) {
-        return {
-          value: 0.5,
-          confidence: 3,
-          reasoning: `Cold start: ${count} planning style signals (no direct match)`,
-        };
-      }
-      return {
-        value: Math.round((total / matched) * 100) / 100,
-        confidence: 8,
-        reasoning: `Cold start: planning style from ${matched} answer(s) [${matchedAnswers.join(", ")}], avg=${(total / matched).toFixed(2)}`,
-      };
-    },
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          "detailed plan": 0.9,
+          "rough outline": 0.6,
+          "dive right in": 0.2,
+          "explore first": 0.4,
+        },
+        "planning style",
+      ),
   },
   {
     dimension: "schedule_rhythm",
@@ -292,41 +307,19 @@ export const RULES: Rule[] = [
       confidence: Math.min(10, 5 + count),
       reasoning: `Cold start: ${count} schedule rhythm signals (fallback)`,
     }),
-    deriveFromValues: (count, values) => {
-      const answerMap: Record<string, number> = {
-        morning: 0.9,
-        afternoon: 0.5,
-        evening: 0.3,
-        "late night": 0.2,
-        flexible: 0.5,
-      };
-      let total = 0;
-      let matched = 0;
-      for (const v of values) {
-        try {
-          const parsed = JSON.parse(v);
-          const answer = String(parsed.answer ?? "").toLowerCase();
-          if (answerMap[answer] !== undefined) {
-            total += answerMap[answer];
-            matched++;
-          }
-        } catch {
-          /* skip */
-        }
-      }
-      if (matched === 0) {
-        return {
-          value: 0.5,
-          confidence: 3,
-          reasoning: `Cold start: ${count} schedule signals (no direct match)`,
-        };
-      }
-      return {
-        value: Math.round((total / matched) * 100) / 100,
-        confidence: 8,
-        reasoning: `Cold start: schedule rhythm from ${matched} answer(s)`,
-      };
-    },
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          morning: 0.9,
+          afternoon: 0.5,
+          evening: 0.3,
+          "late night": 0.2,
+          flexible: 0.5,
+        },
+        "schedule rhythm",
+      ),
   },
   {
     dimension: "preferred_output_shape",
@@ -336,40 +329,18 @@ export const RULES: Rule[] = [
       confidence: Math.min(10, 5 + count),
       reasoning: `Cold start: ${count} output shape signals (fallback)`,
     }),
-    deriveFromValues: (count, values) => {
-      const answerMap: Record<string, number> = {
-        checklist: 0.9,
-        brief: 0.6,
-        plan: 0.3,
-        "decision log": 0.1,
-      };
-      let total = 0;
-      let matched = 0;
-      for (const v of values) {
-        try {
-          const parsed = JSON.parse(v);
-          const answer = String(parsed.answer ?? "").toLowerCase();
-          if (answerMap[answer] !== undefined) {
-            total += answerMap[answer];
-            matched++;
-          }
-        } catch {
-          /* skip */
-        }
-      }
-      if (matched === 0) {
-        return {
-          value: 0.5,
-          confidence: 3,
-          reasoning: `Cold start: ${count} output shape signals (no direct match)`,
-        };
-      }
-      return {
-        value: Math.round((total / matched) * 100) / 100,
-        confidence: 8,
-        reasoning: `Cold start: output shape from ${matched} answer(s)`,
-      };
-    },
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          checklist: 0.9,
+          brief: 0.6,
+          plan: 0.3,
+          "decision log": 0.1,
+        },
+        "output shape",
+      ),
   },
   {
     dimension: "disliked_behavior",
@@ -413,11 +384,49 @@ export const RULES: Rule[] = [
       };
     },
   },
+  {
+    dimension: "risk_tolerance",
+    match: (key) => key === "coldstart:risk_tolerance",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} risk tolerance signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          "only when confident": 0.2,
+          "after basic testing": 0.5,
+          "when it compiles": 0.9,
+        },
+        "risk tolerance",
+      ),
+  },
+  {
+    dimension: "autonomy",
+    match: (key) => key === "coldstart:autonomy",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} autonomy signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          "ask every time": 0.2,
+          "suggest only": 0.5,
+          "act autonomously": 0.9,
+        },
+        "autonomy",
+      ),
+  },
 ];
 
-const VALID_LLM_DIMENSIONS = new Set(
-  RULES.map((r) => r.dimension).concat(["autonomy"]),
-);
+const VALID_LLM_DIMENSIONS = new Set(RULES.map((r) => r.dimension));
 
 export interface DerivedTrait {
   dimension: string;
@@ -549,7 +558,7 @@ export class Derivator {
 
     const DERIVATOR_FALLBACK = `You are a user profile analysis engine. Given observations about a user, derive personality traits.
 Return a JSON object with a "traits" array. Each trait has: dimension (string), value (0.0-1.0), confidence (1-10), reasoning (string).
-Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented.`;
+Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented, planning_style, schedule_rhythm, preferred_output_shape, disliked_behavior, comm_style, domain_context, task_completion_rate.`;
 
     let systemPrompt: string;
     if (compiler) {

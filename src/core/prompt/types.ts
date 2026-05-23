@@ -8,7 +8,7 @@ export type MutationType =
   | "tone_shift"
   | "structure_change"
   | "adapter_tweak";
-export type EvalDifficulty = "easy" | "medium" | "hard";
+type EvalDifficulty = "easy" | "medium" | "hard";
 export type EvalSource = "synthetic" | "real" | "edge_case";
 export type TournamentWinner = "a" | "b" | "tie";
 
