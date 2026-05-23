@@ -271,10 +271,15 @@ export function registerWorkCommands(program: Command): void {
         const domainObs = engine.getObservations({
           key: "coldstart:signal.domain",
         });
-        const domainValue =
-          domainObs.length > 0
-            ? (JSON.parse(domainObs[0].value).domains?.[0] ?? "general")
-            : "general";
+        let domainValue = "general";
+        if (domainObs.length > 0) {
+          try {
+            domainValue =
+              JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
+          } catch {
+            /* malformed JSON, use default */
+          }
+        }
         const ideaDomain = resolveIdeaDomain(domainValue);
 
         const recommendations = recommendTasks(savedTraits, ideaDomain);
@@ -492,11 +497,16 @@ export function registerWorkCommands(program: Command): void {
         const domainObs = engine.getObservations({
           key: "coldstart:signal.domain",
         });
-        const domainValue =
-          domainObs.length > 0
-            ? (JSON.parse(domainObs[0].value).domains?.[0] ?? "general")
-            : "general";
-        const ideaDomain = resolveIdeaDomain(domainValue);
+        let domainValue2 = "general";
+        if (domainObs.length > 0) {
+          try {
+            domainValue2 =
+              JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
+          } catch {
+            /* malformed JSON, use default */
+          }
+        }
+        const ideaDomain = resolveIdeaDomain(domainValue2);
 
         const recommendations = recommendTasks(savedTraits, ideaDomain);
 
@@ -524,25 +534,47 @@ export function registerWorkCommands(program: Command): void {
           }
         }
 
+        store.addEvent({
+          workspace_id: workspace.id,
+          event_type: "recommendation_shown",
+          payload: JSON.stringify({
+            recommendations: recommendations.map((r) => r.templateId),
+          }),
+        });
+
         console.log(
-          "\nApprove all? [Y]es / [N]o / [number to approve just one]",
+          "\nSelect: number (1-%d) to pick one, [A]ll to approve all, [N]o to skip",
+          recommendations.length,
         );
-        const approveResponse =
-          (await confirmAsk("> ")).trim().toLowerCase() || "y";
-        if (approveResponse === "y" || approveResponse === "yes") {
-          // Create idea for first recommendation
-          const orchStore = new OrchestratorStore(db);
+        const approveResponse = (await confirmAsk("> ")).trim().toLowerCase();
+
+        // Determine which recommendations to process
+        const selectedIdx = parseInt(approveResponse, 10) - 1;
+        const selected: number[] =
+          approveResponse === "a" || approveResponse === "all"
+            ? recommendations.map((_, i) => i)
+            : !Number.isNaN(selectedIdx) &&
+                selectedIdx >= 0 &&
+                selectedIdx < recommendations.length
+              ? [selectedIdx]
+              : [];
+
+        const orchStore = new OrchestratorStore(db);
+        const { LLMProvider } = await import("../llm/provider");
+        const llm = new LLMProvider();
+
+        for (const idx of selected) {
+          const rec = recommendations[idx];
+
           const idea = orchStore.createIdea({
-            title: recommendations[0].title,
-            description: recommendations[0].description,
+            title: rec.title,
+            description: rec.description,
             domain: ideaDomain,
             workspace_id: workspace.id,
           });
 
           // Try LLM path for task decomposition
           let llmTasksCreated = false;
-          const { LLMProvider } = await import("../llm/provider");
-          const llm = new LLMProvider();
           if (llm.getConfig().apiKey) {
             try {
               const { GeneStore } = await import("../core/prompt/gene-store");
@@ -571,11 +603,11 @@ export function registerWorkCommands(program: Command): void {
             const task = orchStore.createTask({
               idea_id: idea.id,
               workspace_id: workspace.id,
-              title: recommendations[0].title,
-              description: recommendations[0].description,
+              title: rec.title,
+              description: rec.description,
               type: "one_off",
               agent: "hermes",
-              prompt: recommendations[0].description,
+              prompt: rec.description,
               decomposition_rationale:
                 "Auto-generated from cold start recommendation",
               scheduling_rationale: "Execute when ready",
@@ -588,11 +620,17 @@ export function registerWorkCommands(program: Command): void {
               const result = await dispatcher.dispatch(task.id);
               if (result.success) {
                 console.log(`✓ Task dispatched: ${task.title}`);
+                const wsTask = store.createTask({
+                  workspace_id: workspace.id,
+                  title: task.title,
+                  description: task.description,
+                });
                 store.addEvent({
                   workspace_id: workspace.id,
+                  task_id: wsTask.id,
                   event_type: "task_auto_executed",
                   payload: JSON.stringify({
-                    task_id: task.id,
+                    planned_task_id: task.id,
                     idea_id: idea.id,
                   }),
                 });
@@ -602,22 +640,54 @@ export function registerWorkCommands(program: Command): void {
                 `  Task created but not dispatched (agent unavailable)`,
               );
             }
-          } // end if (!llmTasksCreated)
+          }
 
-          store.addEvent({
-            workspace_id: workspace.id,
-            event_type: "recommendation_shown",
-            payload: JSON.stringify({
-              recommendations: recommendations.map((r) => r.templateId),
-            }),
-          });
           store.addEvent({
             workspace_id: workspace.id,
             event_type: "recommendation_accepted",
             payload: JSON.stringify({
-              template_id: recommendations[0].templateId,
+              template_id: rec.templateId,
             }),
           });
+        }
+
+        // Emit rejection events for unselected recommendations + penalize confidence
+        const rejected = recommendations
+          .filter((_, i) => !selected.includes(i));
+        if (rejected.length > 0) {
+          for (const rec of rejected) {
+            store.addEvent({
+              workspace_id: workspace.id,
+              event_type: "recommendation_rejected",
+              payload: JSON.stringify({
+                template_id: rec.templateId,
+              }),
+            });
+          }
+
+          // Penalize trait confidence for dimensions that drove rejected recommendations
+          const rejectedDims = new Set<string>();
+          for (const rec of rejected) {
+            if (rec.traitTargets) {
+              for (const dim of Object.keys(rec.traitTargets)) {
+                rejectedDims.add(dim);
+              }
+            }
+          }
+          const { ProfileEngine } = await import("../core/profile/engine");
+          const profileEngine = new ProfileEngine(db);
+          for (const dim of rejectedDims) {
+            const existing = profileEngine.getTraits({ dimension: dim });
+            if (existing.length > 0 && existing[0].confidence > 1) {
+              profileEngine.setTrait({
+                dimension: dim,
+                value: existing[0].value,
+                confidence: Math.max(1, existing[0].confidence - 1),
+                source: existing[0].source,
+                reasoning: `${existing[0].reasoning} [confidence reduced: recommendation rejected]`,
+              });
+            }
+          }
         }
       }
 

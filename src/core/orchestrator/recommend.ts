@@ -9,6 +9,7 @@ export interface Recommendation {
   explanation: string;
   whyNotOthers?: string[];
   matchedTraits: string[];
+  traitTargets?: Record<string, number>;
 }
 
 export function recommendTasks(
@@ -35,6 +36,7 @@ export function recommendTasks(
             )
         : undefined,
     matchedTraits: rec.matchedTraits,
+    traitTargets: rec.template.trait_targets,
   }));
 }
 
