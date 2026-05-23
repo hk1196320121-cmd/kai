@@ -82,21 +82,52 @@ export class InterviewEngine {
       provenance,
     });
 
-    // Domain detection from all answer text
+    // Domain detection: prefer explicit domain answer over keyword heuristic
+    const domainSignals: string[] = [];
+    const domainAnswer = answers.find((a) => a.slug === "domain");
+    const validDomains = [
+      "engineering",
+      "design",
+      "management",
+      "research",
+      "writing",
+    ];
+    if (
+      domainAnswer &&
+      validDomains.includes(domainAnswer.text.toLowerCase())
+    ) {
+      domainSignals.push(domainAnswer.text.toLowerCase());
+    }
+
+    // Supplement with keyword-based detection from all answer text
     const allText = answers
       .map((a) => a.text)
       .join(" ")
       .toLowerCase();
-    const domainSignals: string[] = [];
-    if (/\b(?:code|debug|deploy|api|git|build|test)\b/i.test(allText))
+    if (
+      /\b(?:code|debug|deploy|api|git|build|test)\b/i.test(allText) &&
+      !domainSignals.includes("engineering")
+    )
       domainSignals.push("engineering");
-    if (/\b(?:design|ux|ui|wireframe|prototype)\b/i.test(allText))
+    if (
+      /\b(?:design|ux|ui|wireframe|prototype)\b/i.test(allText) &&
+      !domainSignals.includes("design")
+    )
       domainSignals.push("design");
-    if (/\b(?:manage|team|sprint|roadmap|stakeholder)\b/i.test(allText))
+    if (
+      /\b(?:manage|team|sprint|roadmap|stakeholder)\b/i.test(allText) &&
+      !domainSignals.includes("management")
+    )
       domainSignals.push("management");
-    if (/\b(?:research|paper|study|analysis|dataset)\b/i.test(allText))
+    if (
+      /\b(?:research|paper|study|analysis|dataset)\b/i.test(allText) &&
+      !domainSignals.includes("research")
+    )
       domainSignals.push("research");
-    if (/\b(?:write|document|content|blog|report)\b/i.test(allText))
+    if (
+      /\b(?:write|document|content|blog|report)\b/i.test(allText) &&
+      !domainSignals.includes("writing")
+    )
       domainSignals.push("writing");
 
     if (domainSignals.length > 0) {

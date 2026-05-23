@@ -9,6 +9,10 @@ const CONFIDENCE_BY_EVENT_TYPE: Record<string, number> = {
   task_completed: 7,
   interaction: 6,
   coldstart_answer: 8,
+  recommendation_shown: 4,
+  recommendation_accepted: 7,
+  recommendation_rejected: 6,
+  task_auto_executed: 6,
 };
 
 const STATE_CHANGE_EVENTS = new Set(["task_completed", "workspace_archived"]);

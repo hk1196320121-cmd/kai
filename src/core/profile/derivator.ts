@@ -210,12 +210,12 @@ export const RULES: Rule[] = [
     }),
   },
   {
-    dimension: "preferred_output_shape",
-    match: (key) => key === "coldstart:format",
+    dimension: "domain_context",
+    match: (key) => key === "coldstart:domain",
     derive: (count) => ({
-      value: Math.min(1.0, count * 0.3),
-      confidence: Math.min(10, 5 + count),
-      reasoning: `Cold start: ${count} output format preferences`,
+      value: 0.8,
+      confidence: 9,
+      reasoning: `Cold start: ${count} explicit domain selection(s)`,
     }),
   },
   {

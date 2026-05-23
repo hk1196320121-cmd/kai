@@ -78,15 +78,15 @@ describe("Coldstart derivation rules", () => {
     db.close();
   });
 
-  test("coldstart:format derives preferred_output_shape trait", () => {
+  test("coldstart:preferred_output_shape derives trait with deriveFromValues", () => {
     dbPath = tempDb();
     const db = new KaiDB(dbPath);
     const engine = new ProfileEngine(db);
 
     engine.addObservation({
       type: "signal",
-      key: "coldstart:format",
-      value: JSON.stringify({ format: "checklist" }),
+      key: "coldstart:preferred_output_shape",
+      value: JSON.stringify({ answer: "checklist" }),
       confidence: 8,
       source: "coldstart",
       provenance: '{"origin":"kai work start"}',
@@ -96,6 +96,7 @@ describe("Coldstart derivation rules", () => {
     const results = derivator.deriveFromRules();
     const shape = results.find((r) => r.dimension === "preferred_output_shape");
     expect(shape).toBeDefined();
+    expect(shape!.value).toBe(0.9);
 
     db.close();
   });

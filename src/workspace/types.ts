@@ -35,4 +35,8 @@ type WorkspaceEventType =
   | "task_updated"
   | "task_completed"
   | "interaction"
-  | "coldstart_answer";
+  | "coldstart_answer"
+  | "recommendation_shown"
+  | "recommendation_accepted"
+  | "recommendation_rejected"
+  | "task_auto_executed";

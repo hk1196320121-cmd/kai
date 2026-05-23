@@ -491,6 +491,8 @@ ALTER TABLE workspace_events_v8 RENAME TO workspace_events;
 CREATE INDEX IF NOT EXISTS idx_workspace_events_type ON workspace_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_workspace_events_workspace ON workspace_events(workspace_id);
 
+INSERT OR REPLACE INTO schema_version (version) VALUES (8);
+
 COMMIT;
 
 PRAGMA foreign_keys = ON;
@@ -564,10 +566,6 @@ export class KaiDB {
     }
     if (currentVersion < 8) {
       this.db.exec(MIGRATION_V8);
-      this.db.run(
-        "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
-        [8],
-      );
     }
     this.db.run("PRAGMA foreign_keys = ON");
     this.db.run("PRAGMA busy_timeout = 5000");
