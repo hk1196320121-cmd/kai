@@ -652,8 +652,9 @@ export function registerWorkCommands(program: Command): void {
         }
 
         // Emit rejection events for unselected recommendations + penalize confidence
-        const rejected = recommendations
-          .filter((_, i) => !selected.includes(i));
+        const rejected = recommendations.filter(
+          (_, i) => !selected.includes(i),
+        );
         if (rejected.length > 0) {
           for (const rec of rejected) {
             store.addEvent({
