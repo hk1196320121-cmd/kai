@@ -45,6 +45,28 @@ export const DeriveTriggerSchema = {
   method: z.enum(["rules", "llm", "both"]).optional().default("rules"),
 };
 
+export const WorkRecommendSchema = {
+  domain: z
+    .enum([
+      "coding",
+      "writing",
+      "research",
+      "creative",
+      "management",
+      "general",
+    ])
+    .optional()
+    .default("general")
+    .describe("Filter recommendations by domain"),
+  limit: z
+    .number()
+    .min(1)
+    .max(5)
+    .optional()
+    .default(3)
+    .describe("Number of recommendations to return"),
+};
+
 export const ObserveBatchSchema = {
   sourceTool: z
     .string()

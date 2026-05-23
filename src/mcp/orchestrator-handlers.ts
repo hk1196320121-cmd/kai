@@ -5,6 +5,7 @@ import { IdeaClusterer } from "../core/orchestrator/clustering";
 import { Dispatcher } from "../core/orchestrator/dispatcher";
 import { Observer } from "../core/orchestrator/observer";
 import { Planner } from "../core/orchestrator/planner";
+import { recommendTasks } from "../core/orchestrator/recommend";
 import { Scheduler } from "../core/orchestrator/scheduler";
 import { OrchestratorStore } from "../core/orchestrator/store";
 import type { PlannedTask } from "../core/orchestrator/types";
@@ -24,6 +25,7 @@ import {
   ReplanSchema,
   TaskExecuteSchema,
 } from "./orchestrator-schema";
+import { WorkRecommendSchema } from "./schema";
 import { log } from "./utils";
 
 const ALLOWED_UPDATE_FIELDS = [
@@ -319,4 +321,16 @@ export function registerOrchestratorHandlers(
       });
     }
   });
+
+  // --- kai_work_recommend ---
+  server.tool(
+    "kai_work_recommend",
+    WorkRecommendSchema,
+    async ({ domain, limit }) => {
+      log("kai_work_recommend", { domain, limit });
+      const traits = profileEngine.getTraits();
+      const recommendations = recommendTasks(traits, domain).slice(0, limit);
+      return textContent({ recommendations });
+    },
+  );
 }

@@ -1,13 +1,13 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import {
-	extractColdStartSignals,
-	scanGitHistory,
-} from "../src/cli/work";
+import { scanGitHistory } from "../src/cli/work";
+import { InterviewEngine } from "../src/core/profile/interview";
 import { cleanup, tempDb } from "./helpers/temp-db";
+
+const engine = new InterviewEngine();
 
 describe("extractColdStartSignals - domain detection", () => {
 	test("detects engineering domain from answer text", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "I want to debug the API and deploy new code" }],
 			[],
 			"ws-1",
@@ -19,7 +19,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("detects design domain from answer text", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "I want to improve the UX and create wireframes" }],
 			[],
 			"ws-2",
@@ -31,7 +31,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("detects management domain from answer text", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[
 				{
 					slug: "goal",
@@ -48,7 +48,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("detects research domain from answer text", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[
 				{
 					slug: "goal",
@@ -65,7 +65,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("detects writing domain from answer text", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "I want to write a blog post and document the content" }],
 			[],
 			"ws-5",
@@ -77,7 +77,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("does not emit domain signal for answers with no domain keywords", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "just thinking about stuff" }],
 			[],
 			"ws-6",
@@ -87,7 +87,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("gitHints detail_oriented adds engineering to domains", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "I want to design wireframes" }],
 			[{ dimension: "detail_oriented", hints: ["long commit messages"] }],
 			"ws-7",
@@ -100,7 +100,7 @@ describe("extractColdStartSignals - domain detection", () => {
 	});
 
 	test("deduplicates domains", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "debug code and deploy API" }],
 			[{ dimension: "detail_oriented", hints: ["long commits"] }],
 			"ws-8",
@@ -117,13 +117,13 @@ describe("extractColdStartSignals - domain detection", () => {
 
 describe("extractColdStartSignals - edge cases", () => {
 	test("empty answers array produces no per-answer signals", () => {
-		const signals = extractColdStartSignals([], [], "ws-empty");
+		const signals = engine.extractSignalsFromAnswers([], [], "ws-empty");
 		const goalSignal = signals.find((s) => s.key === "coldstart:goal");
 		expect(goalSignal).toBeUndefined();
 	});
 
 	test("single short answer produces low detail and terse style", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "fix bug" }],
 			[],
 			"ws-short",
@@ -144,7 +144,7 @@ describe("extractColdStartSignals - edge cases", () => {
 	});
 
 	test("has_specifics flag set when answer contains numbers", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "I need exactly 5 features by 2024" }],
 			[],
 			"ws-specifics",
@@ -158,13 +158,13 @@ describe("extractColdStartSignals - edge cases", () => {
 	});
 
 	test("provenance includes origin and extractor_version", () => {
-		const signals = extractColdStartSignals(
+		const signals = engine.extractSignalsFromAnswers(
 			[{ slug: "goal", text: "test" }],
 			[],
 			"ws-prov",
 		);
 		const prov = JSON.parse(signals[0].provenance);
 		expect(prov.origin).toBe("kai work start");
-		expect(prov.extractor_version).toBe("1.0.0");
+		expect(prov.extractor_version).toBe("2.0.0");
 	});
 });

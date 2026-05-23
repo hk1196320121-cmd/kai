@@ -48,7 +48,9 @@ describe("MCP Tools", () => {
     expect(names).toContain("telemetry.query");
     expect(names).toContain("telemetry.trace");
     expect(names).toContain("telemetry.explain");
-    expect(names.length).toBe(18);
+    // Work recommendation tool
+    expect(names).toContain("kai_work_recommend");
+    expect(names.length).toBe(19);
   });
 
   test("each tool has a handler function", () => {

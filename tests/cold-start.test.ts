@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { computeProfileDiff } from "../src/cli/profile";
-import { extractColdStartSignals, scanGitHistory } from "../src/cli/work";
+import { scanGitHistory } from "../src/cli/work";
 import { Derivator } from "../src/core/profile/derivator";
+import { InterviewEngine } from "../src/core/profile/interview";
 import { ProfileEngine } from "../src/core/profile/engine";
 import { KaiDB } from "../src/db/client";
 import { WorkspaceStore } from "../src/workspace/store";
@@ -48,7 +49,7 @@ describe("Cold Start E2E", () => {
     ];
 
     // 5. Extract signals
-    const signals = extractColdStartSignals(answers, gitResult.traits, ws.id);
+    const signals = new InterviewEngine().extractSignalsFromAnswers(answers, gitResult.traits, ws.id);
     expect(signals.length).toBeGreaterThan(0);
 
     // 6. Persist observations
@@ -145,7 +146,7 @@ describe("Cold Start E2E", () => {
       { slug: "format", text: "brief" },
     ];
 
-    const signals = extractColdStartSignals(answers, [], "ws-test");
+    const signals = new InterviewEngine().extractSignalsFromAnswers(answers, [], "ws-test");
     for (const obs of signals) {
       engine.addObservation(obs);
     }

@@ -8,7 +8,14 @@ export const IdeaSubmitSchema = {
     .max(5000)
     .describe("Detailed description of the idea"),
   domain: z
-    .enum(["coding", "writing", "research", "creative", "general"])
+    .enum([
+      "coding",
+      "writing",
+      "research",
+      "creative",
+      "management",
+      "general",
+    ])
     .optional()
     .default("general"),
   priority: z

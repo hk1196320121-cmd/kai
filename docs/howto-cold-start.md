@@ -15,7 +15,19 @@ You can run `kai work start` multiple times. Each run creates a new workspace an
 kai work start
 ```
 
-If you already have an identity, Kai skips the name/role prompt and goes straight to the 4 questions.
+If you already have an identity, Kai skips the name/role prompt and goes straight to the 10-question interview.
+
+### Force a fresh interview
+
+Use `--reset` to clear existing cold start data and re-run the full interview:
+
+```bash
+kai work start --reset
+```
+
+### Re-run without re-interview
+
+If you run `kai work start` without `--reset` and already have interview answers, Kai skips the interview and shows task recommendations from your existing profile instead.
 
 ## Compare profiles between cold starts
 
@@ -38,7 +50,7 @@ Profile changes since cold start (2026-05-20):
 
 ## Cold start with no git history
 
-If you run `kai work start` outside a git repository (or with fewer than 5 commits), the git scan produces no signals. You still get traits from the 4 questions. This is fine for the first run.
+If you run `kai work start` outside a git repository (or with fewer than 5 commits), the git scan produces no signals. You still get traits from the 10 interview questions. This is fine for the first run.
 
 ```bash
 # In a directory without git
@@ -85,7 +97,7 @@ Restarting cold start...
 
 **"No cold start snapshot found"** when running `diff --last` — You need to complete at least one `kai work start` session (answer questions, confirm with `Y`) before diff works.
 
-**Fewer traits than expected** — The git scan requires at least 5 commits in the last 30 days. The question-based rules depend on answer length (short answers produce weaker signals). Try giving more detailed answers.
+**Fewer traits than expected** — The git scan requires at least 5 commits in the last 30 days. The interview-based rules use `deriveFromValues` to map answers directly to trait values. Short or vague answers may produce weaker signals.
 
 **"Name is required. Aborting."** — The goal question is mandatory. If you skip it twice, the session aborts cleanly.
 

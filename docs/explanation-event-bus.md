@@ -30,9 +30,13 @@ Not all events carry equal weight. The confidence mapping reflects how much each
 | Event type | Confidence | Reasoning |
 |-----------|------------|-----------|
 | `coldstart_answer` | 8 | Direct self-assessment — high signal |
+| `recommendation_accepted` | 7 | Accepted a task recommendation — strong behavioral signal |
 | `task_completed` | 7 | Demonstrates follow-through — strong behavioral signal |
+| `recommendation_rejected` | 6 | Rejected a recommendation — signals preference (also triggers feedback loop) |
+| `task_auto_executed` | 6 | Auto-executed task — moderate signal |
 | `interaction` | 6 | General activity — moderate signal |
 | `task_updated` | 5 | In-progress work — some signal |
+| `recommendation_shown` | 4 | Recommendation displayed — informational |
 | `task_created` | 4 | Intent, not action — weaker signal |
 | `workspace_created` | 3 | Administrative — minimal behavioral signal |
 

@@ -6,6 +6,10 @@
 - **What**: Full causal chain telemetry — trace every MCP request through derivation, orchestration, and prompt genome with spans, events, state changes, and error records
 - **Completed**: v0.6.0.0 (2026-05-22) — TelemetryStore, TelemetryRecorder, Sanitizer, Stats, LLM Explain, 3 MCP tools, 3 MCP resources, 5 CLI commands, V7 migration, orchestrator/prompt instrumentation, 545 tests across 74 files
 
+### Personal OS Bootstrapper
+- **What**: Deep interview engine (10 questions), enhanced trait derivation (7 new deriveFromValues rules), task template catalog (12 templates), recommendation engine, kai_work_recommend MCP tool, feedback loop, auto-execute
+- **Completed**: v0.7.0.0 (2026-05-23) — InterviewEngine, Derivator deriveFromValues, TemplateCatalog, RecommendEngine, kai_work_recommend MCP tool, V8 migration, 613 tests across 83 files
+
 ### MCP Server 设计 (TODO 1)
 - **What**: 为 Kai 设计 MCP Server 接口，暴露画像/上下文为 MCP tools/resources
 - **Completed**: v0.2.0.0 (2026-05-19) — 5 tools (profile.read, profile.why, observe.submit, observe.batch, derive.trigger), 6 resources (kai://profile/*), stdio transport, persistent corrections, 152 tests

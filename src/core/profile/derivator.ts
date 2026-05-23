@@ -9,6 +9,53 @@ interface Rule {
     confidence: number;
     reasoning: string;
   };
+  deriveFromValues?: (
+    matches: number,
+    values: string[],
+  ) => {
+    value: number;
+    confidence: number;
+    reasoning: string;
+  };
+}
+
+function deriveFromAnswerMap(
+  count: number,
+  values: string[],
+  answerMap: Record<string, number>,
+  dimensionLabel: string,
+): { value: number; confidence: number; reasoning: string } {
+  let total = 0;
+  let matched = 0;
+  const matchedAnswers: string[] = [];
+  for (const v of values) {
+    try {
+      const parsed = JSON.parse(v);
+      const answer = String(parsed.answer ?? "").toLowerCase();
+      if (answerMap[answer] !== undefined) {
+        total += answerMap[answer];
+        matched++;
+        matchedAnswers.push(answer);
+      }
+    } catch {
+      /* skip */
+    }
+  }
+  if (matched === 0) {
+    return {
+      value: 0.5,
+      confidence: 3,
+      reasoning: `Cold start: ${count} ${dimensionLabel} signals (no direct match)`,
+    };
+  }
+  const avg = total / matched;
+  const answerDetail =
+    matchedAnswers.length > 0 ? ` [${matchedAnswers.join(", ")}]` : "";
+  return {
+    value: Math.round(avg * 100) / 100,
+    confidence: 8,
+    reasoning: `Cold start: ${dimensionLabel} from ${matched} answer(s)${answerDetail}, avg=${avg.toFixed(2)}`,
+  };
 }
 
 export const RULES: Rule[] = [
@@ -163,12 +210,12 @@ export const RULES: Rule[] = [
     }),
   },
   {
-    dimension: "preferred_output_shape",
-    match: (key) => key === "coldstart:format",
+    dimension: "domain_context",
+    match: (key) => key === "coldstart:domain",
     derive: (count) => ({
-      value: Math.min(1.0, count * 0.3),
-      confidence: Math.min(10, 5 + count),
-      reasoning: `Cold start: ${count} output format preferences`,
+      value: 0.8,
+      confidence: 9,
+      reasoning: `Cold start: ${count} explicit domain selection(s)`,
     }),
   },
   {
@@ -231,11 +278,155 @@ export const RULES: Rule[] = [
       reasoning: `${count} workspace task events recorded`,
     }),
   },
+  {
+    dimension: "planning_style",
+    match: (key) => key === "coldstart:planning_style",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} planning style signals (fallback count-based)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          "detailed plan": 0.9,
+          "rough outline": 0.6,
+          "dive right in": 0.2,
+          "explore first": 0.4,
+        },
+        "planning style",
+      ),
+  },
+  {
+    dimension: "schedule_rhythm",
+    match: (key) => key === "coldstart:schedule_rhythm",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} schedule rhythm signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          morning: 0.9,
+          afternoon: 0.5,
+          evening: 0.3,
+          "late night": 0.2,
+          flexible: 0.5,
+        },
+        "schedule rhythm",
+      ),
+  },
+  {
+    dimension: "preferred_output_shape",
+    match: (key) => key === "coldstart:preferred_output_shape",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} output shape signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          checklist: 0.9,
+          brief: 0.6,
+          plan: 0.3,
+          "decision log": 0.1,
+        },
+        "output shape",
+      ),
+  },
+  {
+    dimension: "disliked_behavior",
+    match: (key) => key === "coldstart:disliked_behavior",
+    derive: (count) => ({
+      value: Math.min(1.0, count * 0.3),
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} disliked behavior signals (count-based)`,
+    }),
+    deriveFromValues: (count, values) => {
+      const patterns: Record<string, string> = {
+        "acts without asking": "autonomy_violation",
+        "too verbose": "verbosity",
+        "too cautious": "overcaution",
+        "asks too many questions": "question_overload",
+        "ignores context": "context_blindness",
+      };
+      const detected: string[] = [];
+      for (const v of values) {
+        try {
+          const parsed = JSON.parse(v);
+          const answer = String(parsed.answer ?? "").toLowerCase();
+          for (const [pattern, label] of Object.entries(patterns)) {
+            if (answer.includes(pattern)) detected.push(label);
+          }
+        } catch {
+          /* skip */
+        }
+      }
+      if (detected.length === 0) {
+        return {
+          value: count * 0.3,
+          confidence: 5,
+          reasoning: `Cold start: ${count} generic disliked behavior signals`,
+        };
+      }
+      return {
+        value: Math.min(1.0, detected.length * 0.4),
+        confidence: 8,
+        reasoning: `Cold start: dislikes [${detected.join(", ")}]`,
+      };
+    },
+  },
+  {
+    dimension: "risk_tolerance",
+    match: (key) => key === "coldstart:risk_tolerance",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} risk tolerance signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          "only when confident": 0.2,
+          "after basic testing": 0.5,
+          "when it compiles": 0.9,
+        },
+        "risk tolerance",
+      ),
+  },
+  {
+    dimension: "autonomy",
+    match: (key) => key === "coldstart:autonomy",
+    derive: (count) => ({
+      value: 0.5,
+      confidence: Math.min(10, 5 + count),
+      reasoning: `Cold start: ${count} autonomy signals (fallback)`,
+    }),
+    deriveFromValues: (count, values) =>
+      deriveFromAnswerMap(
+        count,
+        values,
+        {
+          "ask every time": 0.2,
+          "suggest only": 0.5,
+          "act autonomously": 0.9,
+        },
+        "autonomy",
+      ),
+  },
 ];
 
-const VALID_LLM_DIMENSIONS = new Set(
-  RULES.map((r) => r.dimension).concat(["autonomy"]),
-);
+const VALID_LLM_DIMENSIONS = new Set(RULES.map((r) => r.dimension));
 
 export interface DerivedTrait {
   dimension: string;
@@ -279,6 +470,7 @@ export class Derivator {
         {
           observations: typeof observations;
           derive: (typeof RULES)[number]["derive"];
+          deriveFromValues?: (typeof RULES)[number]["deriveFromValues"];
         }
       >();
 
@@ -292,18 +484,31 @@ export class Derivator {
         const existing = dimMatches.get(rule.dimension);
         if (existing) {
           existing.observations.push(...matches);
+          if (rule.deriveFromValues && !existing.deriveFromValues) {
+            existing.deriveFromValues = rule.deriveFromValues;
+          }
         } else {
           dimMatches.set(rule.dimension, {
             observations: [...matches],
             derive: rule.derive,
+            deriveFromValues: rule.deriveFromValues,
           });
         }
       }
 
       const results: DerivedTrait[] = [];
 
-      for (const [dimension, { observations: obs, derive }] of dimMatches) {
-        const derived = derive(obs.length);
+      for (const [
+        dimension,
+        { observations: obs, derive, deriveFromValues },
+      ] of dimMatches) {
+        let derived: { value: number; confidence: number; reasoning: string };
+        if (deriveFromValues) {
+          const values = obs.map((o) => o.value);
+          derived = deriveFromValues(obs.length, values);
+        } else {
+          derived = derive(obs.length);
+        }
         const trait: DerivedTrait = {
           dimension,
           value: Math.round(derived.value * 100) / 100,
@@ -353,7 +558,7 @@ export class Derivator {
 
     const DERIVATOR_FALLBACK = `You are a user profile analysis engine. Given observations about a user, derive personality traits.
 Return a JSON object with a "traits" array. Each trait has: dimension (string), value (0.0-1.0), confidence (1-10), reasoning (string).
-Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented.`;
+Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented, planning_style, schedule_rhythm, preferred_output_shape, disliked_behavior, comm_style, domain_context, task_completion_rate.`;
 
     let systemPrompt: string;
     if (compiler) {
