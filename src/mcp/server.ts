@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TelemetryRecorder } from "../core/telemetry/recorder";
 import { TelemetryStore } from "../core/telemetry/store";
@@ -12,10 +13,14 @@ import { registerTelemetryHandlers } from "./telemetry-handlers";
 import { registerTelemetryResources } from "./telemetry-resources";
 import { log } from "./utils";
 
+const pkg = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
+);
+
 export function createMcpServer(db: KaiDB): McpServer {
   const server = new McpServer({
     name: "kai",
-    version: "0.1.0",
+    version: pkg.version,
   });
 
   server.server.onerror = (error: Error) => {
