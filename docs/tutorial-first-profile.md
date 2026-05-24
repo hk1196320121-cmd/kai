@@ -18,7 +18,7 @@ Build a behavioral profile from scratch. You'll submit observations through the 
 bun run dev work start
 ```
 
-Answer 4 questions about your work style. Kai also scans your git history (last 30 days) to detect patterns like commit times and branch naming. Review the derived traits, edit any that look wrong, then confirm. The profile is stored at `~/.kai/kai.db`.
+Answer 10 interview questions about your work style and preferences. Kai also scans your git history (last 30 days) to detect patterns like commit times and branch naming. Review task recommendations matched to your profile, approve or skip, then confirm. The profile is stored at `~/.kai/kai.db`.
 
 Verify it worked:
 
