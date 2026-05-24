@@ -12,7 +12,8 @@ const program = new Command();
 program
   .name("kai")
   .description("Kai — Intelligent task orchestration and personal assistant")
-  .version("0.1.0");
+  .version("0.1.0")
+  .option("--no-color", "Disable colored output");
 
 registerProfileCommands(program);
 registerObserveCommands(program);
