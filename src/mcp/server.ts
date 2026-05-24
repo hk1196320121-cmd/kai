@@ -13,9 +13,15 @@ import { registerTelemetryHandlers } from "./telemetry-handlers";
 import { registerTelemetryResources } from "./telemetry-resources";
 import { log } from "./utils";
 
-const pkg = JSON.parse(
-  readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
-);
+const pkg = (() => {
+  try {
+    return JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
+    );
+  } catch {
+    return { version: "0.0.0" };
+  }
+})();
 
 export function createMcpServer(db: KaiDB): McpServer {
   const server = new McpServer({

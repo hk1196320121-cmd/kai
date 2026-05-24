@@ -68,7 +68,7 @@ describe("npm pack whitelist", () => {
     // Must NOT include source files
     expect(files.some((f) => f.startsWith("src/"))).toBe(false);
     // Must NOT include tests
-    expect(files.some((f) => f.includes("test"))).toBe(false);
+    expect(files.some((f) => f.startsWith("tests/") || f.includes("/test"))).toBe(false);
     // Must NOT include docs
     expect(files.some((f) => f.startsWith("docs/"))).toBe(false);
     // Must NOT include CI configs

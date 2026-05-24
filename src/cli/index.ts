@@ -9,15 +9,21 @@ import { registerPromptCommands } from "./prompt";
 import { registerTelemetryCommands } from "./telemetry";
 import { registerWorkCommands } from "./work";
 
-const pkg = JSON.parse(
-  readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
-);
+const pkg = (() => {
+  try {
+    return JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
+    );
+  } catch {
+    return { version: "0.0.0", description: "Kai" };
+  }
+})();
 
 const program = new Command();
 
 program
   .name("kai")
-  .description("Kai — Intelligent task orchestration and personal assistant")
+  .description(pkg.description)
   .version(pkg.version)
   .option("--no-color", "Disable colored output");
 
