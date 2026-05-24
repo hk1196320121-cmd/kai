@@ -3,7 +3,7 @@ import { createMcpServer } from "../../src/mcp/server";
 import { KaiDB } from "../../src/db/client";
 import { join } from "path";
 import { tmpdir } from "os";
-import { unlinkSync } from "fs";
+import { readFileSync, unlinkSync } from "fs";
 
 describe("createMcpServer", () => {
   let db: KaiDB;
@@ -29,7 +29,10 @@ describe("createMcpServer", () => {
   test("server has correct name and version", () => {
     const server = createMcpServer(db);
     const serverInfo = (server as any).server._serverInfo;
+    const pkg = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
+    );
     expect(serverInfo.name).toBe("kai");
-    expect(serverInfo.version).toBe("0.1.0");
+    expect(serverInfo.version).toBe(pkg.version);
   });
 });

@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release-created: ${{ steps.release.outputs.release_created }}
+      major: ${{ steps.release.outputs.major }}
+      minor: ${{ steps.release.outputs.minor }}
+      patch: ${{ steps.release.outputs.patch }}
+      tag-name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release-created == 'true' }}
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      checks: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Wait for CI to pass
+        run: |
+          for i in $(seq 1 20); do
+            CI_RUN=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
+              --jq '.check_runs | map(select(.name=="ci")) | .[0]')
+            STATUS=$(echo "$CI_RUN" | jq -r '.status')
+            CONCLUSION=$(echo "$CI_RUN" | jq -r '.conclusion')
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then
+              echo "CI passed."
+              exit 0
+            fi
+            echo "CI not ready yet (status=$STATUS, conclusion=$CONCLUSION). Waiting 30s..."
+            sleep 30
+          done
+          echo "CI did not pass within 10 minutes. Aborting publish."
+          exit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+
+      - run: bun install --frozen-lockfile
+
+      - run: rm -rf dist/ && bun run build
+
+      - name: Verify dist/ contents
+        run: |
+          test -f dist/cli/index.js || (echo "ERROR: dist/cli/index.js missing" && exit 1)
+          test -f dist/mcp/server.js || (echo "ERROR: dist/mcp/server.js missing" && exit 1)
+          head -1 dist/cli/index.js | grep -q '#!/usr/bin/env bun' || (echo "ERROR: shebang missing" && exit 1)
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: npm publish --access public --provenance --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  smoke-test:
+    needs: [release-please, publish]
+    if: ${{ needs.release-please.outputs.release-created == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Verify published package
+        run: |
+          VERSION="${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}"
+          MAX_RETRIES=10
+          RETRY_INTERVAL=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            OUTPUT=$(bunx kai-profile@${VERSION} --version 2>/dev/null) && {
+              echo "Installed version: $OUTPUT"
+              [ "$OUTPUT" = "$VERSION" ] && exit 0
+              echo "Version mismatch: expected $VERSION, got $OUTPUT"
+            }
+            sleep $RETRY_INTERVAL
+          done
+          echo "Package not available after $((MAX_RETRIES * RETRY_INTERVAL))s" && exit 1

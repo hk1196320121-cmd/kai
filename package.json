@@ -1,21 +1,32 @@
 {
-  "name": "kai",
-  "version": "0.8.0.0",
-  "description": "Intelligent task orchestration and personal assistant system",
+  "name": "kai-profile",
+  "version": "0.9.0",
+  "description": "AI behavioral profile engine — MCP server that builds and serves user profiles from observations",
   "type": "module",
   "bin": {
-    "kai": "src/cli/index.ts"
+    "kai": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "dev": "bun run src/cli/index.ts",
+    "build": "tsc",
+    "prepublishOnly": "tsc",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit",
     "lint": "biome check src/"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "commander": "^13.0.0"
+    "commander": "^13.0.0",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

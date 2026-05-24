@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.9.0] - 2026-05-25
+
+### Changed
+- **Version format migration**: 4-part semver (0.8.0.0) → 3-part semver (0.9.0) for release-please compatibility
+- **Package name**: `kai` → `kai-profile` for npm publishing
+- **Version strings**: CLI and MCP server now read version dynamically from package.json (with graceful fallback)
+- **Build script**: Added `tsc` build step, `dist/` is the compiled output directory
+- **CLI description**: Auto-synced from package.json instead of hardcoded
+- **prepublishOnly**: Changed to `tsc` (works without bun installed)
+- **Release workflow hardened**: Pinned actions to commit SHAs, job-scoped permissions, CI poll loop gate
+
+### Added
+- **CD release pipeline**: Kai is now available on npm as `kai-profile`. Install with `bunx kai-profile` or `bun add -g kai-profile`. Releases are automated via release-please versioning, npm publish after CI passes, and a smoke test verifying the published package
+- **Build verification tests**: Artifact existence, shebang preservation, npm pack whitelist, version consistency
+- **CD pipeline tests**: Package metadata validation, dynamic version verification, error path coverage
+
+### Fixed
+- **CI race condition**: Release publish now waits for CI to complete (poll loop, 10min timeout)
+- **Release gate safety**: Explicit `== 'true'` string comparison prevents accidental publishes
+- **Smoke test accuracy**: Verifies `--version` output matches expected version instead of just `--help`
+- **Stale build artifacts**: `dist/` cleaned before every build in release workflow
+- **Supply chain**: All GitHub Actions pinned to immutable commit SHAs
+
 ## [0.8.0.0] - 2026-05-24
 
 ### Added

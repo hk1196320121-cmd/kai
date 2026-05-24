@@ -18,6 +18,10 @@
 - **What**: 设置 GitHub Actions 自动测试 + 发布流程
 - **Completed**: 2026-05-19 — ci.yml (typecheck + lint + test, Bun 1.3.13), dependabot.yml (actions + npm weekly)
 
+### CD 发布流程 (TODO 6)
+- **What**: 设置 GitHub Actions 自动发布流程——release-please 版本管理 + npm publish + smoke test
+- **Completed**: v0.9.0 (2026-05-25) — release.yml (release-please + npm publish + CI gate + smoke test), release-please-config.json, package name `kai-profile`, 3-part semver migration, build verification tests, supply chain hardening
+
 ### Orchestrator Idea-to-Execution Engine
 - **What**: Complete orchestrator pipeline — ideas, planning, scheduling, dispatching, observation, closed-loop re-planning
 - **Completed**: v0.4.0.0 (2026-05-20) — 7 MCP tools, profile-aware planner, agent bridge, observer pipeline, idea clustering, closed loop engine, V5 migration, 319 tests
@@ -41,15 +45,6 @@
 - **Depends on**: Phase 1 积累足够的 observation 数据（建议 >1000 条后启动设计）
 - **Added**: 2026-05-18 by /plan-eng-review
 
-## TODO 6: CD 发布流程 (changesets + npm publish)
-- **What**: 设置 GitHub Actions 自动发布流程——release.yml、changesets 版本管理、npm publish
-- **Why**: CI 基线 (TODO 3) 只覆盖测试验证，不覆盖发布。Phase 2 开始需要将 Kai 作为 npm 包分发，用户通过 `bunx kai` 或 `npx kai` 安装使用
-- **Pros**: 版本发布标准化，changesets 自动生成 CHANGELOG，npm publish 自动化
-- **Cons**: 需要配置 NPM_TOKEN secret、解决包名占用问题、bun build 打包策略
-- **Context**: CEO plan Phase 2 scope。Bun-only runtime (bin 入口 src/cli/index.ts)，需要 `bun build` 编译为可分发格式。涉及：release.yml、.changeset/config.json、npm package name resolution (kai-mcp)、NPM_TOKEN secret、build/packaging 策略、version migration 0.2.0.0 → 0.3.0
-- **Depends on**: TODO 3 (CI 流水线) 稳定运行 + Phase 2 功能就绪
-- **Added**: 2026-05-19 by /plan-eng-review
-
 ## TODO 5: 画像同步机制
 - **What**: 设计 git-based 多机器画像同步
 - **Why**: 用户可能在多台机器上使用 Kai，画像数据需要跨机器一致
@@ -57,3 +52,57 @@
 - **Context**: 参考 gstack brain sync 模式（~/.gstack/.git pull/push）。kai.db 的同步需要考虑 SQLite 文件的二进制合并 vs 导出 JSON 再合并
 - **Depends on**: Phase 1 画像数据模型稳定，至少在一个环境运行 1 个月
 - **Added**: 2026-05-18 by /plan-eng-review
+
+## TODO 7: PR Preview Packages (pkg-pr-new)
+- **What**: 每条 PR 自动生成临时 npm 包 URL，评审者直接 `bunx` 测试
+- **Why**: 现代开源项目标配，降低贡献门槛
+- **Pros**: 零 checkout 测试，发布前验证包内容
+- **Cons**: CI 增量 ~30s，需要 pkg-pr-new 配置
+- **Context**: CEO review 推迟。pkg-pr-new 在 ci.yml 中添加一步。每次 PR 自动发布到临时 URL。
+- **Effort**: S (human: ~30min / CC: ~5min)
+- **Priority**: P2
+- **Depends on**: CD pipeline 稳定运行
+- **Added**: 2026-05-24 by /plan-ceo-review
+
+## TODO 8: Binary Distribution (bun build --compile)
+- **What**: 用 `bun build --compile` 生成单文件二进制，上传到 GitHub Release assets
+- **Why**: 不是所有用户都有 Bun runtime，二进制分发降低安装门槛
+- **Pros**: 零依赖安装，覆盖 macOS/Linux
+- **Cons**: 跨平台编译矩阵（macOS ARM/x64, Linux x64），二进制体积 ~50MB
+- **Context**: CEO review 推迟。需要在 release.yml 中添加 matrix build 步骤。bun build --compile 将 dist/ 编译为可执行文件。
+- **Effort**: M (human: ~1h / CC: ~15min)
+- **Priority**: P3
+- **Depends on**: CD pipeline 稳定运行 + npm 发布验证
+- **Added**: 2026-05-24 by /plan-ceo-review
+
+## TODO 9: MCP Schema Snapshot in Releases
+- **What**: 每次 release 自动提取 MCP tools/resources 列表，写入 GitHub Release body
+- **Why**: AI agent 需要知道每个版本支持哪些工具——这是 MCP 项目的 "API contract"
+- **Pros**: 独特差异化，agent 可读的发布说明
+- **Cons**: 需要构建 schema 提取工具，需要 MCP server 代码的静态分析
+- **Context**: Codex 在设计文档中提出的 "agent contract" 概念。从 src/mcp/*-schema.ts 文件提取工具定义。
+- **Effort**: M (human: ~2h / CC: ~30min)
+- **Priority**: P2
+- **Depends on**: CD pipeline 稳定运行
+- **Added**: 2026-05-24 by /plan-ceo-review
+
+## TODO 10: MCP Breaking Change Detector
+- **What**: 比较 MCP tools/resources 的前后版本签名，自动检测 breaking changes
+- **Why**: MCP tools 是 AI agent 的 API，breaking changes 会导致 agent 静默失败
+- **Pros**: 自动化版本兼容性检测
+- **Cons**: 需要 schema diff 工具，依赖 TODO 9 的 schema snapshot
+- **Context**: CEO review 推迟。与 MCP Schema snapshot (TODO 9) 一起做更合理。
+- **Effort**: L (human: ~3h / CC: ~30min)
+- **Priority**: P2
+- **Depends on**: TODO 9 (MCP Schema snapshot)
+- **Added**: 2026-05-24 by /plan-ceo-review
+
+## TODO 11: Binary Name Strategy (kai vs kai-profile)
+- **What**: 评估是否将 binary 名称从 `kai` 改为 `kai-profile`，或同时暴露两者
+- **Why**: 包名是 `kai-profile` 但 binary 是 `kai`——不一致且 `kai` 过于通用，可能与其他工具冲突
+- **Pros**: 命名一致性，避免命令冲突
+- **Cons**: 现有用户（如果有）需要适应新命令名
+- **Context**: Codex outside voice 提出。当前 `bin: { "kai": "dist/cli/index.js" }`。考虑添加 `kai-profile` 作为别名。
+- **Effort**: S (human: ~15min / CC: ~5min)
+- **Priority**: P3
+- **Added**: 2026-05-24 by /plan-ceo-review

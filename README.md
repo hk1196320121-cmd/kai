@@ -1,5 +1,8 @@
 # Kai
 
+![CI](https://github.com/hk1196320121-cmd/kai/actions/workflows/ci.yml/badge.svg)
+![npm](https://img.shields.io/npm/v/kai-profile)
+
 MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol to read your profile and submit new observations.
 
 ## What it does
@@ -24,22 +27,22 @@ Core capabilities:
 Requires [Bun](https://bun.sh) runtime.
 
 ```bash
+bunx kai-profile
+```
+
+Or install globally:
+
+```bash
+bun add -g kai-profile
+kai <command>
+```
+
+Or clone for development:
+
+```bash
 git clone https://github.com/hk1196320121-cmd/kai.git
 cd kai
 bun install
-```
-
-Run the CLI:
-
-```bash
-bun run src/cli/index.ts <command>
-```
-
-Or link globally:
-
-```bash
-bun link
-kai <command>
 ```
 
 ## Quick start
@@ -195,6 +198,7 @@ src/
   bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
   db/             SQLite client with WAL mode and schema migrations
   llm/            OpenAI-compatible LLM provider with transient-error retry
+dist/              Compiled output (tsc), created by bun run build
 ```
 
 Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. **Prompt Genome**: Genes -> Genome -> Compiler (profile-aware segments) -> Variants -> Tournament (A/B) -> Judge (LLM) -> Champion promotion -> Evolution loop. **Telemetry**: Every MCP tool call gets a trace with spans, events, state changes, and errors. Traces flow through derivation, orchestration, and prompt genome operations. 30-day retention with automatic pruning. MCP clients connect via stdio to read profiles, submit observations, orchestrate tasks, compile/evolve prompts, and query telemetry.
@@ -205,6 +209,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 | Document | Type | Description |
 |----------|------|-------------|
+| [AGENTS.md](AGENTS.md) | Reference | Quick reference for AI agents connecting to Kai |
 | [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 19 tools and 12 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
@@ -233,6 +238,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 ```bash
 bun install                # Install dependencies
+bun run build              # Compile TypeScript to dist/
 bun test                   # Run tests
 bun test --watch           # Watch mode
 bun run typecheck          # Type-check with tsc
@@ -240,7 +246,7 @@ bun run lint               # Lint with Biome
 bun run dev profile bootstrap  # Run CLI in dev mode
 ```
 
-CI runs on every push and PR: typecheck, lint, test. Dependabot checks for dependency updates weekly.
+CI runs on every push and PR: typecheck, lint, build, test. Dependabot checks for dependency updates weekly.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
 
