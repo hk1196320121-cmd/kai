@@ -1,5 +1,8 @@
 # Kai
 
+![CI](https://github.com/hk1196320121-cmd/kai/actions/workflows/ci.yml/badge.svg)
+![npm](https://img.shields.io/npm/v/kai-profile)
+
 MCP server that builds and serves a behavioral profile from observations. AI agents connect via Model Context Protocol to read your profile and submit new observations.
 
 ## What it does
@@ -24,22 +27,22 @@ Core capabilities:
 Requires [Bun](https://bun.sh) runtime.
 
 ```bash
+bunx kai-profile
+```
+
+Or install globally:
+
+```bash
+bun add -g kai-profile
+kai <command>
+```
+
+Or clone for development:
+
+```bash
 git clone https://github.com/hk1196320121-cmd/kai.git
 cd kai
 bun install
-```
-
-Run the CLI:
-
-```bash
-bun run src/cli/index.ts <command>
-```
-
-Or link globally:
-
-```bash
-bun link
-kai <command>
 ```
 
 ## Quick start
