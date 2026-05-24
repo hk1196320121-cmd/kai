@@ -74,11 +74,12 @@ Run all checks before submitting a PR:
 ```bash
 bun run typecheck           # tsc --noEmit
 bun run lint                # Biome check on src/
+bun run build               # Compile TypeScript to dist/
 bun test                    # Full test suite
 npx knip                    # Dead code detection
 ```
 
-CI runs these same checks on every push and PR. All four must pass before merge.
+CI runs these same checks on every push and PR. All five must pass before merge.
 
 ## Project structure
 
@@ -94,6 +95,7 @@ src/
   bridge/             Hermes bridge (file reads) + agent bridge (task dispatch)
   db/                 SQLite client with WAL mode and schema migrations (v1–v8)
   llm/                OpenAI-compatible LLM provider with retry logic
+dist/                Compiled output (tsc), created by bun run build
 tests/                Mirrors src/ structure
 docs/                 Documentation (Diataxis framework: tutorial/howto/reference/explanation)
 ```

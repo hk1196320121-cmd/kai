@@ -236,6 +236,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 ```bash
 bun install                # Install dependencies
+bun run build              # Compile TypeScript to dist/
 bun test                   # Run tests
 bun test --watch           # Watch mode
 bun run typecheck          # Type-check with tsc
@@ -243,7 +244,7 @@ bun run lint               # Lint with Biome
 bun run dev profile bootstrap  # Run CLI in dev mode
 ```
 
-CI runs on every push and PR: typecheck, lint, test. Dependabot checks for dependency updates weekly.
+CI runs on every push and PR: typecheck, lint, build, test. Dependabot checks for dependency updates weekly.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
 
