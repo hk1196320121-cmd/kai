@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0] - 2026-05-25
+
+### Changed
+- **Version format migration**: 4-part semver (0.8.0.0) → 3-part semver (0.9.0) for release-please compatibility
+- **Package name**: `kai` → `kai-profile` for npm publishing
+- **Version strings**: CLI and MCP server now read version dynamically from package.json instead of hardcoded "0.1.0"
+- **Build script**: Added `tsc` build step, `dist/` is the compiled output directory
+
+### Added
+- **CD release pipeline**: release-please automated versioning + npm publish workflow + smoke test
+- **prepublishOnly hook**: ensures `tsc` runs before manual `npm publish`
+
 ## [0.8.0.0] - 2026-05-24
 
 ### Added
