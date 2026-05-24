@@ -248,6 +248,22 @@ describe("telemetry renderer", () => {
       // When duration_ms is null, renderer outputs "—"
       expect(output).toContain("unknown_dur");
     });
+
+    test("renders orphaned spans (parent_span_id not in set)", () => {
+      const output = renderTrace(
+        makeTrace(),
+        [
+          makeSpan({
+            id: "orphan-span",
+            parent_span_id: "missing-parent-id",
+            operation: "orphan_op",
+            name: "orphan_name",
+            duration_ms: 10,
+          }),
+        ],
+      );
+      expect(output).toContain("orphan_name");
+    });
   });
 
   describe("renderErrorList", () => {

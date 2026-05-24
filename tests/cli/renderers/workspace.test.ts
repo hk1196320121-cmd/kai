@@ -209,5 +209,36 @@ describe("workspace renderer", () => {
       ]);
       expect(output).toContain("2024-06-15");
     });
+
+    test("renders task progress when taskCount > 0", () => {
+      const output = renderWorkspaceList([
+        {
+          ...makeWorkspace({ name: "ws-tasks" }),
+          taskCount: 5,
+          completedTasks: 3,
+        },
+      ]);
+      expect(output).toContain("3/5 tasks");
+    });
+
+    test("omits task progress when taskCount is 0", () => {
+      const output = renderWorkspaceList([
+        {
+          ...makeWorkspace({ name: "my-ws" }),
+          taskCount: 0,
+          completedTasks: 0,
+        },
+      ]);
+      // Should not contain "X/Y tasks" pattern
+      expect(output).not.toMatch(/\d+\/\d+ tasks/);
+    });
+
+    test("omits task progress when taskCount is undefined", () => {
+      const output = renderWorkspaceList([
+        makeWorkspace({ name: "my-ws" }),
+      ]);
+      // Should not contain "X/Y tasks" pattern
+      expect(output).not.toMatch(/\d+\/\d+ tasks/);
+    });
   });
 });

@@ -236,10 +236,9 @@ describe("profile renderer", () => {
       // Header with coldstart date
       expect(result).toContain("2026-01-01");
 
-      // Changed trait — plain labels, NO +/- signs
+      // Changed trait — plain labels for value direction
       expect(result).toContain("detail_oriented");
       expect(result).toContain("increased");
-      expect(result).not.toMatch(/detail_oriented.*\+/);
 
       // New trait
       expect(result).toContain("risk_tolerance");
@@ -283,9 +282,8 @@ describe("profile renderer", () => {
       const result = renderDiff(diff);
 
       expect(result).toContain("decreased");
-      // Ensure no + or - signs used for value changes
-      expect(result).not.toMatch(/risk_tolerance.*\+[\d.]/);
-      expect(result).not.toMatch(/risk_tolerance.*-[\d.]/);
+      // Confidence delta should be shown
+      expect(result).toMatch(/confidence 8→4 \(-4\)/);
     });
 
     test("shows unchanged label for traits with same before/after", () => {
@@ -335,6 +333,19 @@ describe("profile renderer", () => {
       expect(result).toContain("detail_oriented");
       // Should not crash and should not show "Related observations" section
       // (or show an empty-state message)
+    });
+
+    test("truncates related observations to 5", () => {
+      const obs = Array.from({ length: 8 }, (_, i) =>
+        makeObservation({ id: i + 1, key: `obs_${i}` }),
+      );
+      const explanation = makeExplanation({ relatedObservations: obs });
+      const result = renderProvenance(explanation);
+
+      // Should show count of 8 but only render 5 lines
+      expect(result).toContain("8)");
+      // obs_5 (index 5) should be truncated
+      expect(result).not.toContain("obs_5");
     });
   });
 
