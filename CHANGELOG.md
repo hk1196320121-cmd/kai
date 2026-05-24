@@ -12,7 +12,7 @@
 - **Release workflow hardened**: Pinned actions to commit SHAs, job-scoped permissions, CI poll loop gate
 
 ### Added
-- **CD release pipeline**: release-please automated versioning + npm publish workflow + smoke test
+- **CD release pipeline**: Kai is now available on npm as `kai-profile`. Install with `bunx kai-profile` or `bun add -g kai-profile`. Releases are automated via release-please versioning, npm publish after CI passes, and a smoke test verifying the published package
 - **Build verification tests**: Artifact existence, shebang preservation, npm pack whitelist, version consistency
 - **CD pipeline tests**: Package metadata validation, dynamic version verification, error path coverage
 

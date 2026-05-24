@@ -198,6 +198,7 @@ src/
   bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
   db/             SQLite client with WAL mode and schema migrations
   llm/            OpenAI-compatible LLM provider with transient-error retry
+dist/              Compiled output (tsc), created by bun run build
 ```
 
 Data flows: **Cold start** (`kai work start`) -> **Observations** -> **Derivator** (rules + LLM) -> **Traits**. **Hermes cron outputs** -> **Collector** (dedup) -> **Observations** -> **Derivator** -> **Traits** -> **Decay** (time-based confidence) -> **Provenance** (evidence chain). **Workspace events** -> **Event bus** -> **Observations**. **Orchestrator**: Idea -> Planner (LLM) -> Tasks -> Scheduler -> Dispatcher -> Agent bridge -> Observer -> Profile updates -> Closed-loop re-planning. **Prompt Genome**: Genes -> Genome -> Compiler (profile-aware segments) -> Variants -> Tournament (A/B) -> Judge (LLM) -> Champion promotion -> Evolution loop. **Telemetry**: Every MCP tool call gets a trace with spans, events, state changes, and errors. Traces flow through derivation, orchestration, and prompt genome operations. 30-day retention with automatic pruning. MCP clients connect via stdio to read profiles, submit observations, orchestrate tasks, compile/evolve prompts, and query telemetry.

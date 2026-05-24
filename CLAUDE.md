@@ -6,7 +6,8 @@ MCP server that builds and serves a behavioral profile from observations.
 
 - typecheck: npx tsc --noEmit
 - lint: npx @biomejs/biome check src/
-- test: npm test
+- build: bun run build
+- test: bun test
 - deadcode: npx knip
 - gbrain: gbrain doctor --json
 

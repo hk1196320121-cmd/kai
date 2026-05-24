@@ -217,7 +217,7 @@ kai profile correct <dimension>    # Remove incorrect trait
 kai profile decay                  # Apply confidence decay
 
 # Cold start
-kai work start                     # Interactive profile bootstrapping (4 questions + git scan)
+kai work start                     # Interactive profile bootstrapping (10-question interview + git scan)
 
 # Observation collection
 kai observe from-cron <file>       # Extract from cron output file
@@ -380,7 +380,7 @@ bun run lint         # Lint with Biome
 bun run dev <cmd>    # Run CLI in dev mode
 ```
 
-Health stack: `bun run typecheck`, `bun run lint`, `bun run build`, `bun test`, `npx knip` (dead code). CI (GitHub Actions) runs all four checks on every push and PR.
+Health stack: `bun run typecheck`, `bun run lint`, `bun run build`, `bun test`, `npx knip` (dead code). CI (GitHub Actions) runs all five checks on every push and PR.
 
 
 <claude-mem-context>
