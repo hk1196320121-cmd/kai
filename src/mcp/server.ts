@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TelemetryRecorder } from "../core/telemetry/recorder";
 import { TelemetryStore } from "../core/telemetry/store";

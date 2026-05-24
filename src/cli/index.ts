@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import { setNoColor } from "./format";
 import { registerMcpCommands } from "./mcp";
