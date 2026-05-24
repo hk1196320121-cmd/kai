@@ -8,7 +8,7 @@ export function setNoColor(value: boolean): void {
 
 export function shouldUseColor(): boolean {
   if (noColorOverride) return false;
-  if (process.env.NO_COLOR) return false;
+  if (process.env.NO_COLOR !== undefined) return false;
   if (!process.stdout.isTTY) return false;
   return true;
 }
@@ -51,6 +51,20 @@ function cyan(text: string): string {
   return shouldUseColor() ? `\x1b[36m${text}\x1b[39m` : text;
 }
 
+// --- ANSI-aware string helpers ---
+
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+
+function visibleLen(s: string): number {
+  return s.replace(ANSI_RE, "").length;
+}
+
+function ansiPadEnd(s: string, targetVisible: number): string {
+  const current = visibleLen(s);
+  const pad = targetVisible - current;
+  return pad > 0 ? s + " ".repeat(pad) : s;
+}
+
 // --- Primitives ---
 
 export function header(text: string): string {
@@ -75,14 +89,15 @@ export interface BarOpts {
 }
 
 export function bar(value: number, opts: BarOpts = {}): string {
-  const width = opts.width ?? 10;
+  const width = Math.max(1, opts.width ?? 10);
   const max = opts.max ?? 1.0;
 
-  // Clamp: handle NaN (→ 0), Infinity (→ max), negative (→ 0), > max (→ max)
+  if (max <= 0) return "░".repeat(width) + "  0.00";
+
+  // Clamp: handle NaN (→ 0), +Infinity (→ max), -Infinity (→ 0), negative (→ 0), > max (→ max)
   let safeValue: number;
   if (!Number.isFinite(value)) {
-    // NaN → 0, Infinity → max
-    safeValue = Number.isNaN(value) ? 0 : max;
+    safeValue = Number.isNaN(value) || value < 0 ? 0 : max;
   } else {
     safeValue = Math.max(0, Math.min(value, max));
   }
@@ -134,19 +149,19 @@ export function status(
 
 export function table(columns: string[], rows: string[][]): string {
   const colWidths = columns.map((col, i) => {
-    const headerLen = col.length;
-    const maxRowLen = Math.max(0, ...rows.map((r) => (r[i] ?? "").length));
+    const headerLen = visibleLen(col);
+    const maxRowLen = Math.max(0, ...rows.map((r) => visibleLen(r[i] ?? "")));
     return Math.max(headerLen, maxRowLen);
   });
 
   const headerLine = columns
-    .map((col, i) => col.padEnd(colWidths[i]))
+    .map((col, i) => ansiPadEnd(col, colWidths[i]))
     .join("  ");
   const lines = [bold(headerLine)];
 
   for (const row of rows) {
     const rowLine = row
-      .map((cell, i) => (cell ?? "").padEnd(colWidths[i]))
+      .map((cell, i) => ansiPadEnd(cell ?? "", colWidths[i]))
       .join("  ");
     lines.push(rowLine);
   }

@@ -62,6 +62,7 @@ export function renderProfile(snapshot: ProfileSnapshot): string {
         kv("role", id.role),
         kv("goals", parseJsonField(id.goals)),
         kv("expertise", parseJsonField(id.expertise_areas)),
+        kv("interests", parseJsonField(id.learning_interests)),
       ]),
     );
   } else {

@@ -15,20 +15,50 @@ import { QUESTIONS } from "../core/profile/interview-questions";
 import { WorkspaceStore } from "../workspace/store";
 import { bar, renderError } from "./format";
 import { renderRecommendations } from "./renderers/recommendations";
+import {
+  renderWorkspaceList,
+  renderWorkspaceStatus,
+} from "./renderers/workspace";
 import { getEngine } from "./utils";
+
+// --- Shared helper: resolve domain and get recommendations ---
+
+function getIdeaRecommendations(
+  engine: ReturnType<typeof getEngine>["engine"],
+) {
+  const savedTraits = engine.getTraits();
+  const domainObs = engine.getObservations({
+    key: "coldstart:signal.domain",
+  });
+  let domainValue = "general";
+  if (domainObs.length > 0) {
+    try {
+      domainValue =
+        JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
+    } catch (err) {
+      console.error(renderError(err as Error));
+    }
+  }
+  const ideaDomain = resolveIdeaDomain(domainValue);
+  return {
+    recommendations: recommendTasks(savedTraits, ideaDomain),
+    savedTraits,
+    ideaDomain,
+  };
+}
 
 // --- Progress indicator (writes to stderr, gated by TTY + --json) ---
 
 function progress(message: string): void {
   if (process.argv.includes("--json")) return;
   if (!process.stderr.isTTY) return;
-  process.stderr.write(`\r  ${message}...`);
+  process.stderr.write(`\r\x1b[2K  ${message}...`);
 }
 
 function progressDone(message: string): void {
   if (process.argv.includes("--json")) return;
   if (!process.stderr.isTTY) return;
-  process.stderr.write(`\r  ${message}   \n`);
+  process.stderr.write(`\r\x1b[2K  ${message}\n`);
 }
 
 // --- Git History Scanner ---
@@ -279,22 +309,7 @@ export function registerWorkCommands(program: Command): void {
         console.log(
           "Cold start already completed. Showing recommendations from existing profile...",
         );
-        const savedTraits = engine.getTraits();
-        const domainObs = engine.getObservations({
-          key: "coldstart:signal.domain",
-        });
-        let domainValue = "general";
-        if (domainObs.length > 0) {
-          try {
-            domainValue =
-              JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-          } catch (err) {
-            console.error(renderError(err as Error));
-          }
-        }
-        const ideaDomain = resolveIdeaDomain(domainValue);
-
-        const recommendations = recommendTasks(savedTraits, ideaDomain);
+        const { recommendations } = getIdeaRecommendations(engine);
 
         if (recommendations.length === 0) {
           console.log("\nNo matching workflows found for your profile.");
@@ -497,22 +512,8 @@ export function registerWorkCommands(program: Command): void {
 
       // Step 8: Show recommendations and auto-execute
       if (confirmed) {
-        const savedTraits = engine.getTraits();
-        const domainObs = engine.getObservations({
-          key: "coldstart:signal.domain",
-        });
-        let domainValue2 = "general";
-        if (domainObs.length > 0) {
-          try {
-            domainValue2 =
-              JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-          } catch (err) {
-            console.error(renderError(err as Error));
-          }
-        }
-        const ideaDomain = resolveIdeaDomain(domainValue2);
-
-        const recommendations = recommendTasks(savedTraits, ideaDomain);
+        const { recommendations, savedTraits, ideaDomain } =
+          getIdeaRecommendations(engine);
 
         if (recommendations.length === 0) {
           console.log("\nNo matching workflows found for your profile.");
@@ -706,15 +707,14 @@ export function registerWorkCommands(program: Command): void {
         const taskStats = store.getTaskStatsByWorkspaces(ids);
         const eventCounts = store.getEventCountsByWorkspaces(ids);
 
-        for (const ws of active) {
-          const stats = taskStats.get(ws.id) ?? { total: 0, completed: 0 };
-          const eventCount = eventCounts.get(ws.id) ?? 0;
-          console.log(`\n=== ${ws.name} (${ws.id}) ===`);
-          console.log(`  Status: ${ws.status}`);
-          console.log(`  Tasks: ${stats.total} (${stats.completed} completed)`);
-          console.log(`  Events: ${eventCount}`);
-          console.log(`  Created: ${ws.created_at}`);
-        }
+        const enriched = active.map((ws) => ({
+          ...ws,
+          taskCount: taskStats.get(ws.id)?.total ?? 0,
+          completedTasks: taskStats.get(ws.id)?.completed ?? 0,
+          eventCount: eventCounts.get(ws.id) ?? 0,
+        }));
+
+        console.log(renderWorkspaceStatus(enriched));
       }
 
       db.close();
@@ -729,23 +729,7 @@ export function registerWorkCommands(program: Command): void {
 
       const workspaces = store.listWorkspaces();
 
-      if (workspaces.length === 0) {
-        console.log("No workspaces found. Run `kai work start` to create one.");
-      } else {
-        const ids = workspaces.map((w) => w.id);
-        const taskStats = store.getTaskStatsByWorkspaces(ids);
-
-        console.log(`\nWorkspaces (${workspaces.length}):\n`);
-        for (const ws of workspaces) {
-          const stats = taskStats.get(ws.id) ?? { total: 0, completed: 0 };
-          console.log(
-            `  ${ws.status === "active" ? "●" : "○"} ${ws.name} (${ws.id.slice(0, 8)})`,
-          );
-          console.log(
-            `    Status: ${ws.status} | Tasks: ${stats.completed}/${stats.total} | Created: ${ws.created_at.slice(0, 10)}`,
-          );
-        }
-      }
+      console.log(renderWorkspaceList(workspaces));
 
       db.close();
     });

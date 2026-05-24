@@ -16,10 +16,10 @@ program
   .version("0.1.0")
   .option("--no-color", "Disable colored output");
 
-// Add a hook to wire --no-color globally
+// Commander negated options: --no-color stores opts.color === false
 program.hook("preAction", () => {
   const opts = program.opts();
-  if (opts.noColor) {
+  if (opts.color === false) {
     setNoColor(true);
   }
 });

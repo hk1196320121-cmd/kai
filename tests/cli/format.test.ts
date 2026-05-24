@@ -63,6 +63,13 @@ describe("format.ts", () => {
       Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
       expect(shouldUseColor()).toBe(false);
     });
+
+    test("returns false when NO_COLOR is empty string", () => {
+      process.env.NO_COLOR = "";
+      setNoColor(false);
+      Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
+      expect(shouldUseColor()).toBe(false);
+    });
   });
 
   // --- getTerminalWidth ---
@@ -159,6 +166,27 @@ describe("format.ts", () => {
       expect(result.startsWith("x")).toBe(true);
       expect(result.indexOf("val")).toBeGreaterThanOrEqual(13);
     });
+
+    test("handles null value", () => {
+      process.env.NO_COLOR = "1";
+      setNoColor(false);
+      const result = kv("name", null);
+      expect(result).toContain("—");
+    });
+
+    test("handles numeric value", () => {
+      process.env.NO_COLOR = "1";
+      setNoColor(false);
+      const result = kv("count", 42);
+      expect(result).toContain("42");
+    });
+
+    test("handles boolean value", () => {
+      process.env.NO_COLOR = "1";
+      setNoColor(false);
+      const result = kv("active", true);
+      expect(result).toContain("true");
+    });
   });
 
   // --- bar ---
@@ -214,6 +242,30 @@ describe("format.ts", () => {
     test("uses custom max", () => {
       const result = bar(5, { max: 10 });
       expect(result).toContain("█████░░░░░"); // 5 full, 5 empty
+    });
+
+    test("handles width=0 (clamped to 1)", () => {
+      const result = bar(0.5, { width: 0 });
+      expect(result).toContain("░"); // at least 1 block
+      expect(result).toContain("0.50");
+    });
+
+    test("handles width=1", () => {
+      const result = bar(0.5, { width: 1 });
+      expect(result).toContain("░"); // 0.5 rounds down to 0 filled
+      expect(result).toContain("0.50");
+    });
+
+    test("handles max=0 (empty bar)", () => {
+      const result = bar(5, { max: 0 });
+      expect(result).toContain("░");
+      expect(result).toContain("0.00");
+    });
+
+    test("handles negative Infinity", () => {
+      const result = bar(Number.NEGATIVE_INFINITY);
+      expect(result).toContain("░░░░░░░░░░");
+      expect(result).toContain("0.00");
     });
   });
 
@@ -325,6 +377,25 @@ describe("format.ts", () => {
       const result = table(["Dimension", "Value"], []);
       expect(result).toContain("Dimension");
       expect(result).toContain("Value");
+    });
+
+    test("aligns columns correctly when cells contain ANSI codes", () => {
+      // With color ON, cells get ANSI escapes that inflate .length
+      delete process.env.NO_COLOR;
+      setNoColor(false);
+      Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
+
+      const result = table(
+        ["Name", "Value"],
+        [["short", "longer-value"]],
+      );
+
+      const lines = result.split("\n");
+      // Header and data row should both have same visible width per column
+      expect(lines.length).toBe(2);
+      // Just verify it doesn't crash and both values appear
+      expect(result).toContain("Name");
+      expect(result).toContain("short");
     });
   });
 

@@ -93,10 +93,19 @@ function renderNestedSpans(spans: Span[]): string[] {
     }
   }
 
-  // Render root spans first (those with no parent or parent not in set)
+  // Render root spans: those with no parent, AND orphans whose parent is missing
   const rootSpans = childrenOf.get("__root__") ?? [];
   for (const root of rootSpans) {
     renderSpan(root, 0);
+  }
+  // Orphaned spans: have a parent_span_id that isn't in the set
+  const allIds = new Set(spans.map((s) => s.id));
+  const rendered = new Set(rootSpans.map((s) => s.id));
+  for (const span of spans) {
+    if (rendered.has(span.id)) continue;
+    if (span.parent_span_id && !allIds.has(span.parent_span_id)) {
+      renderSpan(span, 0);
+    }
   }
 
   return result;

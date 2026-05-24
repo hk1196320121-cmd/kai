@@ -8,6 +8,8 @@ import {
   renderTraitBar,
   renderDiff,
   renderProvenance,
+  parseJsonField,
+  getConfidenceLabel,
 } from "../../../src/cli/renderers/profile";
 
 // Helper factories
@@ -333,6 +335,97 @@ describe("profile renderer", () => {
       expect(result).toContain("detail_oriented");
       // Should not crash and should not show "Related observations" section
       // (or show an empty-state message)
+    });
+  });
+
+  // --- parseJsonField ---
+
+  describe("parseJsonField", () => {
+    test("parses JSON array to comma-separated string", () => {
+      expect(parseJsonField('["a","b","c"]')).toBe("a, b, c");
+    });
+
+    test("returns raw string for non-JSON", () => {
+      expect(parseJsonField("plain text")).toBe("plain text");
+    });
+
+    test("returns raw string for JSON object (not array)", () => {
+      expect(parseJsonField('{"key":"value"}')).toBe('{"key":"value"}');
+    });
+
+    test("returns raw string for JSON number", () => {
+      expect(parseJsonField("42")).toBe("42");
+    });
+
+    test("handles empty array", () => {
+      expect(parseJsonField("[]")).toBe("");
+    });
+
+    test("handles single-element array", () => {
+      expect(parseJsonField('["only"]')).toBe("only");
+    });
+  });
+
+  // --- getConfidenceLabel ---
+
+  describe("getConfidenceLabel", () => {
+    test("returns high for confidence 7", () => {
+      expect(getConfidenceLabel(7)).toBe("● high");
+    });
+
+    test("returns high for confidence 10", () => {
+      expect(getConfidenceLabel(10)).toBe("● high");
+    });
+
+    test("returns medium for confidence 4", () => {
+      expect(getConfidenceLabel(4)).toBe("○ medium");
+    });
+
+    test("returns medium for confidence 6", () => {
+      expect(getConfidenceLabel(6)).toBe("○ medium");
+    });
+
+    test("returns low for confidence 3", () => {
+      expect(getConfidenceLabel(3)).toBe("◌ low");
+    });
+
+    test("returns low for confidence 0", () => {
+      expect(getConfidenceLabel(0)).toBe("◌ low");
+    });
+  });
+
+  // --- getDirectionLabel (tested via renderDiff) ---
+
+  describe("getDirectionLabel threshold", () => {
+    test("unchanged when delta is exactly 0.01", () => {
+      const diff = makeDiff({
+        changed: [
+          {
+            dimension: "test",
+            before: { value: 0.50, confidence: 5 },
+            after: { value: 0.51, confidence: 5 },
+            reasoning: "Tiny change",
+          },
+        ],
+      });
+      const result = renderDiff(diff);
+      // delta = 0.01, Math.abs(0.01) < 0.01 is false, so it should be "increased"
+      expect(result).toContain("increased");
+    });
+
+    test("unchanged when delta is below 0.01", () => {
+      const diff = makeDiff({
+        stable: [
+          {
+            dimension: "test",
+            before: { value: 0.50, confidence: 5 },
+            after: { value: 0.505, confidence: 5 },
+            reasoning: "Negligible",
+          },
+        ],
+      });
+      const result = renderDiff(diff);
+      expect(result).toContain("unchanged");
     });
   });
 });

@@ -49,7 +49,9 @@ export function computeProfileDiff(
         snapshotCtx = ctx;
         break;
       }
-    } catch {}
+    } catch {
+      // Workspace context JSON parse failure — non-critical, skip
+    }
   }
 
   if (!snapshotWs || !snapshot || !snapshotCtx) return null;
@@ -212,7 +214,7 @@ export function registerProfileCommands(program: Command): void {
         engine.updateIdentity({ [opts.field]: opts.value });
         console.log(status("success", `Updated ${opts.field}`));
       } catch (e) {
-        console.log(status("error", (e as Error).message));
+        console.error(status("error", (e as Error).message));
       }
       db.close();
     });
@@ -251,7 +253,11 @@ export function registerProfileCommands(program: Command): void {
       db.close();
 
       if (!explanation) {
-        console.log(status("error", `No trait '${dimension}' found.`));
+        if (cmdOpts.json) {
+          console.log(JSON.stringify({ error: `No trait '${dimension}' found.` }));
+        } else {
+          console.error(status("error", `No trait '${dimension}' found.`));
+        }
         return;
       }
 
