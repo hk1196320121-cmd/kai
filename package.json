@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "bun run src/cli/index.ts",
     "build": "tsc",
-    "prepublishOnly": "bun run build",
+    "prepublishOnly": "tsc",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit",

@@ -15,7 +15,7 @@
  *  P14 release-please-config.json is valid and has expected structure
  *  P15 .release-please-manifest.json version matches package.json
  *  P21 bin entry points to dist/cli/index.js
- *  P22 prepublishOnly script is "bun run build"
+ *  P22 prepublishOnly script is "tsc"
  *  P23 publishConfig.access is "public"
  *  P24 files whitelist includes dist, README.md, CHANGELOG.md
  */
@@ -59,7 +59,7 @@ describe("package.json metadata", () => {
 
   test('prepublishOnly script runs build', () => {
     const scripts = pkg.scripts as Record<string, string>;
-    expect(scripts.prepublishOnly).toBe("bun run build");
+    expect(scripts.prepublishOnly).toBe("tsc");
   });
 
   test('publishConfig.access is "public"', () => {

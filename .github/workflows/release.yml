@@ -32,7 +32,7 @@ jobs:
 
   publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release-created }}
+    if: ${{ needs.release-please.outputs.release-created == 'true' }}
     runs-on: ubuntu-latest
     environment: release
     timeout-minutes: 10
@@ -43,16 +43,22 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Verify CI passed for this commit
+      - name: Wait for CI to pass
         run: |
-          CI_RUN=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
-            --jq '.check_runs | map(select(.name=="ci")) | .[0]')
-          STATUS=$(echo "$CI_RUN" | jq -r '.status')
-          CONCLUSION=$(echo "$CI_RUN" | jq -r '.conclusion')
-          if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
-            echo "CI not passed (status=$STATUS, conclusion=$CONCLUSION). Aborting publish."
-            exit 1
-          fi
+          for i in $(seq 1 20); do
+            CI_RUN=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
+              --jq '.check_runs | map(select(.name=="ci")) | .[0]')
+            STATUS=$(echo "$CI_RUN" | jq -r '.status')
+            CONCLUSION=$(echo "$CI_RUN" | jq -r '.conclusion')
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then
+              echo "CI passed."
+              exit 0
+            fi
+            echo "CI not ready yet (status=$STATUS, conclusion=$CONCLUSION). Waiting 30s..."
+            sleep 30
+          done
+          echo "CI did not pass within 10 minutes. Aborting publish."
+          exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -62,7 +68,7 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - run: bun run build
+      - run: rm -rf dist/ && bun run build
 
       - name: Verify dist/ contents
         run: |
@@ -81,7 +87,7 @@ jobs:
 
   smoke-test:
     needs: [release-please, publish]
-    if: ${{ needs.release-please.outputs.release-created }}
+    if: ${{ needs.release-please.outputs.release-created == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -97,7 +103,11 @@ jobs:
           MAX_RETRIES=10
           RETRY_INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            bunx kai-profile@${VERSION} --help && exit 0
+            OUTPUT=$(bunx kai-profile@${VERSION} --version 2>/dev/null) && {
+              echo "Installed version: $OUTPUT"
+              [ "$OUTPUT" = "$VERSION" ] && exit 0
+              echo "Version mismatch: expected $VERSION, got $OUTPUT"
+            }
             sleep $RETRY_INTERVAL
           done
           echo "Package not available after $((MAX_RETRIES * RETRY_INTERVAL))s" && exit 1
