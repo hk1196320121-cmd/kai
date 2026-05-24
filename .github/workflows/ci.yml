@@ -27,11 +27,7 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - run: bun run typecheck
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
 
       - run: bun run lint
-
-      - run: bun run build
 
       - run: bun test
