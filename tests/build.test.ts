@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { existsSync, readFileSync, statSync } from "fs";
-import { join } from "path";
-import { spawnSync } from "child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const ROOT = join(import.meta.dir, "..");
 

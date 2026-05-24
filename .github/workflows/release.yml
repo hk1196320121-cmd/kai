@@ -7,7 +7,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,11 +16,11 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      release-created: ${{ steps.release.outputs.release-created }}
+      release-created: ${{ steps.release.outputs.release_created }}
       major: ${{ steps.release.outputs.major }}
       minor: ${{ steps.release.outputs.minor }}
       patch: ${{ steps.release.outputs.patch }}
-      tag-name: ${{ steps.release.outputs.tag-name }}
+      tag-name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -35,8 +34,24 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify CI passed for this commit
+        run: |
+          STATUS=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
+            --jq '.check_runs | map(select(.name=="ci")) | .[0].status')
+          CONCLUSION=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
+            --jq '.check_runs | map(select(.name=="ci")) | .[0].conclusion')
+          if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
+            echo "CI not passed (status=$STATUS, conclusion=$CONCLUSION). Aborting publish."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -57,7 +72,7 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
-      - run: npm publish --access public --provenance
+      - run: npm publish --access public --provenance --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -67,12 +82,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
 
       - name: Verify published package
         run: |
-          sleep 30
           VERSION="${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}"
-          bunx kai-profile@${VERSION} --help
+          for i in $(seq 1 10); do
+            bunx kai-profile@${VERSION} --help && exit 0
+            sleep 10
+          done
+          echo "Package not available after 100s" && exit 1
