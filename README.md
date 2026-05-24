@@ -227,6 +227,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Configure Kai](docs/howto-configure.md) | How-to | Environment variables, LLM setup, database path, Hermes integration |
 | [How to Use Telemetry](docs/howto-telemetry.md) | How-to | Debug failures, monitor performance, query trace data |
 | [How the Flight Recorder Works](docs/explanation-telemetry.md) | Explanation | Trace lifecycle, deferred writes, sanitizer design, trade-offs |
+| [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
 
 ## Development
 
