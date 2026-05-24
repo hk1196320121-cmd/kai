@@ -5,9 +5,15 @@ import { Derivator } from "../core/profile/derivator";
 import { ProvenanceEngine } from "../core/profile/provenance";
 import type { Trait } from "../core/profile/types";
 import { WorkspaceStore } from "../workspace/store";
+import { dim, setNoColor, status } from "./format";
+import {
+  renderDiff,
+  renderProfile,
+  renderProvenance,
+} from "./renderers/profile";
 import { getEngine } from "./utils";
 
-interface TraitChange {
+export interface TraitChange {
   dimension: string;
   before: { value: number; confidence: number };
   after: { value: number; confidence: number };
@@ -95,42 +101,12 @@ export function computeProfileDiff(
   };
 }
 
-function formatDiff(diff: ProfileDiff): string {
-  const lines: string[] = [];
-  lines.push(
-    `Profile changes since cold start (${diff.coldstartDate.slice(0, 10)}):\n`,
-  );
-
-  for (const c of diff.changed) {
-    const delta = c.after.value - c.before.value;
-    const sign = delta >= 0 ? "+" : "";
-    const confDelta = c.after.confidence - c.before.confidence;
-    const confSign = confDelta >= 0 ? "+" : "";
-    lines.push(
-      `  ${c.dimension.padEnd(22)}${c.before.value.toFixed(1)}→${c.after.value.toFixed(1)} (${sign}${delta.toFixed(1)})   confidence ${c.before.confidence}→${c.after.confidence} (${confSign}${confDelta})   — ${c.reasoning}`,
-    );
-  }
-
-  for (const t of diff.newTraits) {
-    lines.push(
-      `  + ${t.dimension.padEnd(20)}new        confidence ${t.confidence}     — ${t.reasoning}`,
-    );
-  }
-
-  for (const r of diff.removed) {
-    lines.push(
-      `  - ${r.dimension.padEnd(20)}removed     was ${r.before.value.toFixed(1)} (${r.reasoning})`,
-    );
-  }
-
-  lines.push(
-    `\n${diff.stable.length} traits stable, ${diff.changed.length} evolved, ${diff.newTraits.length} new, ${diff.removed.length} removed since cold start.`,
-  );
-
-  return lines.join("\n");
-}
-
 export function registerProfileCommands(program: Command): void {
+  const opts = program.opts();
+  if (opts.noColor) {
+    setNoColor(true);
+  }
+
   const profile = program.command("profile").description("Manage user profile");
 
   profile
@@ -227,23 +203,7 @@ export function registerProfileCommands(program: Command): void {
         return;
       }
 
-      if (snapshot.identity) {
-        console.log(
-          `\n=== ${snapshot.identity.name} (${snapshot.identity.role}) ===`,
-        );
-        console.log(`Goals: ${snapshot.identity.goals}`);
-        console.log(`Expertise: ${snapshot.identity.expertise_areas}`);
-        console.log(`Interests: ${snapshot.identity.learning_interests}`);
-      } else {
-        console.log("\n=== Profile (no identity set) ===");
-      }
-      console.log(`\nTraits (${snapshot.traits.length}):`);
-      for (const t of snapshot.traits) {
-        console.log(
-          `  ${t.dimension}: ${t.value.toFixed(2)} (confidence: ${t.confidence}/10, source: ${t.source})`,
-        );
-      }
-      console.log(`\nObservations: ${snapshot.observationCount}`);
+      console.log(renderProfile(snapshot));
     });
 
   profile
@@ -255,9 +215,9 @@ export function registerProfileCommands(program: Command): void {
       const { db, engine } = getEngine();
       try {
         engine.updateIdentity({ [opts.field]: opts.value });
-        console.log(`Updated ${opts.field}`);
+        console.log(status("success", `Updated ${opts.field}`));
       } catch (e) {
-        console.error((e as Error).message);
+        console.log(status("error", (e as Error).message));
       }
       db.close();
     });
@@ -272,12 +232,14 @@ export function registerProfileCommands(program: Command): void {
       db.close();
 
       if (results.length === 0) {
-        console.log("No observations to derive traits from.");
+        console.log(status("info", "No observations to derive traits from."));
       } else {
-        console.log(`Derived ${results.length} traits:`);
+        console.log(status("success", `Derived ${results.length} traits:`));
         for (const t of results) {
           console.log(
-            `  ${t.dimension}: ${t.value.toFixed(2)} (confidence: ${t.confidence}/10)`,
+            dim(
+              `  ${t.dimension}: ${t.value.toFixed(2)} (confidence: ${t.confidence}/10)`,
+            ),
           );
         }
       }
@@ -285,33 +247,25 @@ export function registerProfileCommands(program: Command): void {
 
   profile
     .command("why <dimension>")
+    .option("--json", "Output as JSON")
     .description("Explain why a trait has its value (provenance)")
-    .action((dimension: string) => {
+    .action((dimension: string, cmdOpts: { json?: boolean }) => {
       const { db, engine } = getEngine();
       const prov = new ProvenanceEngine(engine);
       const explanation = prov.why(dimension);
       db.close();
 
       if (!explanation) {
-        console.log(`No trait '${dimension}' found.`);
+        console.log(status("error", `No trait '${dimension}' found.`));
         return;
       }
 
-      console.log(`\n=== Why: ${explanation.dimension} ===`);
-      console.log(`Value: ${explanation.traitValue.toFixed(2)}`);
-      console.log(`Confidence: ${explanation.traitConfidence}/10`);
-      console.log(`Source: ${explanation.traitSource}`);
-      console.log(`Reasoning: ${explanation.traitReasoning}`);
-      if (explanation.relatedObservations.length > 0) {
-        console.log(
-          `\nRelated observations (${explanation.relatedObservations.length}):`,
-        );
-        for (const obs of explanation.relatedObservations.slice(0, 5)) {
-          console.log(
-            `  [${obs.id}] ${obs.key} (confidence: ${obs.confidence})`,
-          );
-        }
+      if (cmdOpts.json) {
+        console.log(JSON.stringify(explanation, null, 2));
+        return;
       }
+
+      console.log(renderProvenance(explanation));
     });
 
   profile
@@ -327,9 +281,13 @@ export function registerProfileCommands(program: Command): void {
       db.close();
 
       if (result) {
-        console.log(`Trait '${dimension}' corrected and removed.`);
+        console.log(
+          status("success", `Trait '${dimension}' corrected and removed.`),
+        );
       } else {
-        console.log(`No trait '${dimension}' found to correct.`);
+        console.log(
+          status("error", `No trait '${dimension}' found to correct.`),
+        );
       }
     });
 
@@ -342,7 +300,10 @@ export function registerProfileCommands(program: Command): void {
       const result = decay.apply();
       db.close();
       console.log(
-        `Decayed ${result.decayed} traits, skipped ${result.skipped}.`,
+        status(
+          "success",
+          `Decayed ${result.decayed} traits, skipped ${result.skipped}.`,
+        ),
       );
     });
 
@@ -364,10 +325,13 @@ export function registerProfileCommands(program: Command): void {
 
       if (!diff) {
         console.log(
-          "No cold start snapshot found. Run `kai work start` first.",
+          status(
+            "error",
+            "No cold start snapshot found. Run `kai work start` first.",
+          ),
         );
       } else {
-        console.log(formatDiff(diff));
+        console.log(renderDiff(diff));
       }
 
       db.close();

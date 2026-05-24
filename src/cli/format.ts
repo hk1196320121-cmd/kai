@@ -1,4 +1,3 @@
-
 // --- Color policy ---
 
 let noColorOverride = false;
@@ -63,7 +62,8 @@ export function subheader(text: string): string {
 }
 
 export function kv(label: string, value: unknown): string {
-  const displayValue = value === undefined || value === null ? "—" : String(value);
+  const displayValue =
+    value === undefined || value === null ? "—" : String(value);
   const labelWidth = Math.max(label.length + 2, 14);
   const padded = label.padEnd(labelWidth);
   return `${bold(padded)}${displayValue}`;
@@ -116,7 +116,10 @@ export function section(title: string, rows: string[]): string {
   return lines.join("\n");
 }
 
-export function status(type: "success" | "warning" | "error" | "info", text: string): string {
+export function status(
+  type: "success" | "warning" | "error" | "info",
+  text: string,
+): string {
   switch (type) {
     case "success":
       return `${green("✓")} ${text}`;
@@ -136,11 +139,15 @@ export function table(columns: string[], rows: string[][]): string {
     return Math.max(headerLen, maxRowLen);
   });
 
-  const headerLine = columns.map((col, i) => col.padEnd(colWidths[i])).join("  ");
+  const headerLine = columns
+    .map((col, i) => col.padEnd(colWidths[i]))
+    .join("  ");
   const lines = [bold(headerLine)];
 
   for (const row of rows) {
-    const rowLine = row.map((cell, i) => (cell ?? "").padEnd(colWidths[i])).join("  ");
+    const rowLine = row
+      .map((cell, i) => (cell ?? "").padEnd(colWidths[i]))
+      .join("  ");
     lines.push(rowLine);
   }
 
