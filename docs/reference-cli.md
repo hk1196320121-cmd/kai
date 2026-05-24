@@ -418,6 +418,6 @@ kai prompt tournament results --task planner --last 5
 
 ## Related
 
-- [MCP Server Reference](reference-mcp-server.md) — complete API for all 18 tools and 12 resources
+- [MCP Server Reference](reference-mcp-server.md) — complete API for all 19 tools and 12 resources
 - [How to Configure Kai](howto-configure.md) — environment variables and LLM setup
 - [Database Schema Reference](reference-database.md) — tables, migrations, and data model

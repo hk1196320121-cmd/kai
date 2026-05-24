@@ -308,7 +308,7 @@ src/
 ```
 
 Data flows:
-- **Cold start path**: `kai work start` (10-question interview + git scan) → Derivator → Traits → Recommendations → Auto-execute
+- **Cold start path**: `kai work start` (10-question interview + git scan) → Derivator → Traits → Recommendations → Auto-execute (via kai_work_recommend MCP tool)
 - **CLI path**: Hermes cron → Collector (dedup) → Observations (SQLite) → Derivator (rules + LLM) → Traits → Decay → Provenance
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
@@ -373,14 +373,14 @@ SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v8).
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (613 across 83 files)
+bun test             # Run tests (798 across 93 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome
 bun run dev <cmd>    # Run CLI in dev mode
 ```
 
-Health stack: `bun run typecheck`, `bun run lint`, `bun test`, `npx knip` (dead code). CI (GitHub Actions) runs all three checks on every push and PR.
+Health stack: `bun run typecheck`, `bun run lint`, `bun run build`, `bun test`, `npx knip` (dead code). CI (GitHub Actions) runs all four checks on every push and PR.
 
 
 <claude-mem-context>

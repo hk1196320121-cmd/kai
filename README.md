@@ -208,6 +208,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 
 | Document | Type | Description |
 |----------|------|-------------|
+| [AGENTS.md](AGENTS.md) | Reference | Quick reference for AI agents connecting to Kai |
 | [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 19 tools and 12 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |

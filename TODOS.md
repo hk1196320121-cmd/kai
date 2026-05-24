@@ -18,6 +18,10 @@
 - **What**: 设置 GitHub Actions 自动测试 + 发布流程
 - **Completed**: 2026-05-19 — ci.yml (typecheck + lint + test, Bun 1.3.13), dependabot.yml (actions + npm weekly)
 
+### CD 发布流程 (TODO 6)
+- **What**: 设置 GitHub Actions 自动发布流程——release-please 版本管理 + npm publish + smoke test
+- **Completed**: v0.9.0 (2026-05-25) — release.yml (release-please + npm publish + CI gate + smoke test), release-please-config.json, package name `kai-profile`, 3-part semver migration, build verification tests, supply chain hardening
+
 ### Orchestrator Idea-to-Execution Engine
 - **What**: Complete orchestrator pipeline — ideas, planning, scheduling, dispatching, observation, closed-loop re-planning
 - **Completed**: v0.4.0.0 (2026-05-20) — 7 MCP tools, profile-aware planner, agent bridge, observer pipeline, idea clustering, closed loop engine, V5 migration, 319 tests
@@ -40,15 +44,6 @@
 - **Context**: 设计文档无此设计。CEO review 将其列为 ACCEPTED (M effort)。需要定义模式类型（频率模式、关联模式、异常检测）、发现算法（统计 vs ML）、和输出格式。Phase 1 的 observation 数据是这个引擎的输入
 - **Depends on**: Phase 1 积累足够的 observation 数据（建议 >1000 条后启动设计）
 - **Added**: 2026-05-18 by /plan-eng-review
-
-## TODO 6: CD 发布流程 (changesets + npm publish)
-- **What**: 设置 GitHub Actions 自动发布流程——release.yml、changesets 版本管理、npm publish
-- **Why**: CI 基线 (TODO 3) 只覆盖测试验证，不覆盖发布。Phase 2 开始需要将 Kai 作为 npm 包分发，用户通过 `bunx kai` 或 `npx kai` 安装使用
-- **Pros**: 版本发布标准化，changesets 自动生成 CHANGELOG，npm publish 自动化
-- **Cons**: 需要配置 NPM_TOKEN secret、解决包名占用问题、bun build 打包策略
-- **Context**: CEO plan Phase 2 scope。Bun-only runtime (bin 入口 src/cli/index.ts)，需要 `bun build` 编译为可分发格式。涉及：release.yml、.changeset/config.json、npm package name resolution (kai-mcp)、NPM_TOKEN secret、build/packaging 策略、version migration 0.2.0.0 → 0.3.0
-- **Depends on**: TODO 3 (CI 流水线) 稳定运行 + Phase 2 功能就绪
-- **Added**: 2026-05-19 by /plan-eng-review
 
 ## TODO 5: 画像同步机制
 - **What**: 设计 git-based 多机器画像同步
