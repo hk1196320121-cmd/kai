@@ -4,7 +4,10 @@ import { dim, emphasis, header, nextSteps } from "../format";
 /**
  * Render task recommendations with scores and explanations.
  */
-export function renderRecommendations(recs: Recommendation[]): string {
+export function renderRecommendations(
+  recs: Recommendation[],
+  { showHint = true }: { showHint?: boolean } = {},
+): string {
   const lines: string[] = [];
 
   lines.push(header("Recommendations"));
@@ -18,7 +21,7 @@ export function renderRecommendations(recs: Recommendation[]): string {
   for (let i = 0; i < recs.length; i++) {
     const rec = recs[i];
     const num = `${i + 1}.`;
-    const scorePct = Math.round(rec.score * 100);
+    const scorePct = Math.max(0, Math.min(100, Math.round(rec.score * 100)));
     const badge = emphasis(`[${scorePct}%]`);
 
     lines.push(`${num} ${rec.title}  ${badge}`);
@@ -36,11 +39,13 @@ export function renderRecommendations(recs: Recommendation[]): string {
     }
   }
 
-  lines.push(
-    nextSteps([
-      "Select: number (1-N) to pick one, [A]ll to approve all, [N]o to skip",
-    ]),
-  );
+  if (showHint) {
+    lines.push(
+      nextSteps([
+        "Select: number (1-N) to pick one, [A]ll to approve all, [N]o to skip",
+      ]),
+    );
+  }
 
   return lines.join("\n");
 }

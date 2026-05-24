@@ -66,8 +66,7 @@ export function renderProfile(snapshot: ProfileSnapshot): string {
       ]),
     );
   } else {
-    lines.push(section("Identity", []));
-    lines[lines.length - 1] = section("Identity", [dim("No identity set")]);
+    lines.push(section("Identity", [dim("No identity set")]));
   }
   lines.push("");
 
@@ -162,7 +161,9 @@ export function renderDiff(diff: ProfileDiff): string {
 
 function renderChangedTrait(c: TraitChange): string {
   const direction = getDirectionLabel(c.before.value, c.after.value);
-  return `${c.dimension.padEnd(22)}${c.before.value.toFixed(1)}→${c.after.value.toFixed(1)} (${direction})   confidence ${c.before.confidence}→${c.after.confidence}   — ${c.reasoning}`;
+  const confDelta = c.after.confidence - c.before.confidence;
+  const confSign = confDelta > 0 ? "+" : "";
+  return `${c.dimension.padEnd(22)}${c.before.value.toFixed(1)}→${c.after.value.toFixed(1)} (${direction})   confidence ${c.before.confidence}→${c.after.confidence} (${confSign}${confDelta})   — ${c.reasoning}`;
 }
 
 function renderStableTrait(c: TraitChange): string {

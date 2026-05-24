@@ -33,10 +33,9 @@ function getIdeaRecommendations(
   let domainValue = "general";
   if (domainObs.length > 0) {
     try {
-      domainValue =
-        JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-    } catch (err) {
-      console.error(renderError(err as Error));
+      domainValue = JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
+    } catch {
+      // malformed JSON — fall back to "general"
     }
   }
   const ideaDomain = resolveIdeaDomain(domainValue);
@@ -183,8 +182,8 @@ export function scanGitHistory(repoPath: string): GitScanResult {
       cwd: repoPath,
       encoding: "utf-8",
     }).trim();
-  } catch (err) {
-    console.error(renderError(err as Error));
+  } catch {
+    // detached HEAD, shallow clone, etc. — expected, not an error
   }
 
   if (currentBranch) {
@@ -317,7 +316,9 @@ export function registerWorkCommands(program: Command): void {
           return;
         }
 
-        console.log(renderRecommendations(recommendations));
+        console.log(
+          renderRecommendations(recommendations, { showHint: false }),
+        );
 
         db.close();
         return;
@@ -522,7 +523,9 @@ export function registerWorkCommands(program: Command): void {
           return;
         }
 
-        console.log(renderRecommendations(recommendations));
+        console.log(
+          renderRecommendations(recommendations, { showHint: false }),
+        );
 
         store.addEvent({
           workspace_id: workspace.id,
@@ -729,7 +732,18 @@ export function registerWorkCommands(program: Command): void {
 
       const workspaces = store.listWorkspaces();
 
-      console.log(renderWorkspaceList(workspaces));
+      if (workspaces.length > 0) {
+        const ids = workspaces.map((w) => w.id);
+        const taskStats = store.getTaskStatsByWorkspaces(ids);
+        const enriched = workspaces.map((ws) => ({
+          ...ws,
+          taskCount: taskStats.get(ws.id)?.total ?? 0,
+          completedTasks: taskStats.get(ws.id)?.completed ?? 0,
+        }));
+        console.log(renderWorkspaceList(enriched));
+      } else {
+        console.log(renderWorkspaceList(workspaces));
+      }
 
       db.close();
     });

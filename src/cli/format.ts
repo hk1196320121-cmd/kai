@@ -53,6 +53,7 @@ function cyan(text: string): string {
 
 // --- ANSI-aware string helpers ---
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — matches ANSI escape codes
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
 function visibleLen(s: string): number {
@@ -92,7 +93,7 @@ export function bar(value: number, opts: BarOpts = {}): string {
   const width = Math.max(1, opts.width ?? 10);
   const max = opts.max ?? 1.0;
 
-  if (max <= 0) return "░".repeat(width) + "  0.00";
+  if (max <= 0) return `${"░".repeat(width)}  0.00`;
 
   // Clamp: handle NaN (→ 0), +Infinity (→ max), -Infinity (→ 0), negative (→ 0), > max (→ max)
   let safeValue: number;

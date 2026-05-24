@@ -80,7 +80,11 @@ function renderNestedSpans(spans: Span[]): string[] {
 
   const result: string[] = [];
 
+  const visited = new Set<string>();
+
   function renderSpan(span: Span, depth: number): void {
+    if (visited.has(span.id)) return;
+    visited.add(span.id);
     const indent = "  ".repeat(depth);
     const duration = span.duration_ms != null ? `${span.duration_ms}ms` : "—";
     result.push(
@@ -98,12 +102,17 @@ function renderNestedSpans(spans: Span[]): string[] {
   for (const root of rootSpans) {
     renderSpan(root, 0);
   }
-  // Orphaned spans: have a parent_span_id that isn't in the set
+  // Orphaned spans: have a parent_span_id that isn't in the set, or in a cycle
   const allIds = new Set(spans.map((s) => s.id));
-  const rendered = new Set(rootSpans.map((s) => s.id));
   for (const span of spans) {
-    if (rendered.has(span.id)) continue;
+    if (visited.has(span.id)) continue;
     if (span.parent_span_id && !allIds.has(span.parent_span_id)) {
+      renderSpan(span, 0);
+    }
+  }
+  // Cyclic spans: any remaining unvisited spans (part of a cycle)
+  for (const span of spans) {
+    if (!visited.has(span.id)) {
       renderSpan(span, 0);
     }
   }

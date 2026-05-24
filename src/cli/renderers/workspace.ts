@@ -27,7 +27,7 @@ export function renderWorkspaceStatus(
     lines.push("");
     lines.push(
       nextSteps([
-        "kai work create <name>    Create your first workspace",
+        "kai work start            Create your first workspace",
         "kai work list             Browse existing workspaces",
       ]),
     );
@@ -62,9 +62,15 @@ export function renderWorkspaceStatus(
 /**
  * Render a compact list of workspaces.
  */
-export function renderWorkspaceList(workspaces: Workspace[]): string {
+export function renderWorkspaceList(
+  workspaces: (Workspace & { taskCount?: number; completedTasks?: number })[],
+): string {
   if (workspaces.length === 0) {
-    return dim("No workspaces found.");
+    return [
+      dim("No workspaces found."),
+      "",
+      nextSteps(["kai work start            Create your first workspace"]),
+    ].join("\n");
   }
 
   const lines: string[] = [];
@@ -77,7 +83,11 @@ export function renderWorkspaceList(workspaces: Workspace[]): string {
     const name = ws.name.padEnd(24);
     const statusText = dim(ws.status);
     const date = dim(ws.created_at.slice(0, 10));
-    lines.push(`${bullet} ${name}${statusText}  ${date}`);
+    const tasks =
+      ws.taskCount !== undefined && ws.taskCount > 0
+        ? dim(`  ${ws.completedTasks}/${ws.taskCount} tasks`)
+        : "";
+    lines.push(`${bullet} ${name}${statusText}  ${date}${tasks}`);
   }
 
   return lines.join("\n");

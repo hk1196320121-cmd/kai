@@ -254,7 +254,9 @@ export function registerProfileCommands(program: Command): void {
 
       if (!explanation) {
         if (cmdOpts.json) {
-          console.log(JSON.stringify({ error: `No trait '${dimension}' found.` }));
+          console.log(
+            JSON.stringify({ error: `No trait '${dimension}' found.` }),
+          );
         } else {
           console.error(status("error", `No trait '${dimension}' found.`));
         }
