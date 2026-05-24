@@ -1,5 +1,5 @@
-import { dim, emphasis, header, nextSteps } from "../format";
 import type { Recommendation } from "../../core/orchestrator/recommend";
+import { dim, emphasis, header, nextSteps } from "../format";
 
 /**
  * Render task recommendations with scores and explanations.

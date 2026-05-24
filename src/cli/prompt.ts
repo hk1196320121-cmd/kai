@@ -7,7 +7,11 @@ import type { GeneType, PromptTask } from "../core/prompt/types";
 import { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
 import { header, kv } from "./format";
-import { renderChampion, renderGeneList, renderTournamentResults } from "./renderers/prompt";
+import {
+  renderChampion,
+  renderGeneList,
+  renderTournamentResults,
+} from "./renderers/prompt";
 import { getDbPath } from "./utils";
 
 const VALID_TASKS: PromptTask[] = ["planner", "derivator", "observer"];

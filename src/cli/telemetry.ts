@@ -4,7 +4,11 @@ import { getTelemetryStats } from "../core/telemetry/stats";
 import { TelemetryStore } from "../core/telemetry/store";
 import { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
-import { renderHealthReport, renderTrace, renderErrorList } from "./renderers/telemetry";
+import {
+  renderErrorList,
+  renderHealthReport,
+  renderTrace,
+} from "./renderers/telemetry";
 import { getDbPath } from "./utils";
 
 function getStore(): { db: KaiDB; store: TelemetryStore } {

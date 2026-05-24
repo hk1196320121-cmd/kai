@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
+import { setNoColor } from "./format";
 import { registerMcpCommands } from "./mcp";
 import { registerObserveCommands } from "./observe";
 import { registerProfileCommands } from "./profile";
@@ -14,6 +15,14 @@ program
   .description("Kai — Intelligent task orchestration and personal assistant")
   .version("0.1.0")
   .option("--no-color", "Disable colored output");
+
+// Add a hook to wire --no-color globally
+program.hook("preAction", () => {
+  const opts = program.opts();
+  if (opts.noColor) {
+    setNoColor(true);
+  }
+});
 
 registerProfileCommands(program);
 registerObserveCommands(program);

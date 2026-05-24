@@ -13,9 +13,23 @@ import type { AddObservationInput } from "../core/profile/engine";
 import { InterviewEngine } from "../core/profile/interview";
 import { QUESTIONS } from "../core/profile/interview-questions";
 import { WorkspaceStore } from "../workspace/store";
-import { renderError, bar } from "./format";
+import { bar, renderError } from "./format";
 import { renderRecommendations } from "./renderers/recommendations";
 import { getEngine } from "./utils";
+
+// --- Progress indicator (writes to stderr, gated by TTY + --json) ---
+
+function progress(message: string): void {
+  if (process.argv.includes("--json")) return;
+  if (!process.stderr.isTTY) return;
+  process.stderr.write(`\r  ${message}...`);
+}
+
+function progressDone(message: string): void {
+  if (process.argv.includes("--json")) return;
+  if (!process.stderr.isTTY) return;
+  process.stderr.write(`\r  ${message}   \n`);
+}
 
 // --- Git History Scanner ---
 
@@ -172,7 +186,6 @@ export function scanGitHistory(repoPath: string): GitScanResult {
 
 // --- Profile Preview Display ---
 
-
 function displayPreview(
   traits: import("../core/profile/derivator").DerivedTrait[],
   gitHints: { dimension: string; hints: string[] }[],
@@ -193,7 +206,9 @@ function displayPreview(
     const hintStr = hints ? ` + ${hints.join(", ")}` : "";
     const reasoning =
       t.reasoning.length > 60 ? `${t.reasoning.slice(0, 57)}...` : t.reasoning;
-    console.log(`  ${t.dimension.padEnd(22)}${barStr}  ${t.confidence}/10  — ${reasoning}${hintStr}`);
+    console.log(
+      `  ${t.dimension.padEnd(22)}${barStr}  ${t.confidence}/10  — ${reasoning}${hintStr}`,
+    );
   }
 
   console.log("\nLooks right? [Y]es / [E]dit trait / [R]estart");
@@ -294,15 +309,9 @@ export function registerWorkCommands(program: Command): void {
       }
 
       // Step 1: Git scan
-      console.log("Scanning your git history...");
+      progress("Scanning git history");
       const gitResult = scanGitHistory(process.cwd());
-      if (gitResult.observations.length > 0) {
-        console.log(
-          `  Found ${gitResult.observations.length} signals from git history`,
-        );
-      } else {
-        console.log("  No git history to scan (that's OK)");
-      }
+      progressDone("Git scan complete");
 
       for (const obs of gitResult.observations) {
         engine.addObservation(obs);
@@ -376,19 +385,23 @@ export function registerWorkCommands(program: Command): void {
       if (cancelled) return;
 
       // Step 4: Signal extraction via InterviewEngine
+      progress("Extracting signals");
       const interview = new InterviewEngine();
       const signals = interview.extractSignalsFromAnswers(
         answers,
         gitResult.traits,
         workspace.id,
       );
+      progressDone(`Extracted ${signals.length} signals`);
       for (const obs of signals) {
         engine.addObservation(obs);
       }
 
       // Step 5: Derive traits in-memory (preview mode)
+      progress("Deriving traits");
       const derivator = new Derivator(engine);
       const previewTraits = derivator.deriveFromRules(false);
+      progressDone(`Derived ${previewTraits.length} traits`);
 
       if (previewTraits.length === 0) {
         console.log(

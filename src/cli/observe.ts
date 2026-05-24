@@ -28,7 +28,9 @@ export function registerObserveCommands(program: Command): void {
       const collector = new ProfileCollector(engine, bridge);
       const count = collector.collectFromCronOutput("manual", content);
       db.close();
-      console.log(status("success", `Collected ${count} observation(s) from ${file}`));
+      console.log(
+        status("success", `Collected ${count} observation(s) from ${file}`),
+      );
     });
 
   observe
@@ -40,6 +42,8 @@ export function registerObserveCommands(program: Command): void {
       const collector = new ProfileCollector(engine, bridge);
       const count = collector.collectDaily();
       db.close();
-      console.log(status("success", `Daily collection: ${count} new observation(s)`));
+      console.log(
+        status("success", `Daily collection: ${count} new observation(s)`),
+      );
     });
 }

@@ -5,7 +5,7 @@ import { Derivator } from "../core/profile/derivator";
 import { ProvenanceEngine } from "../core/profile/provenance";
 import type { Trait } from "../core/profile/types";
 import { WorkspaceStore } from "../workspace/store";
-import { dim, setNoColor, status } from "./format";
+import { dim, status } from "./format";
 import {
   renderDiff,
   renderProfile,
@@ -102,11 +102,6 @@ export function computeProfileDiff(
 }
 
 export function registerProfileCommands(program: Command): void {
-  const opts = program.opts();
-  if (opts.noColor) {
-    setNoColor(true);
-  }
-
   const profile = program.command("profile").description("Manage user profile");
 
   profile

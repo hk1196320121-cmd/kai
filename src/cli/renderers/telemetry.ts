@@ -1,6 +1,6 @@
-import { dim, header, kv, section, table } from "../format";
-import type { Span, TelemetryError, Trace } from "../../core/telemetry/types";
 import type { TelemetryStatsResult } from "../../core/telemetry/stats";
+import type { Span, TelemetryError, Trace } from "../../core/telemetry/types";
+import { dim, header, kv, section, table } from "../format";
 
 /**
  * Render a telemetry health summary.
@@ -14,9 +14,7 @@ export function renderHealthReport(stats: TelemetryStatsResult): string {
   lines.push(kv("traces", stats.traceCount));
 
   const errorPct =
-    stats.traceCount > 0
-      ? ` (${(stats.errorRate * 100).toFixed(1)}%)`
-      : "";
+    stats.traceCount > 0 ? ` (${(stats.errorRate * 100).toFixed(1)}%)` : "";
   lines.push(kv("errors", `${stats.errorCount}${errorPct}`));
 
   lines.push(kv("p95 latency", `${stats.p95LatencyMs}ms`));
@@ -71,7 +69,6 @@ export function renderTrace(trace: Trace, spans: Span[]): string {
  * Render spans with indentation based on parent_span_id nesting.
  */
 function renderNestedSpans(spans: Span[]): string[] {
-  const spanById = new Map(spans.map((s) => [s.id, s]));
   const childrenOf = new Map<string, Span[]>();
 
   for (const span of spans) {
@@ -85,8 +82,7 @@ function renderNestedSpans(spans: Span[]): string[] {
 
   function renderSpan(span: Span, depth: number): void {
     const indent = "  ".repeat(depth);
-    const duration =
-      span.duration_ms != null ? `${span.duration_ms}ms` : "—";
+    const duration = span.duration_ms != null ? `${span.duration_ms}ms` : "—";
     result.push(
       `${indent}${span.operation} (${span.name}) ${duration} ${dim(span.status)}`,
     );
@@ -117,9 +113,7 @@ export function renderErrorList(errors: TelemetryError[]): string {
   const rows = errors.map((err) => [
     String(err.id),
     err.error_type,
-    err.message.length > 40
-      ? `${err.message.slice(0, 37)}...`
-      : err.message,
+    err.message.length > 40 ? `${err.message.slice(0, 37)}...` : err.message,
     err.created_at.slice(0, 10),
   ]);
 

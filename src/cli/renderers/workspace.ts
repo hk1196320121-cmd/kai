@@ -1,5 +1,5 @@
-import { dim, header, kv, nextSteps, section, status } from "../format";
 import type { Workspace } from "../../workspace/types";
+import { dim, header, kv, nextSteps, section, status } from "../format";
 
 // --- Local types ---
 
@@ -35,7 +35,8 @@ export function renderWorkspaceStatus(
   }
 
   for (const ws of workspaces) {
-    const icon = ws.status === "active" ? status("success", ws.name) : dim(ws.name);
+    const icon =
+      ws.status === "active" ? status("success", ws.name) : dim(ws.name);
     lines.push(icon);
     lines.push("");
 
