@@ -183,6 +183,37 @@ Run evolutionary optimization for a task's prompt. Generates new variants via LL
 
 **Returns:** Evolution result with rounds completed, battles run, champion promotion status, and variant IDs.
 
+## MCP Tools — Telemetry (3)
+
+### telemetry.query
+
+Run a SQL query against telemetry views. Read-only — only `SELECT` statements are accepted. Queries are validated against a table allowlist (only `telemetry_*_v1` and `runtime_*` tables/views). Results are capped at 1000 rows when no `LIMIT` is specified. SQL injection is blocked via semicolon rejection, comma-join detection, UNION blocking, and table allowlist enforcement.
+
+**Parameters:**
+- `sql` (required): `string` (min 1 char) — SQL query to execute against telemetry views (SELECT only)
+
+**Returns:** `{ rows: Record<string, unknown>[], count: number }` on success, or `{ error: "query_failed", message: string }` on failure.
+
+**Allowed tables:** `telemetry_traces_v1`, `telemetry_spans_v1`, `telemetry_events_v1`, `telemetry_state_changes_v1`, `telemetry_errors_v1`, `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors`.
+
+### telemetry.trace
+
+Retrieve the full causal chain for a trace — the trace itself, all spans, events, state changes, and errors. When errors are present, includes suggested actions based on similar past errors.
+
+**Parameters:**
+- `traceId` (required): `string` — trace ID to retrieve the full causal trace for
+
+**Returns:** `{ trace, spans, events, stateChanges, errors, suggested_actions }` where `suggested_actions` contains up to 3 similar past errors with occurrence counts and last-seen timestamps. Returns `{ error: "trace_not_found", traceId }` when the trace ID does not exist.
+
+### telemetry.explain
+
+Ask a natural language question about recent telemetry. Returns an LLM-generated analysis with summary, relevant trace IDs, and evidence-backed insights. Rate-limited to 10 calls per hour. Results are cached for 5 minutes. Falls back to stats-only summary when no LLM API key is configured.
+
+**Parameters:**
+- `question` (required): `string` (min 1 char) — natural language question about recent telemetry
+
+**Returns:** `{ summary: string, traces: string[], insights: Array<{ claim: string, evidence: string }> }`. Max 5 insights, summary under 200 words. When rate-limited: `{ summary: "Rate limit exceeded: 10 calls/hour. Try again later.", traces: [], insights: [] }`.
+
 ## MCP Resources (12)
 
 Resources are read-only profile access endpoints. All return `application/json`.
