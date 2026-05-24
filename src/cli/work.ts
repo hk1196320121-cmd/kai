@@ -13,6 +13,8 @@ import type { AddObservationInput } from "../core/profile/engine";
 import { InterviewEngine } from "../core/profile/interview";
 import { QUESTIONS } from "../core/profile/interview-questions";
 import { WorkspaceStore } from "../workspace/store";
+import { renderError, bar } from "./format";
+import { renderRecommendations } from "./renderers/recommendations";
 import { getEngine } from "./utils";
 
 // --- Git History Scanner ---
@@ -52,7 +54,8 @@ export function scanGitHistory(repoPath: string): GitScanResult {
       'git log --oneline --since="30.days ago" --format="%H%x00%aI%x00%s"',
       { cwd: repoPath, encoding: "utf-8", timeout: 5000 },
     ).trim();
-  } catch {
+  } catch (err) {
+    console.error(renderError(err as Error));
     return { observations, traits };
   }
 
@@ -136,8 +139,8 @@ export function scanGitHistory(repoPath: string): GitScanResult {
       cwd: repoPath,
       encoding: "utf-8",
     }).trim();
-  } catch {
-    // detached HEAD — skip
+  } catch (err) {
+    console.error(renderError(err as Error));
   }
 
   if (currentBranch) {
@@ -169,12 +172,6 @@ export function scanGitHistory(repoPath: string): GitScanResult {
 
 // --- Profile Preview Display ---
 
-function formatTraitBar(value: number, confidence: number): string {
-  const filled = Math.round(value * 10);
-  const empty = 10 - filled;
-  const bar = "█".repeat(filled) + "░".repeat(empty);
-  return `${bar}  ${confidence}/10`;
-}
 
 function displayPreview(
   traits: import("../core/profile/derivator").DerivedTrait[],
@@ -191,12 +188,12 @@ function displayPreview(
   }
 
   for (const t of traits) {
-    const bar = formatTraitBar(t.value, t.confidence);
+    const barStr = bar(t.value);
     const hints = hintMap.get(t.dimension);
     const hintStr = hints ? ` + ${hints.join(", ")}` : "";
     const reasoning =
       t.reasoning.length > 60 ? `${t.reasoning.slice(0, 57)}...` : t.reasoning;
-    console.log(`  ${t.dimension.padEnd(22)}${bar}  — ${reasoning}${hintStr}`);
+    console.log(`  ${t.dimension.padEnd(22)}${barStr}  ${t.confidence}/10  — ${reasoning}${hintStr}`);
   }
 
   console.log("\nLooks right? [Y]es / [E]dit trait / [R]estart");
@@ -276,8 +273,8 @@ export function registerWorkCommands(program: Command): void {
           try {
             domainValue =
               JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-          } catch {
-            /* malformed JSON, use default */
+          } catch (err) {
+            console.error(renderError(err as Error));
           }
         }
         const ideaDomain = resolveIdeaDomain(domainValue);
@@ -290,13 +287,7 @@ export function registerWorkCommands(program: Command): void {
           return;
         }
 
-        console.log("\n=== Recommended Workflows ===\n");
-        for (let i = 0; i < recommendations.length; i++) {
-          const r = recommendations[i];
-          console.log(`  ${i + 1}. ${r.title} (score: ${r.score})`);
-          console.log(`     ${r.description}`);
-          console.log(`     Why: ${r.explanation}`);
-        }
+        console.log(renderRecommendations(recommendations));
 
         db.close();
         return;
@@ -502,8 +493,8 @@ export function registerWorkCommands(program: Command): void {
           try {
             domainValue2 =
               JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-          } catch {
-            /* malformed JSON, use default */
+          } catch (err) {
+            console.error(renderError(err as Error));
           }
         }
         const ideaDomain = resolveIdeaDomain(domainValue2);
@@ -517,22 +508,7 @@ export function registerWorkCommands(program: Command): void {
           return;
         }
 
-        console.log("\n=== Recommended Workflows ===\n");
-        for (let i = 0; i < recommendations.length; i++) {
-          const r = recommendations[i];
-          console.log(`  ${i + 1}. ${r.title} (score: ${r.score})`);
-          console.log(`     ${r.description}`);
-          console.log(`     Why: ${r.explanation}`);
-        }
-        if (
-          recommendations[0].whyNotOthers &&
-          recommendations[0].whyNotOthers.length > 0
-        ) {
-          console.log("\n  Not shown:");
-          for (const w of recommendations[0].whyNotOthers) {
-            console.log(`    - ${w}`);
-          }
-        }
+        console.log(renderRecommendations(recommendations));
 
         store.addEvent({
           workspace_id: workspace.id,
@@ -591,7 +567,8 @@ export function registerWorkCommands(program: Command): void {
                 console.log(`  - ${t.title}`);
               }
               llmTasksCreated = tasks.length > 0;
-            } catch {
+            } catch (err) {
+              console.error(renderError(err as Error));
               console.log(
                 "  Could not generate plan (LLM unavailable), creating task directly.",
               );
@@ -635,7 +612,8 @@ export function registerWorkCommands(program: Command): void {
                   }),
                 });
               }
-            } catch {
+            } catch (err) {
+              console.error(renderError(err as Error));
               console.log(
                 `  Task created but not dispatched (agent unavailable)`,
               );
