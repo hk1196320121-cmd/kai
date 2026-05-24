@@ -4,6 +4,11 @@ import { getTelemetryStats } from "../core/telemetry/stats";
 import { TelemetryStore } from "../core/telemetry/store";
 import { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
+import {
+  renderErrorList,
+  renderHealthReport,
+  renderTrace,
+} from "./renderers/telemetry";
 import { getDbPath } from "./utils";
 
 function getStore(): { db: KaiDB; store: TelemetryStore } {
@@ -28,16 +33,7 @@ export function registerTelemetryCommands(program: Command): void {
         if (opts.json) {
           console.log(JSON.stringify(stats, null, 2));
         } else {
-          console.log(`\n=== Telemetry Health ===`);
-          console.log(
-            `Traces: ${stats.traceCount} | Errors: ${stats.errorCount} (${(stats.errorRate * 100).toFixed(1)}%)`,
-          );
-          console.log(`P95 latency: ${stats.p95LatencyMs}ms`);
-          if (stats.topOperations.length > 0) {
-            console.log(
-              `Top ops: ${stats.topOperations.map((o) => `${o.operation}(${o.count})`).join(", ")}`,
-            );
-          }
+          console.log(renderHealthReport(stats));
         }
       } finally {
         db.close();
@@ -96,20 +92,7 @@ export function registerTelemetryCommands(program: Command): void {
             JSON.stringify({ trace, spans, events, changes, errors }, null, 2),
           );
         } else {
-          console.log(`\n=== Trace: ${trace.id} ===`);
-          console.log(
-            `Trigger: ${trace.trigger} | Tool: ${trace.tool_name ?? "N/A"} | Status: ${trace.status}`,
-          );
-          console.log(
-            `Duration: ${trace.duration_ms ?? "N/A"}ms | Started: ${trace.started_at}`,
-          );
-          console.log(`\nSpans (${spans.length}):`);
-          for (const s of spans) {
-            const indent = s.parent_span_id ? "  " : "";
-            console.log(
-              `${indent}- ${s.operation}/${s.name} (${s.duration_ms ?? "?"}ms, ${s.status})`,
-            );
-          }
+          console.log(renderTrace(trace, spans));
           if (events.length > 0) {
             console.log(`\nEvents (${events.length}):`);
             for (const e of events.slice(0, 20)) {
@@ -149,16 +132,7 @@ export function registerTelemetryCommands(program: Command): void {
         if (opts.json) {
           console.log(JSON.stringify(errors, null, 2));
         } else {
-          if (errors.length === 0) {
-            console.log("No errors found.");
-          } else {
-            console.log(`\n=== Recent Errors (${errors.length}) ===`);
-            for (const e of errors) {
-              console.log(
-                `  [${e.error_type}] ${e.message} (recoverable: ${e.recoverable ? "yes" : "no"})`,
-              );
-            }
-          }
+          console.log(renderErrorList(errors));
         }
       } finally {
         db.close();

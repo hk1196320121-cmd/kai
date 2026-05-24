@@ -7,6 +7,7 @@ Complete reference for all Kai CLI commands, flags, and options.
 | Option | Description |
 |--------|-------------|
 | `--version` | Print version |
+| `--no-color` | Disable colored output. Also disabled when `NO_COLOR` env var is set or stdout is not a TTY |
 | `-h, --help` | Print help |
 
 ## `kai profile`
@@ -107,7 +108,7 @@ Workspace and cold start management.
 
 ### `kai work start`
 
-Interactive cold start: 4 questions + git history scan with preview/edit/confirm.
+Interactive cold start: 10-question interview + git history scan with task recommendations and auto-execution.
 
 ```bash
 kai work start
@@ -117,9 +118,9 @@ No flags. Interactive flow:
 
 1. Identity setup (name, role) — only on first run
 2. Git history scan (last 30 days of commits)
-3. 4 questions about your current work
-4. Preview derived traits
-5. Confirm (`Y`), edit (`E`), or restart (`R`)
+3. 10-question interview about your work style and preferences
+4. Task recommendations matched to your profile
+5. Approve all, pick one, or skip recommendations
 
 ### `kai work status`
 
@@ -139,7 +140,7 @@ List all workspaces (active and inactive).
 kai work list
 ```
 
-No flags. Active workspaces show a filled dot (`●`), inactive ones show an empty dot (`○`).
+No flags. Active workspaces show a filled dot (`●`), inactive ones show an empty dot (`○`). Each workspace shows task progress (completed/total).
 
 ## `kai observe`
 
@@ -264,6 +265,7 @@ Falls back to a stats summary when no LLM API key is configured. Caches results 
 | `LLM_BASE_URL` | `http://localhost:11434/v1` | LLM API endpoint |
 | `LLM_MODEL` | `gpt-4o-mini` | Model name for LLM calls |
 | `KAI_TELEMETRY_RETENTION_DAYS` | `30` | Days to retain telemetry data before automatic pruning |
+| `NO_COLOR` | (unset) | Disable colored output when set to any value |
 
 See [How to Configure Kai](howto-configure.md) for setup instructions.
 

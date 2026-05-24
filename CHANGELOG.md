@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.8.0.0] - 2026-05-24
+
+### Added
+- **Shared formatting layer** (`format.ts`) — 16 primitives for consistent CLI output: `header`, `subheader`, `kv`, `bar`, `section`, `status`, `table`, `list`, `dim`, `emphasis`, `renderError`, `divider`, `nextSteps`, `shouldUseColor`, `getTerminalWidth`. Handles NO_COLOR env, non-TTY detection, ANSI-aware padding, and edge cases (NaN/Infinity/negative in bar charts)
+- **Profile renderer** — structured identity display, trait bars with confidence indicators, profile diffs with direction labels and confidence deltas, provenance with observation links
+- **Prompt renderer** — champion gene display, gene list with truncation, tournament results table
+- **Recommendations renderer** — scored recommendation cards with explanations, optional hint suppression
+- **Telemetry renderer** — health dashboard, nested trace spans with cycle detection, error list with truncation
+- **Workspace renderer** — workspace status with progress indicators, workspace list with task counts
+- **`--no-color` global flag** — disables all ANSI color output, respects NO_COLOR env and non-TTY
+- **Progress indicators on stderr** — `progress()`/`progressDone()` for non-TTY-friendly status during long operations
+- **Comprehensive test coverage** — 522 format tests, 431 profile renderer tests, 255 prompt renderer tests, 305 telemetry renderer tests, 213 workspace renderer tests, 123 recommendation renderer tests, 51 color verification tests, 58 JSON bypass tests
+
+### Changed
+- All CLI commands migrated from ad-hoc `console.log` to typed renderers for consistent formatting
+- `kai profile read/why/diff` use profile renderer for structured output
+- `kai prompt champion/genes/tournament` use prompt renderer
+- `kai telemetry health/trace/errors` use telemetry renderer with nested span visualization
+- `kai work list` shows task progress (completed/total) per workspace
+- `kai work start/recommend` suppress selection hints when not accepting input
+- Empty catch blocks replaced with silent fallbacks where errors are expected (detached HEAD, malformed JSON)
+
+### Fixed
+- **Infinite recursion in telemetry trace** — circular span references no longer crash the CLI
+- **Bar chart division by zero** — `bar(value, {max: 0})` returns empty bar instead of NaN crash
+- **Commander `--no-color` option** — correctly reads `opts.color` (not `opts.noColor`)
+- **Confidence delta in profile diff** — changed traits now show confidence change (`+1`, `-4`, etc.)
+
 ## [0.7.0.0] - 2026-05-23
 
 ### Added

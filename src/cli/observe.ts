@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import type { Command } from "commander";
 import { HermesBridge } from "../bridge/hermes";
 import { ProfileCollector } from "../core/profile/collector";
+import { status } from "./format";
 import { getEngine, getHermesDir } from "./utils";
 
 export function registerObserveCommands(program: Command): void {
@@ -27,7 +28,9 @@ export function registerObserveCommands(program: Command): void {
       const collector = new ProfileCollector(engine, bridge);
       const count = collector.collectFromCronOutput("manual", content);
       db.close();
-      console.log(`Collected ${count} observation(s) from ${file}.`);
+      console.log(
+        status("success", `Collected ${count} observation(s) from ${file}`),
+      );
     });
 
   observe
@@ -39,6 +42,8 @@ export function registerObserveCommands(program: Command): void {
       const collector = new ProfileCollector(engine, bridge);
       const count = collector.collectDaily();
       db.close();
-      console.log(`Daily collection: ${count} new observation(s).`);
+      console.log(
+        status("success", `Daily collection: ${count} new observation(s)`),
+      );
     });
 }

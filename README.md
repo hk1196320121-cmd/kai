@@ -185,6 +185,7 @@ kai mcp serve
 ```
 src/
   cli/            Commander.js CLI (profile, observe, work, mcp, prompt, telemetry subcommands)
+    cli/renderers/   Typed output renderers for consistent CLI formatting
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)
@@ -207,7 +208,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 19 tools and 12 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
-| [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 4 questions + git history in 3 minutes |
+| [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 10-question interview + git history in 5 minutes |
 | [Interview & Recommendations Tutorial](docs/tutorial-cold-start-recommendations.md) | Tutorial | Full interview → recommendations → auto-execute walkthrough |
 | [How to Use Cold Start](docs/howto-cold-start.md) | How-to | Re-running cold start, editing traits, diff, troubleshooting |
 | [How to Get Task Recommendations](docs/howto-task-recommendations.md) | How-to | Using kai_work_recommend MCP tool and CLI recommendation workflow |
@@ -226,6 +227,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Configure Kai](docs/howto-configure.md) | How-to | Environment variables, LLM setup, database path, Hermes integration |
 | [How to Use Telemetry](docs/howto-telemetry.md) | How-to | Debug failures, monitor performance, query trace data |
 | [How the Flight Recorder Works](docs/explanation-telemetry.md) | Explanation | Trace lifecycle, deferred writes, sanitizer design, trade-offs |
+| [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
 
 ## Development
 

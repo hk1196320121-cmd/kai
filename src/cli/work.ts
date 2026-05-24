@@ -13,7 +13,52 @@ import type { AddObservationInput } from "../core/profile/engine";
 import { InterviewEngine } from "../core/profile/interview";
 import { QUESTIONS } from "../core/profile/interview-questions";
 import { WorkspaceStore } from "../workspace/store";
+import { bar, renderError } from "./format";
+import { renderRecommendations } from "./renderers/recommendations";
+import {
+  renderWorkspaceList,
+  renderWorkspaceStatus,
+} from "./renderers/workspace";
 import { getEngine } from "./utils";
+
+// --- Shared helper: resolve domain and get recommendations ---
+
+function getIdeaRecommendations(
+  engine: ReturnType<typeof getEngine>["engine"],
+) {
+  const savedTraits = engine.getTraits();
+  const domainObs = engine.getObservations({
+    key: "coldstart:signal.domain",
+  });
+  let domainValue = "general";
+  if (domainObs.length > 0) {
+    try {
+      domainValue = JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
+    } catch {
+      // malformed JSON — fall back to "general"
+    }
+  }
+  const ideaDomain = resolveIdeaDomain(domainValue);
+  return {
+    recommendations: recommendTasks(savedTraits, ideaDomain),
+    savedTraits,
+    ideaDomain,
+  };
+}
+
+// --- Progress indicator (writes to stderr, gated by TTY + --json) ---
+
+function progress(message: string): void {
+  if (process.argv.includes("--json")) return;
+  if (!process.stderr.isTTY) return;
+  process.stderr.write(`\r\x1b[2K  ${message}...`);
+}
+
+function progressDone(message: string): void {
+  if (process.argv.includes("--json")) return;
+  if (!process.stderr.isTTY) return;
+  process.stderr.write(`\r\x1b[2K  ${message}\n`);
+}
 
 // --- Git History Scanner ---
 
@@ -52,7 +97,8 @@ export function scanGitHistory(repoPath: string): GitScanResult {
       'git log --oneline --since="30.days ago" --format="%H%x00%aI%x00%s"',
       { cwd: repoPath, encoding: "utf-8", timeout: 5000 },
     ).trim();
-  } catch {
+  } catch (err) {
+    console.error(renderError(err as Error));
     return { observations, traits };
   }
 
@@ -137,7 +183,7 @@ export function scanGitHistory(repoPath: string): GitScanResult {
       encoding: "utf-8",
     }).trim();
   } catch {
-    // detached HEAD — skip
+    // detached HEAD, shallow clone, etc. — expected, not an error
   }
 
   if (currentBranch) {
@@ -169,13 +215,6 @@ export function scanGitHistory(repoPath: string): GitScanResult {
 
 // --- Profile Preview Display ---
 
-function formatTraitBar(value: number, confidence: number): string {
-  const filled = Math.round(value * 10);
-  const empty = 10 - filled;
-  const bar = "█".repeat(filled) + "░".repeat(empty);
-  return `${bar}  ${confidence}/10`;
-}
-
 function displayPreview(
   traits: import("../core/profile/derivator").DerivedTrait[],
   gitHints: { dimension: string; hints: string[] }[],
@@ -191,12 +230,14 @@ function displayPreview(
   }
 
   for (const t of traits) {
-    const bar = formatTraitBar(t.value, t.confidence);
+    const barStr = bar(t.value);
     const hints = hintMap.get(t.dimension);
     const hintStr = hints ? ` + ${hints.join(", ")}` : "";
     const reasoning =
       t.reasoning.length > 60 ? `${t.reasoning.slice(0, 57)}...` : t.reasoning;
-    console.log(`  ${t.dimension.padEnd(22)}${bar}  — ${reasoning}${hintStr}`);
+    console.log(
+      `  ${t.dimension.padEnd(22)}${barStr}  ${t.confidence}/10  — ${reasoning}${hintStr}`,
+    );
   }
 
   console.log("\nLooks right? [Y]es / [E]dit trait / [R]estart");
@@ -267,22 +308,7 @@ export function registerWorkCommands(program: Command): void {
         console.log(
           "Cold start already completed. Showing recommendations from existing profile...",
         );
-        const savedTraits = engine.getTraits();
-        const domainObs = engine.getObservations({
-          key: "coldstart:signal.domain",
-        });
-        let domainValue = "general";
-        if (domainObs.length > 0) {
-          try {
-            domainValue =
-              JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-          } catch {
-            /* malformed JSON, use default */
-          }
-        }
-        const ideaDomain = resolveIdeaDomain(domainValue);
-
-        const recommendations = recommendTasks(savedTraits, ideaDomain);
+        const { recommendations } = getIdeaRecommendations(engine);
 
         if (recommendations.length === 0) {
           console.log("\nNo matching workflows found for your profile.");
@@ -290,28 +316,18 @@ export function registerWorkCommands(program: Command): void {
           return;
         }
 
-        console.log("\n=== Recommended Workflows ===\n");
-        for (let i = 0; i < recommendations.length; i++) {
-          const r = recommendations[i];
-          console.log(`  ${i + 1}. ${r.title} (score: ${r.score})`);
-          console.log(`     ${r.description}`);
-          console.log(`     Why: ${r.explanation}`);
-        }
+        console.log(
+          renderRecommendations(recommendations, { showHint: false }),
+        );
 
         db.close();
         return;
       }
 
       // Step 1: Git scan
-      console.log("Scanning your git history...");
+      progress("Scanning git history");
       const gitResult = scanGitHistory(process.cwd());
-      if (gitResult.observations.length > 0) {
-        console.log(
-          `  Found ${gitResult.observations.length} signals from git history`,
-        );
-      } else {
-        console.log("  No git history to scan (that's OK)");
-      }
+      progressDone("Git scan complete");
 
       for (const obs of gitResult.observations) {
         engine.addObservation(obs);
@@ -385,19 +401,23 @@ export function registerWorkCommands(program: Command): void {
       if (cancelled) return;
 
       // Step 4: Signal extraction via InterviewEngine
+      progress("Extracting signals");
       const interview = new InterviewEngine();
       const signals = interview.extractSignalsFromAnswers(
         answers,
         gitResult.traits,
         workspace.id,
       );
+      progressDone(`Extracted ${signals.length} signals`);
       for (const obs of signals) {
         engine.addObservation(obs);
       }
 
       // Step 5: Derive traits in-memory (preview mode)
+      progress("Deriving traits");
       const derivator = new Derivator(engine);
       const previewTraits = derivator.deriveFromRules(false);
+      progressDone(`Derived ${previewTraits.length} traits`);
 
       if (previewTraits.length === 0) {
         console.log(
@@ -493,22 +513,8 @@ export function registerWorkCommands(program: Command): void {
 
       // Step 8: Show recommendations and auto-execute
       if (confirmed) {
-        const savedTraits = engine.getTraits();
-        const domainObs = engine.getObservations({
-          key: "coldstart:signal.domain",
-        });
-        let domainValue2 = "general";
-        if (domainObs.length > 0) {
-          try {
-            domainValue2 =
-              JSON.parse(domainObs[0].value).domains?.[0] ?? "general";
-          } catch {
-            /* malformed JSON, use default */
-          }
-        }
-        const ideaDomain = resolveIdeaDomain(domainValue2);
-
-        const recommendations = recommendTasks(savedTraits, ideaDomain);
+        const { recommendations, savedTraits, ideaDomain } =
+          getIdeaRecommendations(engine);
 
         if (recommendations.length === 0) {
           console.log("\nNo matching workflows found for your profile.");
@@ -517,22 +523,9 @@ export function registerWorkCommands(program: Command): void {
           return;
         }
 
-        console.log("\n=== Recommended Workflows ===\n");
-        for (let i = 0; i < recommendations.length; i++) {
-          const r = recommendations[i];
-          console.log(`  ${i + 1}. ${r.title} (score: ${r.score})`);
-          console.log(`     ${r.description}`);
-          console.log(`     Why: ${r.explanation}`);
-        }
-        if (
-          recommendations[0].whyNotOthers &&
-          recommendations[0].whyNotOthers.length > 0
-        ) {
-          console.log("\n  Not shown:");
-          for (const w of recommendations[0].whyNotOthers) {
-            console.log(`    - ${w}`);
-          }
-        }
+        console.log(
+          renderRecommendations(recommendations, { showHint: false }),
+        );
 
         store.addEvent({
           workspace_id: workspace.id,
@@ -591,7 +584,8 @@ export function registerWorkCommands(program: Command): void {
                 console.log(`  - ${t.title}`);
               }
               llmTasksCreated = tasks.length > 0;
-            } catch {
+            } catch (err) {
+              console.error(renderError(err as Error));
               console.log(
                 "  Could not generate plan (LLM unavailable), creating task directly.",
               );
@@ -635,7 +629,8 @@ export function registerWorkCommands(program: Command): void {
                   }),
                 });
               }
-            } catch {
+            } catch (err) {
+              console.error(renderError(err as Error));
               console.log(
                 `  Task created but not dispatched (agent unavailable)`,
               );
@@ -715,15 +710,14 @@ export function registerWorkCommands(program: Command): void {
         const taskStats = store.getTaskStatsByWorkspaces(ids);
         const eventCounts = store.getEventCountsByWorkspaces(ids);
 
-        for (const ws of active) {
-          const stats = taskStats.get(ws.id) ?? { total: 0, completed: 0 };
-          const eventCount = eventCounts.get(ws.id) ?? 0;
-          console.log(`\n=== ${ws.name} (${ws.id}) ===`);
-          console.log(`  Status: ${ws.status}`);
-          console.log(`  Tasks: ${stats.total} (${stats.completed} completed)`);
-          console.log(`  Events: ${eventCount}`);
-          console.log(`  Created: ${ws.created_at}`);
-        }
+        const enriched = active.map((ws) => ({
+          ...ws,
+          taskCount: taskStats.get(ws.id)?.total ?? 0,
+          completedTasks: taskStats.get(ws.id)?.completed ?? 0,
+          eventCount: eventCounts.get(ws.id) ?? 0,
+        }));
+
+        console.log(renderWorkspaceStatus(enriched));
       }
 
       db.close();
@@ -738,22 +732,17 @@ export function registerWorkCommands(program: Command): void {
 
       const workspaces = store.listWorkspaces();
 
-      if (workspaces.length === 0) {
-        console.log("No workspaces found. Run `kai work start` to create one.");
-      } else {
+      if (workspaces.length > 0) {
         const ids = workspaces.map((w) => w.id);
         const taskStats = store.getTaskStatsByWorkspaces(ids);
-
-        console.log(`\nWorkspaces (${workspaces.length}):\n`);
-        for (const ws of workspaces) {
-          const stats = taskStats.get(ws.id) ?? { total: 0, completed: 0 };
-          console.log(
-            `  ${ws.status === "active" ? "●" : "○"} ${ws.name} (${ws.id.slice(0, 8)})`,
-          );
-          console.log(
-            `    Status: ${ws.status} | Tasks: ${stats.completed}/${stats.total} | Created: ${ws.created_at.slice(0, 10)}`,
-          );
-        }
+        const enriched = workspaces.map((ws) => ({
+          ...ws,
+          taskCount: taskStats.get(ws.id)?.total ?? 0,
+          completedTasks: taskStats.get(ws.id)?.completed ?? 0,
+        }));
+        console.log(renderWorkspaceList(enriched));
+      } else {
+        console.log(renderWorkspaceList(workspaces));
       }
 
       db.close();

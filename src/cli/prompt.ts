@@ -6,6 +6,12 @@ import { PromptEvolver } from "../core/prompt/prompt-evolver";
 import type { GeneType, PromptTask } from "../core/prompt/types";
 import { KaiDB } from "../db/client";
 import { LLMProvider } from "../llm/provider";
+import { header, kv } from "./format";
+import {
+  renderChampion,
+  renderGeneList,
+  renderTournamentResults,
+} from "./renderers/prompt";
 import { getDbPath } from "./utils";
 
 const VALID_TASKS: PromptTask[] = ["planner", "derivator", "observer"];
@@ -31,63 +37,6 @@ function getStore(): { db: KaiDB; store: GeneStore } {
   const db = new KaiDB(getDbPath());
   const store = new GeneStore(db);
   return { db, store };
-}
-
-function formatGeneSummary(gene: {
-  id: string;
-  task: string;
-  type: string;
-  content: string;
-  created_at: string;
-}): string {
-  const preview =
-    gene.content.length > 60 ? `${gene.content.slice(0, 57)}...` : gene.content;
-  return `${gene.id.slice(0, 8)}  ${gene.task.padEnd(10)} ${gene.type.padEnd(10)} ${preview}`;
-}
-
-function formatChampion(champion: {
-  task: string;
-  segment_id: string;
-  variant_id: string;
-  model: string;
-  win_rate: number;
-  battle_count: number;
-  promoted_at: string;
-  is_locked: number;
-}): string {
-  const lockIcon = champion.is_locked ? " [LOCKED]" : "";
-  const winPct = (champion.win_rate * 100).toFixed(1);
-  return [
-    `  Task:       ${champion.task}`,
-    `  Segment:    ${champion.segment_id}`,
-    `  Variant:    ${champion.variant_id.slice(0, 8)}`,
-    `  Model:      ${champion.model}`,
-    `  Win Rate:   ${winPct}%`,
-    `  Battles:    ${champion.battle_count}`,
-    `  Promoted:   ${champion.promoted_at}`,
-    `  Locked:     ${champion.is_locked ? "Yes" : "No"}${lockIcon}`,
-  ].join("\n");
-}
-
-function formatTournament(t: {
-  id: string;
-  task: string;
-  variant_a_id: string;
-  variant_b_id: string;
-  winner: string | null;
-  judge_confidence: number | null;
-  created_at: string;
-}): string {
-  const winner =
-    t.winner === "a"
-      ? `A (${t.variant_a_id.slice(0, 8)})`
-      : t.winner === "b"
-        ? `B (${t.variant_b_id.slice(0, 8)})`
-        : t.winner === "tie"
-          ? "Tie"
-          : "Pending";
-  const confidence = t.judge_confidence?.toFixed(2) ?? "N/A";
-  return `${t.id.slice(0, 8)}  A:${t.variant_a_id.slice(0, 8)} vs B:${t.variant_b_id.slice(0, 8)}  Winner: ${winner.padEnd(20)} Conf: ${confidence}  ${t.created_at}`;
 }
 
 export function registerPromptCommands(program: Command): void {
@@ -132,11 +81,7 @@ export function registerPromptCommands(program: Command): void {
           return;
         }
 
-        console.log(`Genes (${genes.length}):\n`);
-        console.log("ID        Task       Type       Content");
-        for (const gene of genes) {
-          console.log(formatGeneSummary(gene));
-        }
+        console.log(renderGeneList(genes));
       } finally {
         db.close();
       }
@@ -182,12 +127,12 @@ export function registerPromptCommands(program: Command): void {
           return;
         }
 
-        console.log(`\n=== Compiled Prompt (${task}) ===`);
-        console.log(`Genome:  ${compiled.genome_id || "(fallback)"}`);
-        console.log(`Segment: ${compiled.segment_id}`);
-        console.log(`Variant: ${compiled.variant_id ?? "(none)"}`);
-        console.log(`Genes:   ${compiled.gene_count}`);
-        console.log(`Cached:  ${compiled.cached}`);
+        console.log(header(`Compiled Prompt (${task})`));
+        console.log(kv("genome", compiled.genome_id || "(fallback)"));
+        console.log(kv("segment", compiled.segment_id));
+        console.log(kv("variant", compiled.variant_id ?? "(none)"));
+        console.log(kv("genes", String(compiled.gene_count)));
+        console.log(kv("cached", String(compiled.cached)));
         console.log(`\n--- Prompt ---\n`);
         console.log(compiled.prompt);
       } finally {
@@ -241,9 +186,10 @@ export function registerPromptCommands(program: Command): void {
             return;
           }
 
-          console.log(`\n=== Champions for ${task} ===\n`);
+          console.log(header(`Champions for ${task}`));
+          console.log();
           for (const c of champions) {
-            console.log(formatChampion(c));
+            console.log(renderChampion(c));
             console.log();
           }
         } else {
@@ -254,7 +200,7 @@ export function registerPromptCommands(program: Command): void {
             );
             return;
           }
-          console.log(formatChampion(champ));
+          console.log(renderChampion(champ));
         }
       } finally {
         db.close();
@@ -402,15 +348,7 @@ export function registerPromptCommands(program: Command): void {
           return;
         }
 
-        console.log(
-          `\nTournaments for ${task} (last ${tournaments.length}):\n`,
-        );
-        console.log(
-          "ID        Match                              Winner                Conf        Date",
-        );
-        for (const t of tournaments) {
-          console.log(formatTournament(t));
-        }
+        console.log(renderTournamentResults(tournaments));
       } finally {
         db.close();
       }
