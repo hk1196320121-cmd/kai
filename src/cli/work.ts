@@ -9,7 +9,7 @@ import { Derivator } from "../core/profile/derivator";
 import { InterviewEngine } from "../core/profile/interview";
 import { QUESTIONS } from "../core/profile/interview-questions";
 import { WorkspaceStore } from "../workspace/store";
-import { bar, renderError } from "./format";
+import { renderError } from "./format";
 import { renderRecommendations } from "./renderers/recommendations";
 import {
   renderWorkspaceList,
@@ -17,6 +17,7 @@ import {
 } from "./renderers/workspace";
 import { getEngine } from "./utils";
 import { scanGitHistory, type GitScanResult } from "./work/git-scan";
+export { progress, progressDone, displayPreview } from "./work/ui";
 
 // --- Shared helper: resolve domain and get recommendations ---
 
@@ -43,53 +44,10 @@ function getIdeaRecommendations(
   };
 }
 
-// --- Progress indicator (writes to stderr, gated by TTY + --json) ---
-
-function progress(message: string): void {
-  if (process.argv.includes("--json")) return;
-  if (!process.stderr.isTTY) return;
-  process.stderr.write(`\r\x1b[2K  ${message}...`);
-}
-
-function progressDone(message: string): void {
-  if (process.argv.includes("--json")) return;
-  if (!process.stderr.isTTY) return;
-  process.stderr.write(`\r\x1b[2K  ${message}\n`);
-}
 
 // --- Re-exports from extracted modules ---
 
 export { scanGitHistory, type GitScanResult } from "./work/git-scan";
-
-// --- Profile Preview Display ---
-
-function displayPreview(
-  traits: import("../core/profile/derivator").DerivedTrait[],
-  gitHints: { dimension: string; hints: string[] }[],
-): void {
-  console.log(
-    `\n✓ Profile draft generated (${traits.length} traits detected):\n`,
-  );
-
-  const hintMap = new Map<string, string[]>();
-  for (const h of gitHints) {
-    const existing = hintMap.get(h.dimension) ?? [];
-    hintMap.set(h.dimension, [...existing, ...h.hints]);
-  }
-
-  for (const t of traits) {
-    const barStr = bar(t.value);
-    const hints = hintMap.get(t.dimension);
-    const hintStr = hints ? ` + ${hints.join(", ")}` : "";
-    const reasoning =
-      t.reasoning.length > 60 ? `${t.reasoning.slice(0, 57)}...` : t.reasoning;
-    console.log(
-      `  ${t.dimension.padEnd(22)}${barStr}  ${t.confidence}/10  — ${reasoning}${hintStr}`,
-    );
-  }
-
-  console.log("\nLooks right? [Y]es / [E]dit trait / [R]estart");
-}
 
 // --- CLI Commands ---
 
@@ -101,6 +59,7 @@ export function registerWorkCommands(program: Command): void {
     .description("Start a new workspace with cold start profile bootstrapping")
     .option("--reset", "Force re-interview even if coldstart data exists")
     .action(async (options: { reset?: boolean }) => {
+      const { progress, progressDone, displayPreview } = await import("./work/ui");
       const { db, engine } = getEngine();
 
       // --reset: clear existing coldstart observations
