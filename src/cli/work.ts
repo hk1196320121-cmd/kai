@@ -1,11 +1,10 @@
 import type { Command } from "commander";
 import { handleWorkStart } from "./work/start";
-import { handleWorkStatus, handleWorkList } from "./work/status";
-
+import { handleWorkList, handleWorkStatus } from "./work/status";
 
 // --- Re-exports from extracted modules ---
 
-export { scanGitHistory, type GitScanResult } from "./work/git-scan";
+export { scanGitHistory } from "./work/git-scan";
 
 // --- CLI Commands ---
 

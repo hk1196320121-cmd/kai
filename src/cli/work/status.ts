@@ -1,5 +1,8 @@
 import { WorkspaceStore } from "../../workspace/store";
-import { renderWorkspaceList, renderWorkspaceStatus } from "../renderers/workspace";
+import {
+  renderWorkspaceList,
+  renderWorkspaceStatus,
+} from "../renderers/workspace";
 import { getEngine } from "../utils";
 
 export function handleWorkStatus(): void {

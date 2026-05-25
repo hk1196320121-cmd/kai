@@ -1,5 +1,5 @@
-import { bar } from "../format";
 import type { DerivedTrait } from "../../core/profile/derivator";
+import { bar } from "../format";
 
 export function progress(message: string): void {
   if (process.argv.includes("--json")) return;
@@ -13,7 +13,10 @@ export function progressDone(message: string): void {
   process.stderr.write(`\r\x1b[2K  ${message}\n`);
 }
 
-export function displayPreview(traits: DerivedTrait[], gitHints: { dimension: string; hints: string[] }[]): void {
+export function displayPreview(
+  traits: DerivedTrait[],
+  gitHints: { dimension: string; hints: string[] }[],
+): void {
   console.log(
     `\n✓ Profile draft generated (${traits.length} traits detected):\n`,
   );

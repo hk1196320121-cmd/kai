@@ -1,22 +1,18 @@
-import { createInterface, type Interface as ReadlineInterface } from "node:readline";
+import {
+  createInterface,
+  type Interface as ReadlineInterface,
+} from "node:readline";
 import { Derivator } from "../../core/profile/derivator";
 import { InterviewEngine } from "../../core/profile/interview";
 import { QUESTIONS } from "../../core/profile/interview-questions";
 import { WorkspaceStore } from "../../workspace/store";
 import { renderError } from "../format";
-import { getEngine } from "../utils";
-import { scanGitHistory, type GitScanResult } from "./git-scan";
-import { progress, progressDone, displayPreview } from "./ui";
-import {
-  runRecommendations,
-  getIdeaRecommendations,
-} from "./recommendations";
 import { renderRecommendations } from "../renderers/recommendations";
-import type {
-  WorkStartOptions,
-  WorkStartContext,
-  PhaseResult,
-} from "./types";
+import { getEngine } from "../utils";
+import { type GitScanResult, scanGitHistory } from "./git-scan";
+import { getIdeaRecommendations, runRecommendations } from "./recommendations";
+import type { PhaseResult, WorkStartContext, WorkStartOptions } from "./types";
+import { displayPreview, progress, progressDone } from "./ui";
 
 // --- Helpers ---
 
@@ -226,8 +222,7 @@ async function deriveAndPreview(
   try {
     let confirmed = false;
     while (!confirmed) {
-      const response =
-        (await ask(confirmRl, "> ")).trim().toLowerCase() || "y";
+      const response = (await ask(confirmRl, "> ")).trim().toLowerCase() || "y";
 
       if (response === "y" || response === "yes") {
         for (const trait of previewTraits) {
@@ -265,10 +260,7 @@ async function deriveAndPreview(
         }
 
         const newValue = (
-          await ask(
-            confirmRl,
-            `  Value (0.0-1.0, current: ${trait.value}): `,
-          )
+          await ask(confirmRl, `  Value (0.0-1.0, current: ${trait.value}): `)
         ).trim();
         const newConf = (
           await ask(

@@ -106,3 +106,14 @@
 - **Effort**: S (human: ~15min / CC: ~5min)
 - **Priority**: P3
 - **Added**: 2026-05-24 by /plan-ceo-review
+
+## TODO 12: Restart doesn't clean coldstart observations
+- **What**: When user selects "Restart" in the confirm/edit/restart loop, the workspace is deleted but coldstart observations (especially `coldstart:goal`) remain in the DB
+- **Why**: Next run detects `coldstart:goal` and skips the interview, showing cached recommendations instead of re-interviewing — user expects a fresh start
+- **Pros**: Fixes user expectation — restart should be a true clean slate
+- **Cons**: Slightly more complex abort cleanup; must also delete coldstart signals
+- **Context**: Found by Codex outside voice during eng review. Current behavior: `store.deleteWorkspace()` runs but coldstart:goal observations persist. Fix: delete all observations with `source === "coldstart"` on abort/restart paths
+- **Effort**: S (human: ~15min / CC: ~5min)
+- **Priority**: P2
+- **Depends on**: work.ts decomposition (this PR)
+- **Added**: 2026-05-25 by /plan-eng-review
