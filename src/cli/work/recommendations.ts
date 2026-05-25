@@ -49,7 +49,6 @@ export async function runRecommendations(
 
   if (recommendations.length === 0) {
     console.log("\nNo matching workflows found for your profile.");
-    db.close();
     return;
   }
 

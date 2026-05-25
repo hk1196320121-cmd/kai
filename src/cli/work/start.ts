@@ -312,6 +312,7 @@ export async function handleWorkStart(
   };
   process.on("SIGINT", onSigInt);
 
+  let cleanupSigInt: (() => void) | undefined;
   const { db, engine } = getEngine();
   const ctx: WorkStartContext = { db, engine, completed: false };
 
@@ -347,7 +348,7 @@ export async function handleWorkStart(
     if (result.status === "abort") return;
 
     // Register SIGINT handler that deletes workspace (after workspace exists)
-    const cleanupSigInt = () => {
+    cleanupSigInt = () => {
       sigintReceived = true;
       console.log("\n\nCleaning up...");
       if (ctx.store && ctx.workspace) {
@@ -386,6 +387,7 @@ export async function handleWorkStart(
   } finally {
     // Centralized cleanup
     process.removeListener("SIGINT", onSigInt);
+    if (cleanupSigInt) process.removeListener("SIGINT", cleanupSigInt);
 
     // Delete workspace if not completed
     if (!ctx.completed && ctx.store && ctx.workspace) {
