@@ -394,8 +394,6 @@ export async function handleWorkStart(
   } finally {
     // Centralized cleanup
     process.removeListener("SIGINT", onSigInt);
-    // If a later handler was registered, remove it too
-    process.removeAllListeners("SIGINT");
 
     // Delete workspace if not completed
     if (!ctx.completed && ctx.store && ctx.workspace) {
