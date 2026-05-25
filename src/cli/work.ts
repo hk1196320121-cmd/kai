@@ -11,10 +11,7 @@ import { QUESTIONS } from "../core/profile/interview-questions";
 import { WorkspaceStore } from "../workspace/store";
 import { renderError } from "./format";
 import { renderRecommendations } from "./renderers/recommendations";
-import {
-  renderWorkspaceList,
-  renderWorkspaceStatus,
-} from "./renderers/workspace";
+import { handleWorkStatus, handleWorkList } from "./work/status";
 import { getEngine } from "./utils";
 import { scanGitHistory, type GitScanResult } from "./work/git-scan";
 import { progress, progressDone, displayPreview } from "./work/ui";
@@ -501,56 +498,13 @@ export function registerWorkCommands(program: Command): void {
     .command("status")
     .description("Show current workspace status")
     .action(() => {
-      const { db } = getEngine();
-      const store = new WorkspaceStore(db);
-
-      const workspaces = store.listWorkspaces();
-      const active = workspaces.filter((w) => w.status === "active");
-
-      if (active.length === 0) {
-        console.log(
-          "No active workspaces. Run `kai work start` to create one.",
-        );
-      } else {
-        const ids = active.map((w) => w.id);
-        const taskStats = store.getTaskStatsByWorkspaces(ids);
-        const eventCounts = store.getEventCountsByWorkspaces(ids);
-
-        const enriched = active.map((ws) => ({
-          ...ws,
-          taskCount: taskStats.get(ws.id)?.total ?? 0,
-          completedTasks: taskStats.get(ws.id)?.completed ?? 0,
-          eventCount: eventCounts.get(ws.id) ?? 0,
-        }));
-
-        console.log(renderWorkspaceStatus(enriched));
-      }
-
-      db.close();
+      handleWorkStatus();
     });
 
   work
     .command("list")
     .description("List all workspaces")
     .action(() => {
-      const { db } = getEngine();
-      const store = new WorkspaceStore(db);
-
-      const workspaces = store.listWorkspaces();
-
-      if (workspaces.length > 0) {
-        const ids = workspaces.map((w) => w.id);
-        const taskStats = store.getTaskStatsByWorkspaces(ids);
-        const enriched = workspaces.map((ws) => ({
-          ...ws,
-          taskCount: taskStats.get(ws.id)?.total ?? 0,
-          completedTasks: taskStats.get(ws.id)?.completed ?? 0,
-        }));
-        console.log(renderWorkspaceList(enriched));
-      } else {
-        console.log(renderWorkspaceList(workspaces));
-      }
-
-      db.close();
+      handleWorkList();
     });
 }
