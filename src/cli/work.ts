@@ -17,7 +17,7 @@ import {
 } from "./renderers/workspace";
 import { getEngine } from "./utils";
 import { scanGitHistory, type GitScanResult } from "./work/git-scan";
-export { progress, progressDone, displayPreview } from "./work/ui";
+import { progress, progressDone, displayPreview } from "./work/ui";
 
 // --- Shared helper: resolve domain and get recommendations ---
 
@@ -59,7 +59,6 @@ export function registerWorkCommands(program: Command): void {
     .description("Start a new workspace with cold start profile bootstrapping")
     .option("--reset", "Force re-interview even if coldstart data exists")
     .action(async (options: { reset?: boolean }) => {
-      const { progress, progressDone, displayPreview } = await import("./work/ui");
       const { db, engine } = getEngine();
 
       // --reset: clear existing coldstart observations
