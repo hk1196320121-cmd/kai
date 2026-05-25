@@ -91,6 +91,8 @@ export async function runRecommendations(
     const orchStore = new OrchestratorStore(db);
     const { LLMProvider } = await import("../../llm/provider");
     const llm = new LLMProvider();
+    const bridge = new HermesAgentBridge();
+    const dispatcher = new Dispatcher(orchStore, bridge);
 
     for (const idx of selected) {
       const rec = recommendations[idx];
@@ -145,8 +147,6 @@ export async function runRecommendations(
 
         // Auto-execute via dispatcher
         try {
-          const bridge = new HermesAgentBridge();
-          const dispatcher = new Dispatcher(orchStore, bridge);
           const result = await dispatcher.dispatch(task.id);
           if (result.success) {
             console.log(`✓ Task dispatched: ${task.title}`);
@@ -181,7 +181,8 @@ export async function runRecommendations(
     }
 
     // Emit rejection events for unselected recommendations + penalize confidence
-    const rejected = recommendations.filter((_, i) => !selected.includes(i));
+    const selectedSet = new Set(selected);
+    const rejected = recommendations.filter((_, i) => !selectedSet.has(i));
     if (rejected.length > 0) {
       for (const rec of rejected) {
         store.addEvent({

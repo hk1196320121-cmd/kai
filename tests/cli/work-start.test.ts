@@ -44,16 +44,11 @@ describe("work start: reset coldstart data", () => {
       provenance: "{}",
     });
 
-    // Replicate work.ts L260-268 reset logic exactly
-    const existingObs = engine.getObservations({ type: "signal" });
+    // Replicate start.ts batch DELETE logic
     const raw = db.getDatabase();
-    for (const obs of existingObs) {
-      if (obs.source === "coldstart") {
-        raw.query("DELETE FROM observations WHERE id = $id").run({
-          $id: obs.id,
-        });
-      }
-    }
+    raw.query("DELETE FROM observations WHERE source = $source").run({
+      $source: "coldstart",
+    });
 
     const remaining = engine.getObservations({ type: "signal" });
     expect(remaining.length).toBe(1);

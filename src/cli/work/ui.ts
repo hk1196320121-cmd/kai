@@ -1,15 +1,17 @@
 import type { DerivedTrait } from "../../core/profile/derivator";
 import { bar } from "../format";
 
+function shouldShowProgress(): boolean {
+  return !process.argv.includes("--json") && !!process.stderr.isTTY;
+}
+
 export function progress(message: string): void {
-  if (process.argv.includes("--json")) return;
-  if (!process.stderr.isTTY) return;
+  if (!shouldShowProgress()) return;
   process.stderr.write(`\r\x1b[2K  ${message}...`);
 }
 
 export function progressDone(message: string): void {
-  if (process.argv.includes("--json")) return;
-  if (!process.stderr.isTTY) return;
+  if (!shouldShowProgress()) return;
   process.stderr.write(`\r\x1b[2K  ${message}\n`);
 }
 

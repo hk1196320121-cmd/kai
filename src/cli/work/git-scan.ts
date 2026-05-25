@@ -11,6 +11,8 @@ const MORNING_HOUR_END = 8;
 const MORNING_RATIO_THRESHOLD = 0.3;
 const DETAIL_LEVEL_HIGH_CHARS = 50;
 const DETAIL_LEVEL_MED_CHARS = 20;
+const GIT_SCAN_LOOKBACK = "30.days ago";
+const PROVENANCE_SCHEMA_VERSION = "1.0.0";
 
 export interface GitScanResult {
   observations: AddObservationInput[];
@@ -21,7 +23,7 @@ function makeProvenance(signalType?: string): string {
   return JSON.stringify({
     origin: "kai work start",
     extracted_at: new Date().toISOString(),
-    extractor_version: "1.0.0",
+    extractor_version: PROVENANCE_SCHEMA_VERSION,
     ...(signalType ? { signal_type: signalType } : {}),
   });
 }
@@ -36,7 +38,7 @@ export function scanGitHistory(repoPath: string): GitScanResult {
   let logOutput: string;
   try {
     logOutput = execSync(
-      'git log --oneline --since="30.days ago" --format="%H%x00%aI%x00%s"',
+      `git log --oneline --since="${GIT_SCAN_LOOKBACK}" --format="%H%x00%aI%x00%s"`,
       { cwd: repoPath, encoding: "utf-8", timeout: 5000 },
     ).trim();
   } catch (err) {

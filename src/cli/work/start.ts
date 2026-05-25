@@ -6,15 +6,18 @@ import { Derivator } from "../../core/profile/derivator";
 import { InterviewEngine } from "../../core/profile/interview";
 import { QUESTIONS } from "../../core/profile/interview-questions";
 import { WorkspaceStore } from "../../workspace/store";
-import { renderError } from "../format";
 import { renderRecommendations } from "../renderers/recommendations";
 import { getEngine } from "../utils";
-import { type GitScanResult, scanGitHistory } from "./git-scan";
+import { scanGitHistory } from "./git-scan";
 import { getIdeaRecommendations, runRecommendations } from "./recommendations";
 import type { PhaseResult, WorkStartContext, WorkStartOptions } from "./types";
 import { displayPreview, progress, progressDone } from "./ui";
 
 // --- Helpers ---
+
+interface ReadlineTracker {
+  current?: ReadlineInterface;
+}
 
 function ask(rl: ReadlineInterface, question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -32,20 +35,15 @@ async function resetColdstartData(
     return { status: "continue" };
   }
 
-  const existingObs = ctx.engine.getObservations({ type: "signal" });
   const raw = ctx.db.getDatabase();
-  for (const obs of existingObs) {
-    if (obs.source === "coldstart") {
-      raw.query("DELETE FROM observations WHERE id = $id").run({
-        $id: obs.id,
-      });
-    }
-  }
+  raw.query("DELETE FROM observations WHERE source = $source").run({
+    $source: "coldstart",
+  });
   console.log("Cleared existing cold start data.");
   return { status: "continue" };
 }
 
-async function ensureIdentity(ctx: WorkStartContext): Promise<PhaseResult> {
+async function ensureIdentity(ctx: WorkStartContext, rlTracker: ReadlineTracker): Promise<PhaseResult> {
   const identity = ctx.engine.getIdentity();
   if (identity) {
     return { status: "continue", context: { identity } };
@@ -55,6 +53,7 @@ async function ensureIdentity(ctx: WorkStartContext): Promise<PhaseResult> {
     input: process.stdin,
     output: process.stdout,
   });
+  rlTracker.current = rl;
   try {
     console.log("First, let's set up your identity.\n");
     const name = (await ask(rl, "What's your name? ")).trim();
@@ -73,6 +72,7 @@ async function ensureIdentity(ctx: WorkStartContext): Promise<PhaseResult> {
     console.log(`\nWelcome, ${created?.name}!\n`);
     return { status: "continue", context: { identity: created ?? undefined } };
   } finally {
+    rlTracker.current = undefined;
     rl.close();
   }
 }
@@ -125,6 +125,7 @@ async function createWorkspace(ctx: WorkStartContext): Promise<PhaseResult> {
 async function runInterview(
   ctx: WorkStartContext,
   onSigInt: () => void,
+  rlTracker: ReadlineTracker,
 ): Promise<PhaseResult> {
   const { store, workspace } = ctx;
   if (!store || !workspace) {
@@ -135,6 +136,7 @@ async function runInterview(
     input: process.stdin,
     output: process.stdout,
   });
+  rlTracker.current = rl;
 
   try {
     console.log(`\nWorkspace: ${workspace.id}\n`);
@@ -170,6 +172,7 @@ async function runInterview(
 
     return { status: "continue", context: { answers } };
   } finally {
+    rlTracker.current = undefined;
     rl.close();
     process.removeListener("SIGINT", onSigInt);
   }
@@ -177,7 +180,7 @@ async function runInterview(
 
 async function deriveAndPreview(
   ctx: WorkStartContext,
-  onSigInt: () => void,
+  rlTracker: ReadlineTracker,
 ): Promise<PhaseResult> {
   const { store, workspace, gitResult, answers } = ctx;
   if (!store || !workspace || !gitResult || !answers) {
@@ -218,6 +221,7 @@ async function deriveAndPreview(
     input: process.stdin,
     output: process.stdout,
   });
+  rlTracker.current = confirmRl;
 
   try {
     let confirmed = false;
@@ -295,6 +299,7 @@ async function deriveAndPreview(
       context: { previewTraits, completed: confirmed },
     };
   } finally {
+    rlTracker.current = undefined;
     confirmRl.close();
   }
 }
@@ -304,10 +309,12 @@ async function deriveAndPreview(
 export async function handleWorkStart(
   options: WorkStartOptions,
 ): Promise<void> {
-  // Cooperative SIGINT: set flag, let readline reject, flow reaches finally
+  // Cooperative SIGINT: set flag and close active readline to unblock pending asks
   let sigintReceived = false;
+  const rlTracker: ReadlineTracker = {};
   const onSigInt = () => {
     sigintReceived = true;
+    if (rlTracker.current) rlTracker.current.close();
     console.log("\n\nCleaning up...");
   };
   process.on("SIGINT", onSigInt);
@@ -325,7 +332,7 @@ export async function handleWorkStart(
 
     // Phase 2: ensure identity
     if (sigintReceived) return;
-    result = await ensureIdentity(ctx);
+    result = await ensureIdentity(ctx, rlTracker);
     Object.assign(ctx, result.context);
     if (result.status === "abort") return;
 
@@ -350,6 +357,7 @@ export async function handleWorkStart(
     // Register SIGINT handler that deletes workspace (after workspace exists)
     cleanupSigInt = () => {
       sigintReceived = true;
+      if (rlTracker.current) rlTracker.current.close();
       console.log("\n\nCleaning up...");
       if (ctx.store && ctx.workspace) {
         ctx.store.deleteWorkspace(ctx.workspace.id);
@@ -361,16 +369,16 @@ export async function handleWorkStart(
 
     // Phase 6: interview
     if (sigintReceived) return;
-    result = await runInterview(ctx, cleanupSigInt);
+    result = await runInterview(ctx, cleanupSigInt, rlTracker);
     Object.assign(ctx, result.context);
     if (result.status === "abort") return;
 
-    // Re-register SIGINT after interview removes it
-    process.on("SIGINT", cleanupSigInt);
+    // Re-register SIGINT after interview removes it in its finally block
+    if (cleanupSigInt) process.on("SIGINT", cleanupSigInt);
 
     // Phase 7: derive and preview
     if (sigintReceived) return;
-    result = await deriveAndPreview(ctx, cleanupSigInt);
+    result = await deriveAndPreview(ctx, rlTracker);
     Object.assign(ctx, result.context);
     if (result.status === "abort") return;
 

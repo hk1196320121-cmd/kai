@@ -1,6 +1,5 @@
-import type { Database } from "bun:sqlite";
-import type { KaiDB } from "../../db/client";
 import type { ProfileEngine } from "../../core/profile/engine";
+import type { KaiDB } from "../../db/client";
 import type { WorkspaceStore } from "../../workspace/store";
 import type { Workspace } from "../../workspace/types";
 import type { GitScanResult } from "./git-scan";
