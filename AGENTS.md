@@ -276,14 +276,27 @@ kai telemetry query "SELECT ..."       # SQL query against telemetry views
 kai telemetry trace <trace-id>         # Full causal chain
 kai telemetry errors                   # Recent errors
 kai telemetry explain "question"       # LLM-powered analysis
+
+# Skills (generate SKILL.md files for Claude Code)
+kai skills install                     # Generate skill files from MCP tool schemas
+kai skills install --force             # Overwrite existing skill files
+kai skills list                        # List installed skills and their tools
+kai skills doctor                      # Validate installed skills
+kai skills doctor --fix                # Reinstall to fix issues
+kai skills uninstall                   # Remove generated skill files
 ```
 
 ## Architecture
 
 ```
 src/
-  cli/              Commander.js CLI (profile, observe, work, mcp, prompt subcommands)
+  cli/              Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
     work/            Work command modules — start, status, recommendations, git-scan, ui, types
+    skills/          Skill compiler — generates SKILL.md files from MCP tool schemas
+      compiler.ts    Introspects MCP tool schemas via Zod, builds skill configs
+      templates.ts   Generates SKILL.md markdown from skill configs
+      targets/       Pluggable target adapters (Claude Code adapter)
+      commands/      CLI commands — install, list, doctor, uninstall
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
     handlers.ts     5 profile tool handlers with rate limiting and dedup
@@ -347,6 +360,7 @@ Data flows:
 - **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
 - **Prompt genome path**: Genes → Genome → Compiler (profile-aware segments) → Variant → Tournament (A/B battle) → Judge (LLM-as-judge) → Champion promotion → Evolution loop
 - **Telemetry path**: MCP tool call → withTrace wrapper → Trace + Spans + Events + State changes + Errors → SQLite telemetry tables → 30-day retention pruning. `telemetry.query`/`trace`/`explain` tools read back telemetry data
+- **Skill compiler path**: MCP tool schemas (Zod) → Compiler → Skill configs → Templates → SKILL.md files → Target adapter (Claude Code) → Install directory + MCP config
 - All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts
@@ -405,7 +419,7 @@ SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v8).
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (869 across 96 files)
+bun test             # Run tests (922 across 97 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

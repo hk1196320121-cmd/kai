@@ -129,6 +129,15 @@ kai mcp serve
 | `errors` | Show recent telemetry errors |
 | `explain [question]` | Natural language telemetry analysis (LLM-powered, rate-limited) |
 
+### `kai skills`
+
+| Command | Description |
+|---------|-------------|
+| `install [--force]` | Generate SKILL.md files for Claude Code from Kai's MCP tool schemas |
+| `list` | List installed skills and their associated MCP tools |
+| `doctor [--fix]` | Validate installed skills against current schemas; `--fix` reinstalls |
+| `uninstall` | Remove generated skill files and MCP configuration |
+
 ### `kai mcp`
 
 | Command | Description |
@@ -187,9 +196,10 @@ kai mcp serve
 
 ```
 src/
-  cli/            Commander.js CLI (profile, observe, work, mcp, prompt, telemetry subcommands)
+  cli/            Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
     cli/renderers/   Typed output renderers for consistent CLI formatting
     cli/work/        Work command modules (start, status, recommendations, git-scan, ui, types)
+    cli/skills/      Skill compiler — generates SKILL.md files from MCP tool schemas (compiler, templates, targets, commands)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)

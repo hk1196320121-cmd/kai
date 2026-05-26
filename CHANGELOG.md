@@ -3,10 +3,10 @@
 ## [0.10.0.1] - 2026-05-27
 
 ### Added
-- **Dynamic Skill Compiler**: introspects Kai's 19 MCP tool schemas via Zod and generates SKILL.md files for Claude Code, letting users invoke tools via slash commands like `/kai-profile`, `/kai-work`, `/kai-idea`
-- **CLI commands**: `kai skills install`, `kai skills list`, `kai skills doctor`, `kai skills uninstall` — full install/validate/remove lifecycle
-- **7 domain skill files** (profile, observe, derive, work, idea, prompt, telemetry) plus a master `/kai` command palette
-- **Target adapter interface**: pluggable target system with Claude Code adapter (atomic JSON writes, MCP config management)
+- **Dynamic Skill Compiler**: introspects Kai's 19 MCP tool schemas via Zod and generates SKILL.md files for Claude Code, letting users invoke tools via slash commands like `/kai-profile`, `/kai-work`, `/kai-idea` instead of remembering MCP tool names
+- **CLI commands**: `kai skills install`, `kai skills list`, `kai skills doctor`, `kai skills uninstall` — full install/validate/remove lifecycle for generated skill files
+- **7 domain skill files** (profile, observe, derive, work, idea, prompt, telemetry) plus a master `/kai` command palette — run `kai skills install` to generate them
+- **Target adapter interface**: pluggable target system with Claude Code adapter (atomic JSON writes, MCP config management) — add new targets without touching the compiler
 - **632 new tests** (922 total): compiler unit tests, template snapshot tests, target adapter tests, integration flow
 
 ### Changed
