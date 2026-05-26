@@ -37,7 +37,9 @@ export function displayPreview(
     const hints = hintMap.get(t.dimension);
     const hintStr = hints ? ` + ${hints.join(", ")}` : "";
     const reasoning =
-      t.reasoning.length > REASONING_DISPLAY_LIMIT ? `${t.reasoning.slice(0, REASONING_SLICE_LENGTH)}...` : t.reasoning;
+      t.reasoning.length > REASONING_DISPLAY_LIMIT
+        ? `${t.reasoning.slice(0, REASONING_SLICE_LENGTH)}...`
+        : t.reasoning;
     console.log(
       `  ${t.dimension.padEnd(22)}${barStr}  ${t.confidence}/10  — ${reasoning}${hintStr}`,
     );
