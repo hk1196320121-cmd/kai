@@ -412,7 +412,6 @@ export function buildSkillConfigs(): SkillConfig[] {
 
   for (const domain of domains) {
     const tools = grouped[domain];
-    const domainMeta = DOMAIN_DESCRIPTIONS[domain];
 
     configs.push({
       domain,

@@ -1,0 +1,118 @@
+// src/cli/skills/templates.ts
+// Generate SKILL.md files (per-domain and master) from SkillConfig[].
+
+import { DOMAIN_DESCRIPTIONS, describeParameters } from "./compiler";
+import type { SkillConfig } from "./types";
+
+/**
+ * Convert a tool ID like "profile.read" or "kai_work_recommend" into the
+ * MCP tool name format used in allowed-tools: mcp__kai__profile_read
+ */
+function mcpToolName(toolId: string): string {
+  return toolId.replace(/\./g, "_");
+}
+
+/**
+ * Generate a per-domain SKILL.md string from a single SkillConfig.
+ */
+export function generateSkillMarkdown(config: SkillConfig): string {
+  const domainInfo = DOMAIN_DESCRIPTIONS[config.domain] ?? {
+    title: `Kai ${config.domain}`,
+    description: `Kai ${config.domain} tools.`,
+    examples: [],
+  };
+
+  const slashCommandList = config.slashCommands.join(", ");
+  const triggerPhrases = config.slashCommands.join(", ");
+
+  const allowedTools = [
+    "Bash",
+    "Read",
+    ...config.tools.map((t) => `mcp__kai__${mcpToolName(t.toolId)}`),
+  ];
+
+  const toolsSection = config.tools
+    .map((t) => {
+      const params = describeParameters(t.toolId);
+      return `#### ${t.slashCommand}\n\n${t.description}\n\n### Parameters\n\n${params}`;
+    })
+    .join("\n\n");
+
+  const resourceSection =
+    config.resources.length > 0
+      ? `\n### MCP Resources\n\n${config.resources.map((r) => `- \`${r}\``).join("\n")}`
+      : "";
+
+  const examplesSection =
+    domainInfo.examples.length > 0
+      ? `\n## Examples\n\n${domainInfo.examples.map((e) => `- ${e}`).join("\n")}`
+      : "";
+
+  return `---
+name: ${config.skillName}
+description: |
+  ${domainInfo.description}
+  Triggers: ${triggerPhrases}
+allowed-tools:
+${allowedTools.map((t) => `  - ${t}`).join("\n")}
+---
+
+## ${domainInfo.title}
+
+${domainInfo.description}
+
+### When to use
+
+Use this skill when the user types any of: ${slashCommandList}.
+The agent should parse the user's intent and call the appropriate MCP tool.
+
+### Tools
+
+${toolsSection}${resourceSection}${examplesSection}
+`;
+}
+
+/**
+ * Generate the master SKILL.md that aggregates all domains.
+ */
+export function generateMasterSkill(configs: SkillConfig[]): string {
+  const domainEntries = configs
+    .map((c) => {
+      const info = DOMAIN_DESCRIPTIONS[c.domain];
+      const commands = c.slashCommands.join(", ");
+      return `### ${info?.title ?? c.domain}\n\n${info?.description ?? ""}\n\nCommands: ${commands}`;
+    })
+    .join("\n\n");
+
+  const allCommands = configs.flatMap((c) => c.slashCommands).sort();
+
+  return `---
+name: kai
+description: |
+  Kai — AI Behavioral Profile Engine. Your behavioral operating system.
+  Type /kai to see all available commands.
+  Triggers: /kai
+allowed-tools:
+  - Bash
+  - Read
+---
+
+## Kai Command Palette
+
+Kai is your behavioral intelligence platform. It learns from your observations and provides personalized insights, task recommendations, and prompt evolution.
+
+### Available Domains
+
+${domainEntries}
+
+### All Commands
+
+${allCommands.map((c) => `- \`${c}\``).join("\n")}
+
+### Quick Start
+
+- \`/kai-profile\` — see your behavioral profile
+- \`/kai-work\` — get personalized task recommendations
+- \`/kai-idea "your idea"\` — submit an idea for planning
+`;
+}
