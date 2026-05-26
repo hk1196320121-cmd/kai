@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.10.0.1] - 2026-05-27
+
+### Added
+- **Dynamic Skill Compiler**: introspects Kai's 19 MCP tool schemas via Zod and generates SKILL.md files for Claude Code, letting users invoke tools via slash commands like `/kai-profile`, `/kai-work`, `/kai-idea`
+- **CLI commands**: `kai skills install`, `kai skills list`, `kai skills doctor`, `kai skills uninstall` — full install/validate/remove lifecycle
+- **7 domain skill files** (profile, observe, derive, work, idea, prompt, telemetry) plus a master `/kai` command palette
+- **Target adapter interface**: pluggable target system with Claude Code adapter (atomic JSON writes, MCP config management)
+- **632 new tests** (922 total): compiler unit tests, template snapshot tests, target adapter tests, integration flow
+
+### Changed
+- **CLAUDE.md / AGENTS.md**: GitNexus index stats updated (3901 symbols, 8532 relationships, 161 execution flows)
+- **`TOOL_DOMAIN_MAP` and `DOMAIN_RESOURCES`**: reduced to module-private — only the public API is exported
+
+### Fixed
+- **Slash commands, resources, and skill names**: aligned with CEO plan specifications
+- **CLI wiring, permissions, and MCP config flow**: addressed Codex review findings
+- **Lint issues**: import sorting, formatting, unused variables
+
 ## [0.9.1] - 2026-05-26
 
 ### Changed
