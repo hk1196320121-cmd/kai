@@ -86,11 +86,16 @@ export async function runRecommendations(
           ? [selectedIdx]
           : [];
 
-    const orchStore = new OrchestratorStore(db);
-    const { LLMProvider } = await import("../../llm/provider");
-    const llm = new LLMProvider();
-    const bridge = new HermesAgentBridge();
-    const dispatcher = new Dispatcher(orchStore, bridge);
+    // Only penalize when user explicitly skips ("n"/"no"), not on invalid input
+    const explicitlySkipped =
+      approveResponse === "n" || approveResponse === "no";
+
+    if (selected.length > 0) {
+      const orchStore = new OrchestratorStore(db);
+      const { LLMProvider } = await import("../../llm/provider");
+      const llm = new LLMProvider();
+      const bridge = new HermesAgentBridge();
+      const dispatcher = new Dispatcher(orchStore, bridge);
 
     for (const idx of selected) {
       const rec = recommendations[idx];
@@ -178,11 +183,12 @@ export async function runRecommendations(
       });
     }
 
+    } // end if (selected.length > 0)
+
     // Emit rejection events for unselected recommendations + penalize confidence
-    const selectedSet = new Set(selected);
-    const rejected = recommendations.filter((_, i) => !selectedSet.has(i));
-    if (rejected.length > 0) {
-      for (const rec of rejected) {
+    // Only when user explicitly skipped ("n"/"no"), not on empty/invalid input
+    if (explicitlySkipped) {
+      for (const rec of recommendations) {
         store.addEvent({
           workspace_id: workspace.id,
           event_type: "recommendation_rejected",
@@ -194,7 +200,7 @@ export async function runRecommendations(
 
       // Penalize trait confidence for dimensions that drove rejected recommendations
       const rejectedDims = new Set<string>();
-      for (const rec of rejected) {
+      for (const rec of recommendations) {
         if (rec.traitTargets) {
           for (const dim of Object.keys(rec.traitTargets)) {
             rejectedDims.add(dim);
@@ -215,6 +221,8 @@ export async function runRecommendations(
           });
         }
       }
+    } else if (selected.length === 0 && !explicitlySkipped) {
+      console.log("\n  No selection made. Skipping recommendations.");
     }
   } finally {
     rl.close();
