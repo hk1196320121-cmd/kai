@@ -99,11 +99,11 @@ async function checkRerun(
 
     if (recommendations.length === 0) {
       console.log("\nNo matching workflows found for your profile.");
-      return { status: "abort" };
+      return { status: "abort", context: { completed: true } };
     }
 
     console.log(renderRecommendations(recommendations, { showHint: false }));
-    return { status: "abort" };
+    return { status: "abort", context: { completed: true } };
   }
   return { status: "continue" };
 }
