@@ -97,92 +97,93 @@ export async function runRecommendations(
       const bridge = new HermesAgentBridge();
       const dispatcher = new Dispatcher(orchStore, bridge);
 
-    for (const idx of selected) {
-      const rec = recommendations[idx];
+      for (const idx of selected) {
+        const rec = recommendations[idx];
 
-      const idea = orchStore.createIdea({
-        title: rec.title,
-        description: rec.description,
-        domain: ideaDomain,
-        workspace_id: workspace.id,
-      });
-
-      // Try LLM path for task decomposition
-      let llmTasksCreated = false;
-      if (llm.getConfig().apiKey) {
-        try {
-          const { GeneStore } = await import("../../core/prompt/gene-store");
-          const { PromptCompiler } = await import(
-            "../../core/prompt/prompt-compiler"
-          );
-          const geneStore = new GeneStore(db);
-          const compiler = new PromptCompiler(geneStore);
-          const { Planner } = await import("../../core/orchestrator/planner");
-          const planner = new Planner(orchStore, llm, compiler);
-          const tasks = await planner.decomposeIdea(idea.id, savedTraits);
-          console.log(`\nPlan generated (${tasks.length} tasks):`);
-          for (const t of tasks) {
-            console.log(`  - ${t.title}`);
-          }
-          llmTasksCreated = tasks.length > 0;
-        } catch (err) {
-          console.error(renderError(err as Error));
-          console.log(
-            "  Could not generate plan (LLM unavailable), creating task directly.",
-          );
-        }
-      }
-
-      // Create fallback task only if LLM decomposition didn't produce tasks
-      if (!llmTasksCreated) {
-        const task = orchStore.createTask({
-          idea_id: idea.id,
-          workspace_id: workspace.id,
+        const idea = orchStore.createIdea({
           title: rec.title,
           description: rec.description,
-          type: "one_off",
-          agent: "hermes",
-          prompt: rec.description,
-          decomposition_rationale:
-            "Auto-generated from cold start recommendation",
-          scheduling_rationale: "Execute when ready",
+          domain: ideaDomain,
+          workspace_id: workspace.id,
         });
 
-        // Auto-execute via dispatcher
-        try {
-          const result = await dispatcher.dispatch(task.id);
-          if (result.success) {
-            console.log(`✓ Task dispatched: ${task.title}`);
-            const wsTask = store.createTask({
-              workspace_id: workspace.id,
-              title: task.title,
-              description: task.description,
-            });
-            store.addEvent({
-              workspace_id: workspace.id,
-              task_id: wsTask.id,
-              event_type: "task_auto_executed",
-              payload: JSON.stringify({
-                planned_task_id: task.id,
-                idea_id: idea.id,
-              }),
-            });
+        // Try LLM path for task decomposition
+        let llmTasksCreated = false;
+        if (llm.getConfig().apiKey) {
+          try {
+            const { GeneStore } = await import("../../core/prompt/gene-store");
+            const { PromptCompiler } = await import(
+              "../../core/prompt/prompt-compiler"
+            );
+            const geneStore = new GeneStore(db);
+            const compiler = new PromptCompiler(geneStore);
+            const { Planner } = await import("../../core/orchestrator/planner");
+            const planner = new Planner(orchStore, llm, compiler);
+            const tasks = await planner.decomposeIdea(idea.id, savedTraits);
+            console.log(`\nPlan generated (${tasks.length} tasks):`);
+            for (const t of tasks) {
+              console.log(`  - ${t.title}`);
+            }
+            llmTasksCreated = tasks.length > 0;
+          } catch (err) {
+            console.error(renderError(err as Error));
+            console.log(
+              "  Could not generate plan (LLM unavailable), creating task directly.",
+            );
           }
-        } catch (err) {
-          console.error(renderError(err as Error));
-          console.log(`  Task created but not dispatched (agent unavailable)`);
         }
+
+        // Create fallback task only if LLM decomposition didn't produce tasks
+        if (!llmTasksCreated) {
+          const task = orchStore.createTask({
+            idea_id: idea.id,
+            workspace_id: workspace.id,
+            title: rec.title,
+            description: rec.description,
+            type: "one_off",
+            agent: "hermes",
+            prompt: rec.description,
+            decomposition_rationale:
+              "Auto-generated from cold start recommendation",
+            scheduling_rationale: "Execute when ready",
+          });
+
+          // Auto-execute via dispatcher
+          try {
+            const result = await dispatcher.dispatch(task.id);
+            if (result.success) {
+              console.log(`✓ Task dispatched: ${task.title}`);
+              const wsTask = store.createTask({
+                workspace_id: workspace.id,
+                title: task.title,
+                description: task.description,
+              });
+              store.addEvent({
+                workspace_id: workspace.id,
+                task_id: wsTask.id,
+                event_type: "task_auto_executed",
+                payload: JSON.stringify({
+                  planned_task_id: task.id,
+                  idea_id: idea.id,
+                }),
+              });
+            }
+          } catch (err) {
+            console.error(renderError(err as Error));
+            console.log(
+              `  Task created but not dispatched (agent unavailable)`,
+            );
+          }
+        }
+
+        store.addEvent({
+          workspace_id: workspace.id,
+          event_type: "recommendation_accepted",
+          payload: JSON.stringify({
+            template_id: rec.templateId,
+          }),
+        });
       }
-
-      store.addEvent({
-        workspace_id: workspace.id,
-        event_type: "recommendation_accepted",
-        payload: JSON.stringify({
-          template_id: rec.templateId,
-        }),
-      });
-    }
-
     } // end if (selected.length > 0)
 
     // Emit rejection events for unselected recommendations + penalize confidence

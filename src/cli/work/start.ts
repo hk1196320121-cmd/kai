@@ -394,10 +394,21 @@ export async function handleWorkStart(
     process.removeListener("SIGINT", onSigInt);
     if (cleanupSigInt) process.removeListener("SIGINT", cleanupSigInt);
 
-    // Delete workspace if not completed
-    if (!ctx.completed && ctx.store && ctx.workspace) {
+    // Delete workspace and coldstart data if not completed
+    if (!ctx.completed) {
+      if (ctx.store && ctx.workspace) {
+        try {
+          ctx.store.deleteWorkspace(ctx.workspace.id);
+        } catch {
+          // best effort cleanup
+        }
+      }
+      // Clean coldstart observations so restart gets a fresh slate
       try {
-        ctx.store.deleteWorkspace(ctx.workspace.id);
+        const raw = ctx.db.getDatabase();
+        raw.query("DELETE FROM observations WHERE source = $source").run({
+          $source: "coldstart",
+        });
       } catch {
         // best effort cleanup
       }
