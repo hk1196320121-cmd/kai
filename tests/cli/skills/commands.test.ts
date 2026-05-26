@@ -79,6 +79,7 @@ describe("installSkills()", () => {
       target: "claude-code",
       force: false,
       configureMcp: false,
+      installPath: skillDir,
     });
     expect(result).toBe(0);
     expect(logSpy.mock.calls.some((c) => String(c[0]).includes("already installed"))).toBe(true);

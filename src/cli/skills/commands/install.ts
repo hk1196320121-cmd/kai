@@ -10,6 +10,7 @@ export async function installSkills(opts: {
   target: string;
   force?: boolean;
   configureMcp?: boolean;
+  installPath?: string;
 }): Promise<number> {
   if (opts.target !== "claude-code") {
     throw new Error(
@@ -17,7 +18,7 @@ export async function installSkills(opts: {
     );
   }
 
-  const target = new ClaudeCodeTarget();
+  const target = new ClaudeCodeTarget(opts.installPath);
   const installPath = target.skillInstallPath;
 
   const alreadyInstalled =
