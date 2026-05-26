@@ -25,6 +25,13 @@ function ask(rl: ReadlineInterface, question: string): Promise<string> {
   });
 }
 
+function deleteColdstartObservations(db: WorkStartContext["db"]): void {
+  const raw = db.getDatabase();
+  raw.query("DELETE FROM observations WHERE source = $source").run({
+    $source: "coldstart",
+  });
+}
+
 // --- Phase functions ---
 
 async function resetColdstartData(
@@ -35,10 +42,7 @@ async function resetColdstartData(
     return { status: "continue" };
   }
 
-  const raw = ctx.db.getDatabase();
-  raw.query("DELETE FROM observations WHERE source = $source").run({
-    $source: "coldstart",
-  });
+  deleteColdstartObservations(ctx.db);
   console.log("Cleared existing cold start data.");
   return { status: "continue" };
 }
@@ -377,7 +381,9 @@ export async function handleWorkStart(
     if (result.status === "abort") return;
 
     // Re-register SIGINT after interview removes it in its finally block
-    if (cleanupSigInt) process.on("SIGINT", cleanupSigInt);
+    if (cleanupSigInt && !process.listeners("SIGINT").includes(cleanupSigInt)) {
+      process.on("SIGINT", cleanupSigInt);
+    }
 
     // Phase 7: derive and preview
     if (sigintReceived) return;
@@ -405,10 +411,7 @@ export async function handleWorkStart(
       }
       // Clean coldstart observations so restart gets a fresh slate
       try {
-        const raw = ctx.db.getDatabase();
-        raw.query("DELETE FROM observations WHERE source = $source").run({
-          $source: "coldstart",
-        });
+        deleteColdstartObservations(ctx.db);
       } catch {
         // best effort cleanup
       }
