@@ -245,6 +245,8 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How the Flight Recorder Works](docs/explanation-telemetry.md) | Explanation | Trace lifecycle, deferred writes, sanitizer design, trade-offs |
 | [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
 | [How the Work Command Modules Work](docs/explanation-work-modules.md) | Explanation | PhaseResult control flow, cooperative SIGINT cancellation, module responsibilities |
+| [How to Install and Manage Kai Skills](docs/howto-skills.md) | How-to | Install, validate, update, and remove generated skill files |
+| [How the Skill Compiler Works](docs/explanation-skill-compiler.md) | Explanation | Zod schema introspection, domain mapping, target adapter pattern, trade-offs |
 
 ## Development
 
