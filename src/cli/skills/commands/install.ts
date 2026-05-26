@@ -20,60 +20,69 @@ export async function installSkills(opts: {
   const target = new ClaudeCodeTarget();
   const installPath = target.skillInstallPath;
 
-  // Warn if skills already exist
-  if (existsSync(join(installPath, "manifest.json")) && !opts.force) {
+  const alreadyInstalled =
+    existsSync(join(installPath, "manifest.json")) && !opts.force;
+
+  if (alreadyInstalled && !opts.configureMcp) {
     console.log(
       `Skills already installed at ${installPath}. Use --force to overwrite.`,
     );
     return 0;
   }
 
-  const configs = buildSkillConfigs();
-
-  // Warn before overwriting
-  if (existsSync(installPath) && !opts.force) {
+  if (alreadyInstalled) {
     console.log(
-      `Warning: Overwriting existing skills at ${installPath}. Custom edits will be lost.`,
+      `Skills already installed at ${installPath}. Skipping file generation; configuring MCP only.`,
     );
   }
 
-  // Generate skill files
-  mkdirSync(installPath, { recursive: true });
-  let fileCount = 0;
+  if (!alreadyInstalled) {
+    // Warn if overwriting existing files without manifest (partial/corrupted install)
+    if (existsSync(installPath) && !opts.force) {
+      console.log(
+        `Warning: Overwriting existing files at ${installPath}. Custom edits will be lost.`,
+      );
+    }
 
-  // Master SKILL.md
-  const masterMd = generateMasterSkill(configs);
-  writeFileSync(join(installPath, "SKILL.md"), masterMd);
-  fileCount++;
+    const configs = buildSkillConfigs();
 
-  // Domain-specific SKILL.md files
-  for (const config of configs) {
-    const domain = sanitizeDomainName(config.domain);
-    const domainDir = join(installPath, domain);
-    mkdirSync(domainDir, { recursive: true });
-    const md = generateSkillMarkdown(config);
-    writeFileSync(join(domainDir, "SKILL.md"), md);
-    fileCount++;
+    // Generate skill files
+    mkdirSync(installPath, { recursive: true });
+
+    // Master SKILL.md
+    const masterMd = generateMasterSkill(configs);
+    writeFileSync(join(installPath, "SKILL.md"), masterMd);
+
+    // Domain-specific SKILL.md files
+    for (const config of configs) {
+      const domain = sanitizeDomainName(config.domain);
+      const domainDir = join(installPath, domain);
+      mkdirSync(domainDir, { recursive: true });
+      const md = generateSkillMarkdown(config);
+      writeFileSync(join(domainDir, "SKILL.md"), md);
+    }
+
+    // Write manifest
+    const pkg = JSON.parse(
+      readFileSync(
+        new URL("../../../../package.json", import.meta.url),
+        "utf-8",
+      ),
+    );
+    const manifest: SkillManifest = {
+      kaiVersion: pkg.version,
+      generatedAt: new Date().toISOString(),
+      skills: Object.fromEntries(
+        configs.map((c) => [c.domain, c.tools.map((t) => t.toolId)]),
+      ),
+    };
+    writeFileSync(
+      join(installPath, "manifest.json"),
+      JSON.stringify(manifest, null, 2),
+    );
+
+    console.log(`Installed skill files to ${installPath}`);
   }
-
-  // Write manifest
-  const pkg = JSON.parse(
-    readFileSync(new URL("../../../../package.json", import.meta.url), "utf-8"),
-  );
-  const manifest: SkillManifest = {
-    kaiVersion: pkg.version,
-    generatedAt: new Date().toISOString(),
-    skills: Object.fromEntries(
-      configs.map((c) => [c.domain, c.tools.map((t) => t.toolId)]),
-    ),
-  };
-  writeFileSync(
-    join(installPath, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-  );
-  fileCount++;
-
-  console.log(`Installed ${fileCount} files to ${installPath}`);
 
   // Configure MCP if requested
   if (opts.configureMcp) {
@@ -82,14 +91,15 @@ export async function installSkills(opts: {
       await target.configureMcp(mcpConfig, opts.force);
       console.log("Added MCP server configuration to ~/.claude.json");
     } catch (err) {
-      console.error(`Error configuring MCP: ${(err as Error).message}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Error configuring MCP: ${msg}`);
     }
   } else {
     console.log("\nTo complete setup, add the MCP server to ~/.claude.json.");
     console.log("Run with --configure-mcp for automatic configuration.");
   }
 
-  return fileCount;
+  return 0;
 }
 
 export function registerInstallCommand(skills: Command): void {

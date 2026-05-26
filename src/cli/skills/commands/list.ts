@@ -39,7 +39,9 @@ export function registerListCommand(skills: Command): void {
       console.log();
 
       for (const [domain, tools] of Object.entries(manifest.skills)) {
-        const toolList = (tools as string[]).join(", ");
+        const toolList = Array.isArray(tools)
+          ? tools.join(", ")
+          : String(tools);
         console.log(`  ${status("success", domain)} — ${toolList}`);
       }
     });

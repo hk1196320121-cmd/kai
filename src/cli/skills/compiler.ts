@@ -337,8 +337,11 @@ export function describeParameters(toolId: string): string {
       lines.push(`  - ${name}${typeStr}${descStr}`);
     }
     return lines.join("\n");
-  } catch {
-    // Fallback: iterate keys and describe types simply
+  } catch (err) {
+    // Fallback: z.toJSONSchema failed (e.g., unsupported Zod type), list keys only
+    console.error(
+      `Warning: describeParameters fallback for ${toolId}: ${err instanceof Error ? err.message : String(err)}`,
+    );
     const keys = Object.keys(schemaObj);
     if (keys.length === 0) return "(no parameters)";
 

@@ -47,12 +47,9 @@ export function registerUninstallCommand(skills: Command): void {
         rmSync(installPath, { recursive: true, force: true });
         console.log(status("success", "Skill files removed."));
       } catch (err) {
-        console.log(
-          status(
-            "error",
-            `Failed to remove skill files: ${(err as Error).message}`,
-          ),
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(status("error", `Failed to remove skill files: ${msg}`));
+        return;
       }
 
       try {
@@ -61,12 +58,8 @@ export function registerUninstallCommand(skills: Command): void {
           status("success", "MCP configuration removed from ~/.claude.json."),
         );
       } catch (err) {
-        console.log(
-          status(
-            "warning",
-            `Could not remove MCP config: ${(err as Error).message}`,
-          ),
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(status("warning", `Could not remove MCP config: ${msg}`));
       }
     });
 }

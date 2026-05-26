@@ -22,8 +22,7 @@ export function generateSkillMarkdown(config: SkillConfig): string {
     examples: [],
   };
 
-  const slashCommandList = config.slashCommands.join(", ");
-  const triggerPhrases = config.slashCommands.join(", ");
+  const commandList = config.slashCommands.join(", ");
 
   const allowedTools = [
     "Bash",
@@ -52,7 +51,7 @@ export function generateSkillMarkdown(config: SkillConfig): string {
 name: ${config.skillName}
 description: |
   ${domainInfo.description}
-  Triggers: ${triggerPhrases}
+  Triggers: ${commandList}
 allowed-tools:
 ${allowedTools.map((t) => `  - ${t}`).join("\n")}
 ---
@@ -63,7 +62,7 @@ ${domainInfo.description}
 
 ### When to use
 
-Use this skill when the user types any of: ${slashCommandList}.
+Use this skill when the user types any of: ${commandList}.
 The agent should parse the user's intent and call the appropriate MCP tool.
 
 ### Tools

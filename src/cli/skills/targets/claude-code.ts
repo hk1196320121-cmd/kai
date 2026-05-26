@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -7,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { McpConfig, ValidationResult } from "../types";
 import type { TargetAdapter } from "./types";
 
@@ -48,7 +50,7 @@ export class ClaudeCodeTarget implements TargetAdapter {
   }
 
   async configureMcp(config: McpConfig, force = false): Promise<void> {
-    let existing: Record<string, unknown> = { mcpServers: {} };
+    let existing: Record<string, unknown>;
 
     if (existsSync(this.claudeJsonPath)) {
       try {
@@ -59,9 +61,17 @@ export class ClaudeCodeTarget implements TargetAdapter {
           `Cannot read ${this.claudeJsonPath}. Check the file contains valid JSON.`,
         );
       }
+    } else {
+      existing = {};
     }
 
-    if (!existing.mcpServers) existing.mcpServers = {};
+    if (
+      typeof existing.mcpServers !== "object" ||
+      existing.mcpServers === null ||
+      Array.isArray(existing.mcpServers)
+    ) {
+      existing.mcpServers = {};
+    }
 
     const servers = existing.mcpServers as Record<string, unknown>;
     if (servers.kai && !force) {
@@ -84,23 +94,32 @@ export class ClaudeCodeTarget implements TargetAdapter {
   async removeMcp(): Promise<void> {
     if (!existsSync(this.claudeJsonPath)) return;
 
+    let existing: Record<string, unknown>;
     try {
       const resolved = realpathSync(this.claudeJsonPath);
-      const existing = JSON.parse(readFileSync(resolved, "utf-8"));
-      if (existing.mcpServers?.kai) {
-        delete existing.mcpServers.kai;
-        this.atomicWriteJson(this.claudeJsonPath, existing);
-      }
+      existing = JSON.parse(readFileSync(resolved, "utf-8"));
     } catch {
-      // File doesn't exist or invalid — nothing to remove
+      return;
+    }
+
+    if (
+      typeof existing.mcpServers === "object" &&
+      existing.mcpServers !== null &&
+      !Array.isArray(existing.mcpServers) &&
+      (existing.mcpServers as Record<string, unknown>).kai
+    ) {
+      delete (existing.mcpServers as Record<string, unknown>).kai;
+      this.atomicWriteJson(this.claudeJsonPath, existing);
     }
   }
 
   private atomicWriteJson(filePath: string, data: unknown): void {
-    const dir = join(filePath, "..");
+    const resolved = existsSync(filePath) ? realpathSync(filePath) : filePath;
+    const dir = dirname(resolved);
     mkdirSync(dir, { recursive: true });
-    const tmpPath = join(dir, `.kai-skills-${Date.now()}.tmp`);
+    const tmpPath = join(dir, `.kai-skills-${randomUUID()}.tmp`);
     writeFileSync(tmpPath, JSON.stringify(data, null, 2));
-    renameSync(tmpPath, filePath);
+    chmodSync(tmpPath, 0o600);
+    renameSync(tmpPath, resolved);
   }
 }

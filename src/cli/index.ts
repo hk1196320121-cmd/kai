@@ -6,6 +6,7 @@ import { registerMcpCommands } from "./mcp";
 import { registerObserveCommands } from "./observe";
 import { registerProfileCommands } from "./profile";
 import { registerPromptCommands } from "./prompt";
+import { registerSkillsCommands } from "./skills";
 import { registerTelemetryCommands } from "./telemetry";
 import { registerWorkCommands } from "./work";
 
@@ -41,6 +42,7 @@ registerMcpCommands(program);
 registerWorkCommands(program);
 registerPromptCommands(program);
 registerTelemetryCommands(program);
+registerSkillsCommands(program);
 
 export { program };
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
@@ -20,9 +20,8 @@ export function registerDoctorCommand(skills: Command): void {
           await installSkills({ target: "claude-code", force: true });
           console.log(status("success", "Skills reinstalled successfully."));
         } catch (err) {
-          console.log(
-            status("error", `Failed to reinstall: ${(err as Error).message}`),
-          );
+          const msg = err instanceof Error ? err.message : String(err);
+          console.log(status("error", `Failed to reinstall: ${msg}`));
         }
         return;
       }
@@ -38,19 +37,16 @@ export function registerDoctorCommand(skills: Command): void {
         }
         console.log();
         console.log(dim("Run `kai skills doctor --fix` to reinstall."));
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
 
       console.log(status("success", "Installation valid."));
 
-      // Check version
+      // Read manifest (already validated above)
       const manifestPath = join(target.skillInstallPath, "manifest.json");
-      if (!existsSync(manifestPath)) {
-        console.log(status("warning", "No manifest.json found."));
-        return;
-      }
-
       const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+
       const pkg = JSON.parse(
         readFileSync(
           new URL("../../../../package.json", import.meta.url),
@@ -70,15 +66,16 @@ export function registerDoctorCommand(skills: Command): void {
         console.log(status("info", `Version: v${pkg.version}`));
       }
 
-      // Check for new tools not in manifest
+      // Check for new/removed tools
       const configs = buildSkillConfigs();
       const manifestTools = new Set(
         Object.values(manifest.skills).flat() as string[],
       );
       const currentTools = configs.flatMap((c) => c.tools.map((t) => t.toolId));
+      const currentToolSet = new Set(currentTools);
       const newTools = currentTools.filter((t) => !manifestTools.has(t));
       const removedTools = [...manifestTools].filter(
-        (t) => !currentTools.includes(t),
+        (t) => !currentToolSet.has(t),
       );
 
       if (newTools.length > 0) {
