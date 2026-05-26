@@ -189,6 +189,7 @@ kai mcp serve
 src/
   cli/            Commander.js CLI (profile, observe, work, mcp, prompt, telemetry subcommands)
     cli/renderers/   Typed output renderers for consistent CLI formatting
+    cli/work/        Work command modules (start, status, recommendations, git-scan, ui, types)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)

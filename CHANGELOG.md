@@ -3,8 +3,8 @@
 ## [0.9.1] - 2026-05-26
 
 ### Changed
-- **work.ts decomposed into 5 focused modules**: git-scan.ts (git history analysis), ui.ts (progress/display), status.ts (workspace status/list), recommendations.ts (idea recommendations + penalization), start.ts (lifecycle orchestration with PhaseResult control flow). work.ts is now a 35-line facade
-- **SIGINT handling rewritten**: cooperative cancellation via ReadlineTracker instead of process.exit(130). SIGINT now gracefully closes readline, cleans up workspaces, and exits through centralized finally block
+- **work.ts decomposed into 6 focused modules**: git-scan.ts (git history analysis), ui.ts (progress/display), status.ts (workspace status/list), recommendations.ts (idea recommendations + penalization), start.ts (lifecycle orchestration with PhaseResult control flow), types.ts (shared interfaces). work.ts is now a 35-line facade
+- **SIGINT handling rewritten with cooperative cancellation**: Ctrl+C during `kai work start` now gracefully closes the interview, cleans up workspaces, and exits cleanly instead of abruptly terminating
 - **Coldstart cleanup centralized**: single deleteColdstartObservations() helper replaces scattered SQL DELETE calls
 - **Reasoning display constants**: magic numbers 60/57 replaced with REASONING_DISPLAY_LIMIT/REASONING_SLICE_LENGTH
 
