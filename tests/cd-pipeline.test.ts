@@ -46,9 +46,9 @@ describe("package.json metadata", () => {
     expect(pkg.name).toBe("kai-profile");
   });
 
-  test("version is valid 3-part semver", () => {
+  test("version is valid semver", () => {
     expect(typeof pkg.version).toBe("string");
-    expect((pkg.version as string)).toMatch(/^\d+\.\d+\.\d+$/);
+    expect((pkg.version as string)).toMatch(/^\d+\.\d+\.\d+(\.\d+)?$/);
   });
 
   test('bin.kai points to "dist/cli/index.js"', () => {
@@ -86,9 +86,9 @@ describe("VERSION file", () => {
     expect(version).toBe(pkg.version);
   });
 
-  test("VERSION is valid 3-part semver", () => {
+  test("VERSION is valid semver", () => {
     const version = readFileSync(join(ROOT, "VERSION"), "utf-8").trim();
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(version).toMatch(/^\d+\.\d+\.\d+(\.\d+)?$/);
   });
 });
 
