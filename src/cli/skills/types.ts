@@ -1,6 +1,6 @@
 // src/cli/skills/types.ts
 
-export interface ToolMapping {
+interface ToolMapping {
   toolId: string;
   schemaExportName: string;
   slashCommand: string;

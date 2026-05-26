@@ -144,7 +144,7 @@ export const TOOL_SLASH_MAP: Record<string, string> = {
 // 4. DOMAIN_RESOURCES — resource URIs grouped by domain
 // ---------------------------------------------------------------------------
 
-export const DOMAIN_RESOURCES: Record<string, string[]> = {
+const DOMAIN_RESOURCES: Record<string, string[]> = {
   profile: [
     "kai://profile/identity",
     "kai://profile/traits",
