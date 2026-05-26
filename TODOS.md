@@ -2,6 +2,10 @@
 
 ## Completed
 
+### work.ts 5-Module Decomposition
+- **What**: Decompose 750-line work.ts into 5 focused modules with centralized lifecycle cleanup and cooperative SIGINT handling
+- **Completed**: v0.9.1.0 (2026-05-26) — types.ts, git-scan.ts, ui.ts, status.ts, recommendations.ts, start.ts. work.ts reduced to 35-line facade. PhaseResult control flow, ReadlineTracker SIGINT pattern, ISSUE-001/003 fixes, 869 tests
+
 ### Flight Recorder Telemetry System
 - **What**: Full causal chain telemetry — trace every MCP request through derivation, orchestration, and prompt genome with spans, events, state changes, and error records
 - **Completed**: v0.6.0.0 (2026-05-22) — TelemetryStore, TelemetryRecorder, Sanitizer, Stats, LLM Explain, 3 MCP tools, 3 MCP resources, 5 CLI commands, V7 migration, orchestrator/prompt instrumentation, 545 tests across 74 files
@@ -106,3 +110,7 @@
 - **Effort**: S (human: ~15min / CC: ~5min)
 - **Priority**: P3
 - **Added**: 2026-05-24 by /plan-ceo-review
+
+### TODO 12: Restart doesn't clean coldstart observations
+- **What**: When user selects "Restart" in the confirm/edit/restart loop, the workspace is deleted but coldstart observations (especially `coldstart:goal`) remain in the DB
+- **Fixed by /qa on fix/tech-debt, 2026-05-26** (commit `9cb7186`) — added `DELETE FROM observations WHERE source = 'coldstart'` to cleanup finally block

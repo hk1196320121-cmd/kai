@@ -283,6 +283,7 @@ kai telemetry explain "question"       # LLM-powered analysis
 ```
 src/
   cli/              Commander.js CLI (profile, observe, work, mcp, prompt subcommands)
+    work/            Work command modules — start, status, recommendations, git-scan, ui, types
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
     handlers.ts     5 profile tool handlers with rate limiting and dedup
@@ -404,7 +405,7 @@ SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v8).
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (798 across 93 files)
+bun test             # Run tests (869 across 96 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

@@ -189,6 +189,7 @@ kai mcp serve
 src/
   cli/            Commander.js CLI (profile, observe, work, mcp, prompt, telemetry subcommands)
     cli/renderers/   Typed output renderers for consistent CLI formatting
+    cli/work/        Work command modules (start, status, recommendations, git-scan, ui, types)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)
@@ -233,6 +234,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Use Telemetry](docs/howto-telemetry.md) | How-to | Debug failures, monitor performance, query trace data |
 | [How the Flight Recorder Works](docs/explanation-telemetry.md) | Explanation | Trace lifecycle, deferred writes, sanitizer design, trade-offs |
 | [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
+| [How the Work Command Modules Work](docs/explanation-work-modules.md) | Explanation | PhaseResult control flow, cooperative SIGINT cancellation, module responsibilities |
 
 ## Development
 

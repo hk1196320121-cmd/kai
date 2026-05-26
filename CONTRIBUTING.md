@@ -57,7 +57,7 @@ bun test --watch                   # Watch mode
 
 | Tier | Files | What they cover |
 |------|-------|-----------------|
-| Unit | `tests/core/**`, `tests/bridge/**`, `tests/mcp/**` | Individual modules in isolation |
+| Unit | `tests/core/**`, `tests/bridge/**`, `tests/mcp/**`, `tests/cli/**` | Individual modules in isolation |
 | Integration | `tests/mcp/handlers.test.ts`, `tests/mcp/orchestrator-handlers.test.ts` | MCP handler → engine → database flow |
 | E2E | `tests/e2e/**` | Full closed-loop flows from CLI to database |
 
@@ -87,6 +87,7 @@ CI runs these same checks on every push and PR. All five must pass before merge.
 src/
   cli/                Commander.js CLI commands
     cli/renderers/       Typed output renderers (profile, prompt, recommendations, telemetry, workspace)
+    cli/work/            Work command modules (start, status, recommendations, git-scan, ui, types)
   core/profile/       Profile engine (identity, observations, traits, derivation, decay, interview)
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, recommendations)
   core/prompt/        Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine)

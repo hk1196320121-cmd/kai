@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.1] - 2026-05-26
+
+### Changed
+- **work.ts decomposed into 6 focused modules**: git-scan.ts (git history analysis), ui.ts (progress/display), status.ts (workspace status/list), recommendations.ts (idea recommendations + penalization), start.ts (lifecycle orchestration with PhaseResult control flow), types.ts (shared interfaces). work.ts is now a 35-line facade
+- **SIGINT handling rewritten with cooperative cancellation**: Ctrl+C during `kai work start` now gracefully closes the interview, cleans up workspaces, and exits cleanly instead of abruptly terminating
+- **Coldstart cleanup centralized**: single deleteColdstartObservations() helper replaces scattered SQL DELETE calls
+- **Reasoning display constants**: magic numbers 60/57 replaced with REASONING_DISPLAY_LIMIT/REASONING_SLICE_LENGTH
+
+### Fixed
+- **Invalid recommendation input no longer penalizes all traits**: only explicit 'n'/'no' triggers penalization (ISSUE-001). Gibberish or empty input is a no-op
+- **Restart/abort cleans coldstart observations**: finally block deletes coldstart data on abort so next run gets a fresh slate (ISSUE-003)
+- **Re-run preserves existing profile data**: checkRerun abort path now sets completed=true, preventing finally block from deleting coldstart data that already existed
+- **SIGINT double-registration guard**: re-registration after interview checks if listener is already registered before adding
+- **Lint cleanup**: removed unused GitScanResult re-export, dead imports
+
+### Added
+- **869 tests** (up from ~800): pre-refactor lifecycle tests, post-extraction module tests, SIGINT behavior validation, coverage tests for git-scan/recommendations/ui/start
+- **GitNexus skills**: exploring, impact-analysis, debugging, refactoring, guide, CLI — indexed with 3583 symbols, 7937 relationships
+- **Plan file**: 64-step decomposition plan with checkbox tracking
+
 ## [0.9.0] - 2026-05-25
 
 ### Changed
