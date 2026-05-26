@@ -43,7 +43,10 @@ async function resetColdstartData(
   return { status: "continue" };
 }
 
-async function ensureIdentity(ctx: WorkStartContext, rlTracker: ReadlineTracker): Promise<PhaseResult> {
+async function ensureIdentity(
+  ctx: WorkStartContext,
+  rlTracker: ReadlineTracker,
+): Promise<PhaseResult> {
   const identity = ctx.engine.getIdentity();
   if (identity) {
     return { status: "continue", context: { identity } };
@@ -359,10 +362,10 @@ export async function handleWorkStart(
       sigintReceived = true;
       if (rlTracker.current) rlTracker.current.close();
       console.log("\n\nCleaning up...");
-      if (ctx.store && ctx.workspace) {
+      if (!ctx.completed && ctx.store && ctx.workspace) {
         ctx.store.deleteWorkspace(ctx.workspace.id);
+        console.log("Workspace deleted. Aborted.");
       }
-      console.log("Workspace deleted. Aborted.");
     };
     process.removeListener("SIGINT", onSigInt);
     process.on("SIGINT", cleanupSigInt);
@@ -384,13 +387,7 @@ export async function handleWorkStart(
 
     // Phase 8: recommendations
     if (ctx.completed && ctx.store && ctx.workspace && ctx.previewTraits) {
-      await runRecommendations(
-        ctx.db,
-        ctx.engine,
-        ctx.store,
-        ctx.workspace,
-        ctx.previewTraits,
-      );
+      await runRecommendations(ctx.db, ctx.engine, ctx.store, ctx.workspace);
     }
   } finally {
     // Centralized cleanup

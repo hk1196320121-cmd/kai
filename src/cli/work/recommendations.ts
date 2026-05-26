@@ -4,7 +4,6 @@ import { Dispatcher } from "../../core/orchestrator/dispatcher";
 import { resolveIdeaDomain } from "../../core/orchestrator/domain-resolver";
 import { recommendTasks } from "../../core/orchestrator/recommend";
 import { OrchestratorStore } from "../../core/orchestrator/store";
-import type { DerivedTrait } from "../../core/profile/derivator";
 import type { ProfileEngine } from "../../core/profile/engine";
 import type { KaiDB } from "../../db/client";
 import type { WorkspaceStore } from "../../workspace/store";
@@ -42,7 +41,6 @@ export async function runRecommendations(
   engine: ProfileEngine,
   store: WorkspaceStore,
   workspace: Workspace,
-  previewTraits: DerivedTrait[],
 ): Promise<void> {
   const { recommendations, savedTraits, ideaDomain } =
     getIdeaRecommendations(engine);
