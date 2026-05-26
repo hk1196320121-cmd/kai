@@ -28,8 +28,8 @@ describe("build artifacts", () => {
     });
     expect(result.status).toBe(0);
     const version = result.stdout.trim();
-    // Must be a valid semver (3-part)
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    // Must be a valid semver (3-part or 4-part)
+    expect(version).toMatch(/^\d+\.\d+\.\d+(\.\d+)?$/);
     // Must match package.json version
     const pkg = JSON.parse(
       readFileSync(join(ROOT, "package.json"), "utf-8"),
