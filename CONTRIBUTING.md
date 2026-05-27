@@ -93,9 +93,9 @@ src/
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, recommendations)
   core/prompt/        Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine)
   workspace/          Workspace/task/event CRUD + event bus
-  mcp/                MCP server (handlers, resources, schema, stdio transport)
+  mcp/                MCP server (handlers with domain sub-files, resources, schema, stdio transport)
   bridge/             Hermes bridge (file reads) + agent bridge (task dispatch)
-  db/                 SQLite client with WAL mode and schema migrations (v1–v8)
+  db/                 SQLite client with WAL mode and schema migrations (v1–v8), with declarative migration registry in db/migrations/
   llm/                OpenAI-compatible LLM provider with retry logic
 dist/                Compiled output (tsc), created by bun run build
 tests/                Mirrors src/ structure

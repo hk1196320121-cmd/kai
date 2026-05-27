@@ -207,7 +207,7 @@ src/
   workspace/      Workspace/task/event CRUD + event bus for observation collection
   mcp/            MCP server — handlers, resources, schema, stdio transport
   bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
-  db/             SQLite client with WAL mode and schema migrations
+  db/             SQLite client with WAL mode and schema migrations (declarative registry in db/migrations/)
   llm/            OpenAI-compatible LLM provider with transient-error retry
 dist/              Compiled output (tsc), created by bun run build
 ```

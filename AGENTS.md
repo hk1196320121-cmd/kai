@@ -299,8 +299,17 @@ src/
       commands/      CLI commands — install, list, doctor, uninstall
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
-    handlers.ts     5 profile tool handlers with rate limiting and dedup
-    orchestrator-handlers.ts  7 orchestrator tool handlers
+    handlers.ts     Handler factory (re-exports from domain sub-files)
+    handlers/       Domain-specific profile handlers
+      profile.ts    Profile read + why handlers
+      observe.ts    Single + batch observation submission handlers
+      derive.ts     Derivation trigger handler
+    orchestrator-handlers.ts  Orchestrator handler factory (re-exports from domain sub-files)
+    orchestrator/   Domain-specific orchestrator handlers
+      ideas.ts      Idea submit, plan, pause, replan handlers
+      tasks.ts      Task execute, execution status handlers
+      planning.ts   Plan approve handler
+      utils.ts      Shared orchestrator handler utilities
     prompt-handlers.ts   3 prompt genome tool handlers (compile, champion, evolve)
     prompt-schema.ts     Zod schemas for prompt tools
     telemetry-handlers.ts  3 telemetry tool handlers (query, trace, explain)
@@ -309,10 +318,12 @@ src/
     orchestrator-schema.ts    Zod schemas for orchestrator tools
     resources.ts    6 profile resource endpoints
     schema.ts       Zod input validation schemas (profile tools)
-    utils.ts        safeJsonParse, structured logging
+    utils.ts        textContent, withTrace, safeJsonParse, structured logging
   core/profile/     Profile engine core
     engine.ts       CRUD for identity, observations, traits, preferences; source precedence
-    derivator.ts    Rule-based + LLM trait derivation (20 rules across 16 dimensions, with deriveFromValues)
+    derivator.ts    Thin facade re-exporting rules + LLM derivation
+    rules.ts        20 derivation rule definitions across 16 dimensions (with deriveFromValues)
+    llm-derive.ts   LLM-based trait inference logic
     interview-questions.ts  10-question interview catalog with trait targets
     interview.ts    InterviewEngine — cold start interview flow with signal extraction
     provenance.ts   Trait provenance chain and correction tracking
@@ -349,6 +360,10 @@ src/
   bridge/           Bridges
     agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
   db/               SQLite client with WAL mode and schema migrations (v1–v8)
+    client.ts       Database connection, migration runner, query helpers
+    migrations/     Declarative migration registry + individual migration SQL
+      index.ts      Sequential ordering + self-bumps cross-validation
+      v1–v8.ts      Individual migration definitions
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
