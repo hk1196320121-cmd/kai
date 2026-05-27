@@ -1,4 +1,4 @@
-import { RULES } from "./derivator";
+import { RULES } from "./rules";
 import type { ProfileEngine } from "./engine";
 import type { Observation, ProvenanceChain } from "./types";
 
