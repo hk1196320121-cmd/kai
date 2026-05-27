@@ -1,6 +1,6 @@
-import type { ProfileEngine } from "./engine";
 import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { DerivedTrait } from "./derivator";
+import type { ProfileEngine } from "./engine";
 import { RULES } from "./rules";
 
 const VALID_LLM_DIMENSIONS = new Set(RULES.map((r) => r.dimension));
@@ -37,10 +37,7 @@ Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkere
   let systemPrompt: string;
   if (compiler) {
     try {
-      const compiled = await compiler.compile(
-        "derivator",
-        engine.getTraits(),
-      );
+      const compiled = await compiler.compile("derivator", engine.getTraits());
       systemPrompt = compiled.prompt;
     } catch (err) {
       console.error(

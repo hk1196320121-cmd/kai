@@ -1,8 +1,8 @@
 import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { ProfileEngine } from "./engine";
-import { RULES } from "./rules";
-import type { Rule } from "./rules";
 import { deriveFromLLM } from "./llm-derive";
+import type { Rule } from "./rules";
+import { RULES } from "./rules";
 
 export interface DerivedTrait {
   dimension: string;
@@ -116,4 +116,3 @@ export class Derivator {
     return deriveFromLLM(this.engine, this.telemetry, provider, compiler);
   }
 }
-
