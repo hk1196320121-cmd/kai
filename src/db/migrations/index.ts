@@ -33,3 +33,18 @@ for (let i = 0; i < MIGRATIONS.length; i++) {
     );
   }
 }
+
+// Cross-validate selfBumps flag against actual SQL content
+for (const m of MIGRATIONS) {
+  const hasBump = m.sql.includes("INSERT OR REPLACE INTO schema_version");
+  if (m.selfBumps && !hasBump) {
+    throw new Error(
+      `Migration v${m.version} claims selfBumps but SQL doesn't bump schema_version`,
+    );
+  }
+  if (!m.selfBumps && hasBump) {
+    throw new Error(
+      `Migration v${m.version} bumps schema_version in SQL but selfBumps is not set`,
+    );
+  }
+}
