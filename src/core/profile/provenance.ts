@@ -1,5 +1,5 @@
-import { RULES } from "./derivator";
 import type { ProfileEngine } from "./engine";
+import { RULES } from "./rules";
 import type { Observation, ProvenanceChain } from "./types";
 
 export interface TraitExplanation {

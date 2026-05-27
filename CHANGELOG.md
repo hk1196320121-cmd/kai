@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.1.0] - 2026-05-28
+
+### Changed
+- **DB migration extraction**: 8 migration SQL strings moved from `db/client.ts` to `db/migrations/v1-v8.ts` with a declarative registry (`db/migrations/index.ts`) that enforces sequential ordering and self-bumps cross-validation at import time
+- **MCP handler decomposition**: `handlers.ts` (384 lines) split into 3 domain files (`handlers/profile.ts`, `handlers/observe.ts`, `handlers/derive.ts`) with factory-pattern dependency injection; `orchestrator-handlers.ts` (324 lines) split into `orchestrator/ideas.ts`, `orchestrator/tasks.ts`, `orchestrator/planning.ts` + `orchestrator/utils.ts`
+- **Profile derivator decomposition**: `derivator.ts` (523 lines) split into `core/profile/rules.ts` (rule definitions), `core/profile/llm-derive.ts` (LLM derivation logic), and a thin `derivator.ts` facade (118 lines)
+- **Shared MCP utilities**: `textContent()`, `withTrace()`, and `safeJsonParse()` extracted to `mcp/utils.ts`
+
+### Fixed
+- **Tab characters in fallback prompt**: removed non-printable characters that could cause LLM parsing errors
+- **Biome import ordering**: fixed import sorting across new derivator modules
+
 ## [0.10.0.1] - 2026-05-27
 
 ### Added

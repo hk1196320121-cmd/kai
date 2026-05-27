@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { buildExplanation } from "../src/core/orchestrator/recommend";
 import { matchTemplates } from "../src/core/orchestrator/templates";
-import { Derivator, RULES } from "../src/core/profile/derivator";
+import { Derivator } from "../src/core/profile/derivator";
+import { RULES } from "../src/core/profile/rules";
 import { ProfileEngine } from "../src/core/profile/engine";
 import { InterviewEngine } from "../src/core/profile/interview";
 import { QUESTIONS } from "../src/core/profile/interview-questions";
