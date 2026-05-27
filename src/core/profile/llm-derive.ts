@@ -31,8 +31,8 @@ export async function deriveFromLLM(
   );
 
   const DERIVATOR_FALLBACK = `You are a user profile analysis engine. Given observations about a user, derive personality traits.
-	Return a JSON object with a "traits" array. Each trait has: dimension (string), value (0.0-1.0), confidence (1-10), reasoning (string).
-	Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented, planning_style, schedule_rhythm, preferred_output_shape, disliked_behavior, comm_style, domain_context, task_completion_rate.`;
+Return a JSON object with a "traits" array. Each trait has: dimension (string), value (0.0-1.0), confidence (1-10), reasoning (string).
+Valid dimensions: scope_appetite, risk_tolerance, autonomy, early_riser, tinkerer, consistent_user, detail_oriented, planning_style, schedule_rhythm, preferred_output_shape, disliked_behavior, comm_style, domain_context, task_completion_rate.`;
 
   let systemPrompt: string;
   if (compiler) {

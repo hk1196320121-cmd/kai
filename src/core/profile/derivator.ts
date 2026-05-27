@@ -117,6 +117,3 @@ export class Derivator {
   }
 }
 
-// Re-export RULES and Rule for backward compatibility
-export { RULES } from "./rules";
-export type { Rule } from "./rules";
