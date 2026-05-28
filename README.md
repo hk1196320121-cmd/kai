@@ -246,7 +246,9 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
 | [How the Work Command Modules Work](docs/explanation-work-modules.md) | Explanation | PhaseResult control flow, cooperative SIGINT cancellation, module responsibilities |
 | [How to Install and Manage Kai Skills](docs/howto-skills.md) | How-to | Install, validate, update, and remove generated skill files |
+| [How to Use Workflow Slash Commands](docs/howto-workflow-commands.md) | How-to | Using the 8 personalized slash commands (/kai, /kai-profile, etc.) |
 | [How the Skill Compiler Works](docs/explanation-skill-compiler.md) | Explanation | Zod schema introspection, domain mapping, target adapter pattern, trade-offs |
+| [How Hooks and Workflow Commands Work](docs/explanation-hooks-and-commands.md) | Explanation | Hook architecture, profile-aware baking, intent triggers, design trade-offs |
 | [How the Module Decomposition Pattern Works](docs/explanation-module-decomposition.md) | Explanation | Thin facades, deps injection, declarative registries, and why monolith files were split |
 
 ## Development
