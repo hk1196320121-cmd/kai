@@ -1,10 +1,15 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { buildSkillConfigs, sanitizeDomainName } from "../compiler";
+import { getHookConfigs, writeHookScripts } from "../hooks";
 import { ClaudeCodeTarget } from "../targets/claude-code";
 import { generateMasterSkill, generateSkillMarkdown } from "../templates";
+import { WORKFLOWS } from "../workflows/definitions";
+import { CommandGenerator } from "../workflows/generator";
 import type { McpConfig, SkillManifest } from "../types";
+import { getBakedTraits } from "./profile-aware";
 
 export async function installSkills(opts: {
   target: string;
@@ -83,6 +88,45 @@ export async function installSkills(opts: {
     );
 
     console.log(`Installed skill files to ${installPath}`);
+
+    // --- Generate workflow commands ---
+    const commandsDir = join(homedir(), ".claude", "commands", "kai");
+    mkdirSync(commandsDir, { recursive: true });
+
+    // Read profile for trait baking
+    let bakedTraits: Map<string, number>;
+    try {
+      const { getEngine } = await import("../../utils");
+      const { db, engine } = getEngine();
+      const snapshot = engine.getProfile();
+      bakedTraits = getBakedTraits(snapshot);
+      db.close();
+      if (bakedTraits.size === 0) {
+        console.log("Warning: Profile is empty. Commands will use defaults until profile is built.");
+        console.log("  Run `kai work start` to build your profile.");
+      }
+    } catch {
+      bakedTraits = new Map();
+    }
+
+    const gen = new CommandGenerator(bakedTraits);
+    const commands = gen.generateAll(WORKFLOWS);
+    for (const cmd of commands) {
+      writeFileSync(join(commandsDir, `${cmd.name}.md`), cmd.content);
+    }
+    console.log(`Installed ${commands.length} slash commands to ${commandsDir}`);
+
+    // --- Generate hook scripts ---
+    const hooksDir = join(homedir(), ".claude", "hooks", "kai");
+    writeHookScripts(hooksDir);
+    console.log(`Installed hook scripts to ${hooksDir}`);
+
+    // --- Merge hooks into settings.json ---
+    const hookConfigs = getHookConfigs(hooksDir);
+    for (const hc of hookConfigs) {
+      await target.mergeSettingsHook(hc);
+    }
+    console.log("Merged hooks into ~/.claude/settings.json");
   }
 
   // Configure MCP if requested

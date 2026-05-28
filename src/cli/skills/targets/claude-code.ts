@@ -17,11 +17,13 @@ export class ClaudeCodeTarget implements TargetAdapter {
   readonly name = "claude-code";
   readonly skillInstallPath: string;
   private readonly claudeJsonPath: string;
+  private readonly settingsJsonPath: string;
 
-  constructor(skillInstallPath?: string, claudeJsonPath?: string) {
+  constructor(skillInstallPath?: string, claudeJsonPath?: string, settingsJsonPath?: string) {
     this.skillInstallPath =
       skillInstallPath ?? join(homedir(), ".claude", "skills", "kai");
     this.claudeJsonPath = claudeJsonPath ?? join(homedir(), ".claude.json");
+    this.settingsJsonPath = settingsJsonPath ?? join(homedir(), ".claude", "settings.json");
   }
 
   validateInstallation(): ValidationResult {
@@ -111,6 +113,44 @@ export class ClaudeCodeTarget implements TargetAdapter {
       delete (existing.mcpServers as Record<string, unknown>).kai;
       this.atomicWriteJson(this.claudeJsonPath, existing);
     }
+  }
+
+  async mergeSettingsHook(hookConfig: import("../hooks").HookConfig): Promise<void> {
+    let settings: Record<string, unknown>;
+    if (existsSync(this.settingsJsonPath)) {
+      try {
+        const resolved = realpathSync(this.settingsJsonPath);
+        const raw = readFileSync(resolved, "utf-8");
+        settings = JSON.parse(raw);
+      } catch {
+        const backup = this.settingsJsonPath + ".kai-backup";
+        renameSync(this.settingsJsonPath, backup);
+        settings = {};
+      }
+    } else {
+      settings = {};
+    }
+
+    const { mergeHookIntoSettings } = await import("../hooks");
+    const merged = mergeHookIntoSettings(settings, hookConfig);
+    this.atomicWriteJson(this.settingsJsonPath, merged);
+  }
+
+  async removeSettingsHooks(): Promise<void> {
+    if (!existsSync(this.settingsJsonPath)) return;
+
+    let settings: Record<string, unknown>;
+    try {
+      const resolved = realpathSync(this.settingsJsonPath);
+      settings = JSON.parse(readFileSync(resolved, "utf-8"));
+    } catch {
+      return;
+    }
+
+    const { removeHookFromSettings } = await import("../hooks");
+    let cleaned = removeHookFromSettings(settings, { eventType: "SessionStart", hookId: "kai-session-start" });
+    cleaned = removeHookFromSettings(cleaned, { eventType: "PostToolUse", hookId: "kai-auto-observe" });
+    this.atomicWriteJson(this.settingsJsonPath, cleaned);
   }
 
   private atomicWriteJson(filePath: string, data: unknown): void {

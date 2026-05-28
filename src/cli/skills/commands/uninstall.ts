@@ -61,5 +61,15 @@ export function registerUninstallCommand(skills: Command): void {
         const msg = err instanceof Error ? err.message : String(err);
         console.log(status("warning", `Could not remove MCP config: ${msg}`));
       }
+
+      try {
+        await target.removeSettingsHooks();
+        console.log(
+          status("success", "Hooks removed from ~/.claude/settings.json."),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(status("warning", `Could not remove hooks: ${msg}`));
+      }
     });
 }
