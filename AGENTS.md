@@ -278,12 +278,12 @@ kai telemetry errors                   # Recent errors
 kai telemetry explain "question"       # LLM-powered analysis
 
 # Skills (generate SKILL.md files for Claude Code)
-kai skills install                     # Generate skill files from MCP tool schemas
+kai skills install                     # Generate skill files, workflow commands, and hooks
 kai skills install --force             # Overwrite existing skill files
 kai skills list                        # List installed skills and their tools
-kai skills doctor                      # Validate installed skills
+kai skills doctor                      # Validate installed skills, commands, and hooks
 kai skills doctor --fix                # Reinstall to fix issues
-kai skills uninstall                   # Remove generated skill files
+kai skills uninstall                   # Remove skill files, commands, and hooks
 ```
 
 ## Architecture
@@ -292,11 +292,13 @@ kai skills uninstall                   # Remove generated skill files
 src/
   cli/              Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
     work/            Work command modules — start, status, recommendations, git-scan, ui, types
-    skills/          Skill compiler — generates SKILL.md files from MCP tool schemas
+    skills/          Skill compiler — generates SKILL.md files, workflow commands, and hooks
       compiler.ts    Introspects MCP tool schemas via Zod, builds skill configs
-      templates.ts   Generates SKILL.md markdown from skill configs
+      templates.ts   Generates SKILL.md markdown from skill configs + intent-based triggers
       targets/       Pluggable target adapters (Claude Code adapter)
       commands/      CLI commands — install, list, doctor, uninstall
+      hooks/         Hook script generators (SessionStart, PostToolUse auto-observe)
+      workflows/     Workflow definitions + CommandGenerator (slash commands)
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
     handlers.ts     Handler factory (re-exports from domain sub-files)
@@ -376,6 +378,8 @@ Data flows:
 - **Prompt genome path**: Genes → Genome → Compiler (profile-aware segments) → Variant → Tournament (A/B battle) → Judge (LLM-as-judge) → Champion promotion → Evolution loop
 - **Telemetry path**: MCP tool call → withTrace wrapper → Trace + Spans + Events + State changes + Errors → SQLite telemetry tables → 30-day retention pruning. `telemetry.query`/`trace`/`explain` tools read back telemetry data
 - **Skill compiler path**: MCP tool schemas (Zod) → Compiler → Skill configs → Templates → SKILL.md files → Target adapter (Claude Code) → Install directory + MCP config
+- **Workflow command path**: Workflow definitions → CommandGenerator (profile-aware trait baking) → Slash command .md files → `~/.claude/commands/kai/`
+- **Hook path**: Hook generators (SessionStart, PostToolUse) → Hook scripts → `~/.claude/hooks/kai/` → Settings.json hook registration
 - All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts

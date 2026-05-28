@@ -133,10 +133,10 @@ kai mcp serve
 
 | Command | Description |
 |---------|-------------|
-| `install [--force]` | Generate SKILL.md files for Claude Code from Kai's MCP tool schemas |
+| `install [--force]` | Generate SKILL.md files, workflow commands, and hooks for Claude Code |
 | `list` | List installed skills and their associated MCP tools |
-| `doctor [--fix]` | Validate installed skills against current schemas; `--fix` reinstalls |
-| `uninstall` | Remove generated skill files and MCP configuration |
+| `doctor [--fix]` | Validate installed skills, commands, and hooks; `--fix` reinstalls |
+| `uninstall` | Remove generated skill files, commands, hooks, and MCP configuration |
 
 ### `kai mcp`
 
@@ -199,7 +199,7 @@ src/
   cli/            Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
     cli/renderers/   Typed output renderers for consistent CLI formatting
     cli/work/        Work command modules (start, status, recommendations, git-scan, ui, types)
-    cli/skills/      Skill compiler — generates SKILL.md files from MCP tool schemas (compiler, templates, targets, commands)
+    cli/skills/      Skill compiler + workflow commands + hook generators (compiler, templates, targets, commands, hooks, workflows)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)

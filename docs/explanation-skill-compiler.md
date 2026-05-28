@@ -16,14 +16,17 @@ Zod schemas (src/mcp/*-schema.ts)
   ▼
 compiler.ts — introspects schemas via z.toJSONSchema(), groups tools into 7 domains
   │
-  ▼
-templates.ts — generates SKILL.md markdown from domain configs
+  ├─ templates.ts — generates SKILL.md markdown from domain configs
+  │
+  ├─ workflows/definitions.ts → CommandGenerator → slash commands in ~/.claude/commands/kai/
+  │
+  └─ hooks/ → hook scripts in ~/.claude/hooks/kai/
   │
   ▼
-targets/claude-code.ts — writes files to ~/.claude/skills/kai/ + configures MCP in ~/.claude.json
+targets/claude-code.ts — writes to ~/.claude/skills/kai/ + commands/ + hooks/ + configures MCP + registers hooks
   │
   ▼
-Claude Code discovers skills on next launch → slash commands available
+Claude Code discovers skills on next launch → slash commands + hooks active
 ```
 
 ## Domain mapping
@@ -52,10 +55,11 @@ If `z.toJSONSchema()` fails on an unsupported type, the compiler falls back to l
 
 The compiler uses a `TargetAdapter` interface with a single implementation: `ClaudeCodeTarget`. The adapter handles:
 
-- **Install path**: `~/.claude/skills/kai/` (where Claude Code looks for skills)
+- **Install paths**: `~/.claude/skills/kai/` (skills), `~/.claude/commands/kai/` (workflow commands), `~/.claude/hooks/kai/` (hook scripts)
 - **MCP configuration**: reads and writes `~/.claude.json` to register the `kai` MCP server
-- **Atomic writes**: uses `tmpfile + renameSync + chmodSync(0o600)` to avoid corrupting `~/.claude.json` if the process crashes mid-write
-- **Validation**: checks `manifest.json` existence and structure
+- **Hook registration**: reads and writes `~/.claude/settings.json` to register SessionStart and PostToolUse hooks
+- **Atomic writes**: uses `tmpfile + renameSync + chmodSync(0o600)` to avoid corrupting config files if the process crashes mid-write
+- **Validation**: checks `manifest.json` existence, command files, hook scripts, and settings.json hook registration
 
 Adding a new target (e.g., Cursor, Windsurf) means implementing the `TargetAdapter` interface with the correct install path and config file format. The compiler and templates don't change.
 
@@ -72,6 +76,20 @@ Adding a new target (e.g., Cursor, Windsurf) means implementing the `TargetAdapt
   prompt/SKILL.md    ← prompt.compile, champion, evolve
   telemetry/SKILL.md ← telemetry.query, trace, explain
   work/SKILL.md      ← kai_work_recommend, execution_status
+
+~/.claude/commands/kai/
+  kai.md              ← /kai — behavioral dashboard
+  kai-profile.md      ← /kai-profile — profile summary
+  kai-observe.md      ← /kai-observe — submit observations
+  kai-why.md          ← /kai-why — trait explanations
+  kai-plan.md         ← /kai-plan — idea planning
+  kai-status.md       ← /kai-status — execution status
+  kai-reflect.md      ← /kai-reflect — profile reflection
+  kai-evolve.md       ← /kai-evolve — prompt evolution
+
+~/.claude/hooks/kai/
+  kai-session-start.cjs  ← injects profile context into new sessions
+  kai-auto-observe.cjs   ← detects tool usage patterns and submits observations
 ```
 
 Each SKILL.md has YAML frontmatter with:

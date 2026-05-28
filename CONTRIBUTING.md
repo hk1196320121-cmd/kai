@@ -88,7 +88,7 @@ src/
   cli/                Commander.js CLI commands
     cli/renderers/       Typed output renderers (profile, prompt, recommendations, telemetry, workspace)
     cli/work/            Work command modules (start, status, recommendations, git-scan, ui, types)
-    cli/skills/          Skill compiler — generates SKILL.md files from MCP tool schemas
+    cli/skills/          Skill compiler — generates SKILL.md files, workflow commands, and hooks
   core/profile/       Profile engine (identity, observations, traits, derivation, decay, interview)
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, recommendations)
   core/prompt/        Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine)
