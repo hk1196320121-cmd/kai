@@ -32,7 +32,12 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       "View your full behavioral profile with trait evolution over time",
     tools: [
       { id: "profile.read", params: { scope: "full" } },
-      { id: "telemetry.query", params: { sql: "SELECT dimension, value, confidence, reasoning, updated_at FROM traits ORDER BY dimension" } },
+      {
+        id: "telemetry.query",
+        params: {
+          sql: "SELECT dimension, value, confidence, reasoning, updated_at FROM traits ORDER BY dimension",
+        },
+      },
     ],
     profileConditions: [
       {
@@ -53,12 +58,8 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   },
   {
     name: "kai-observe",
-    description:
-      "Submit behavioral observations to the profile engine",
-    tools: [
-      { id: "observe.submit" },
-      { id: "observe.batch" },
-    ],
+    description: "Submit behavioral observations to the profile engine",
+    tools: [{ id: "observe.submit" }, { id: "observe.batch" }],
     profileConditions: [],
   },
   {
@@ -79,12 +80,8 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   },
   {
     name: "kai-plan",
-    description:
-      "Submit an idea and generate an execution plan",
-    tools: [
-      { id: "kai_idea_submit" },
-      { id: "kai_idea_plan" },
-    ],
+    description: "Submit an idea and generate an execution plan",
+    tools: [{ id: "kai_idea_submit" }, { id: "kai_idea_plan" }],
     profileConditions: [
       {
         trait: "planning_style",
@@ -98,8 +95,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   },
   {
     name: "kai-status",
-    description:
-      "Check execution status of ideas and tasks",
+    description: "Check execution status of ideas and tasks",
     tools: [{ id: "kai_execution_status" }],
     profileConditions: [
       {
@@ -114,22 +110,22 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   },
   {
     name: "kai-reflect",
-    description:
-      "Reflect on your current session and submit observations",
+    description: "Reflect on your current session and submit observations",
     tools: [
-      { id: "telemetry.query", params: { sql: "SELECT tool_name, COUNT(*) as cnt FROM tool_calls WHERE ts > datetime('now', '-1 hour') GROUP BY tool_name ORDER BY cnt DESC" } },
+      {
+        id: "telemetry.query",
+        params: {
+          sql: "SELECT tool_name, COUNT(*) as cnt FROM tool_calls WHERE ts > datetime('now', '-1 hour') GROUP BY tool_name ORDER BY cnt DESC",
+        },
+      },
       { id: "observe.batch" },
     ],
     profileConditions: [],
   },
   {
     name: "kai-evolve",
-    description:
-      "Evolve Kai's prompts based on behavioral outcomes",
-    tools: [
-      { id: "prompt.compile" },
-      { id: "prompt.evolve" },
-    ],
+    description: "Evolve Kai's prompts based on behavioral outcomes",
+    tools: [{ id: "prompt.compile" }, { id: "prompt.evolve" }],
     profileConditions: [
       {
         trait: "risk_tolerance",

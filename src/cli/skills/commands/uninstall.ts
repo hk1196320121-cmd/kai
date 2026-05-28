@@ -1,8 +1,8 @@
 import { existsSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import * as readline from "node:readline";
 import type { Command } from "commander";
-import { join } from "node:path";
 import { dim, header, status } from "../../format";
 import { ClaudeCodeTarget } from "../targets/claude-code";
 

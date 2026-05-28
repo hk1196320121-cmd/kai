@@ -1,5 +1,5 @@
-import type { WorkflowDefinition } from "./types";
 import { mcpToolName } from "../templates";
+import type { WorkflowDefinition } from "./types";
 
 export class CommandGenerator {
   private readonly bakedTraits: Map<string, number>;
@@ -33,9 +33,7 @@ export class CommandGenerator {
       : "";
 
     const fallbackSection =
-      !hasProfile && wf.emptyProfileFallback
-        ? wf.emptyProfileFallback
-        : "";
+      !hasProfile && wf.emptyProfileFallback ? wf.emptyProfileFallback : "";
 
     const parts: string[] = [
       `# /${wf.name}`,
@@ -55,10 +53,7 @@ export class CommandGenerator {
       parts.push("", fallbackSection);
     }
 
-    parts.push(
-      "",
-      "Display the results in a clear, organized format.",
-    );
+    parts.push("", "Display the results in a clear, organized format.");
 
     return parts.join("\n");
   }

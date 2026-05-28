@@ -6,9 +6,9 @@ import { buildSkillConfigs, sanitizeDomainName } from "../compiler";
 import { getHookConfigs, writeHookScripts } from "../hooks";
 import { ClaudeCodeTarget } from "../targets/claude-code";
 import { generateMasterSkill, generateSkillMarkdown } from "../templates";
+import type { McpConfig, SkillManifest } from "../types";
 import { WORKFLOWS } from "../workflows/definitions";
 import { CommandGenerator } from "../workflows/generator";
-import type { McpConfig, SkillManifest } from "../types";
 import { getBakedTraits } from "./profile-aware";
 
 export async function installSkills(opts: {
@@ -102,7 +102,9 @@ export async function installSkills(opts: {
       bakedTraits = getBakedTraits(snapshot);
       db.close();
       if (bakedTraits.size === 0) {
-        console.log("Warning: Profile is empty. Commands will use defaults until profile is built.");
+        console.log(
+          "Warning: Profile is empty. Commands will use defaults until profile is built.",
+        );
         console.log("  Run `kai work start` to build your profile.");
       }
     } catch {
@@ -114,7 +116,9 @@ export async function installSkills(opts: {
     for (const cmd of commands) {
       writeFileSync(join(commandsDir, `${cmd.name}.md`), cmd.content);
     }
-    console.log(`Installed ${commands.length} slash commands to ${commandsDir}`);
+    console.log(
+      `Installed ${commands.length} slash commands to ${commandsDir}`,
+    );
 
     // --- Generate hook scripts ---
     const hooksDir = join(homedir(), ".claude", "hooks", "kai");

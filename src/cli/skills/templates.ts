@@ -22,10 +22,8 @@ const INTENT_TRIGGERS: Record<string, string> = {
     "questions about behavioral profile, trait values, profile summary, trait explanations",
   observe:
     "submitting observations, recording behavioral data, logging preferences or patterns",
-  idea:
-    "managing ideas, creating plans, approving tasks, executing work, orchestrating projects",
-  work:
-    "getting work recommendations, checking task status, finding what to work on next",
+  idea: "managing ideas, creating plans, approving tasks, executing work, orchestrating projects",
+  work: "getting work recommendations, checking task status, finding what to work on next",
   prompt:
     "compiling prompts, evolving prompts, inspecting prompt variants, champion prompts",
   telemetry:
@@ -53,7 +51,7 @@ export function generateSkillMarkdown(config: SkillConfig): string {
   const commandList = config.slashCommands.join(", ");
 
   const triggerLine = OVERLAPPING_DOMAINS.includes(config.domain)
-    ? INTENT_TRIGGERS[config.domain] ?? commandList
+    ? (INTENT_TRIGGERS[config.domain] ?? commandList)
     : commandList;
 
   const allowedTools = [

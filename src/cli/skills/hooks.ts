@@ -143,7 +143,11 @@ interface SettingsJson {
 }
 
 function isKaiHook(command: string, hookId: string): boolean {
-  return command.includes(hookId) || command.includes("kai-session-start") || command.includes("kai-auto-observe");
+  return (
+    command.includes(hookId) ||
+    command.includes("kai-session-start") ||
+    command.includes("kai-auto-observe")
+  );
 }
 
 export function mergeHookIntoSettings(
@@ -197,9 +201,7 @@ export function removeHookFromSettings(
       (h) => !isKaiHook(h.command, config.hookId),
     );
   }
-  result.hooks[config.eventType] = groups.filter(
-    (g) => g.hooks.length > 0,
-  );
+  result.hooks[config.eventType] = groups.filter((g) => g.hooks.length > 0);
 
   return result;
 }

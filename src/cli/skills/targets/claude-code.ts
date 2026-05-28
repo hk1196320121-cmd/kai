@@ -19,11 +19,16 @@ export class ClaudeCodeTarget implements TargetAdapter {
   private readonly claudeJsonPath: string;
   private readonly settingsJsonPath: string;
 
-  constructor(skillInstallPath?: string, claudeJsonPath?: string, settingsJsonPath?: string) {
+  constructor(
+    skillInstallPath?: string,
+    claudeJsonPath?: string,
+    settingsJsonPath?: string,
+  ) {
     this.skillInstallPath =
       skillInstallPath ?? join(homedir(), ".claude", "skills", "kai");
     this.claudeJsonPath = claudeJsonPath ?? join(homedir(), ".claude.json");
-    this.settingsJsonPath = settingsJsonPath ?? join(homedir(), ".claude", "settings.json");
+    this.settingsJsonPath =
+      settingsJsonPath ?? join(homedir(), ".claude", "settings.json");
   }
 
   validateInstallation(): ValidationResult {
@@ -115,7 +120,9 @@ export class ClaudeCodeTarget implements TargetAdapter {
     }
   }
 
-  async mergeSettingsHook(hookConfig: import("../hooks").HookConfig): Promise<void> {
+  async mergeSettingsHook(
+    hookConfig: import("../hooks").HookConfig,
+  ): Promise<void> {
     let settings: Record<string, unknown>;
     if (existsSync(this.settingsJsonPath)) {
       try {
@@ -123,7 +130,7 @@ export class ClaudeCodeTarget implements TargetAdapter {
         const raw = readFileSync(resolved, "utf-8");
         settings = JSON.parse(raw);
       } catch {
-        const backup = this.settingsJsonPath + ".kai-backup";
+        const backup = `${this.settingsJsonPath}.kai-backup`;
         renameSync(this.settingsJsonPath, backup);
         settings = {};
       }
@@ -148,8 +155,14 @@ export class ClaudeCodeTarget implements TargetAdapter {
     }
 
     const { removeHookFromSettings } = await import("../hooks");
-    let cleaned = removeHookFromSettings(settings, { eventType: "SessionStart", hookId: "kai-session-start" });
-    cleaned = removeHookFromSettings(cleaned, { eventType: "PostToolUse", hookId: "kai-auto-observe" });
+    let cleaned = removeHookFromSettings(settings, {
+      eventType: "SessionStart",
+      hookId: "kai-session-start",
+    });
+    cleaned = removeHookFromSettings(cleaned, {
+      eventType: "PostToolUse",
+      hookId: "kai-auto-observe",
+    });
     this.atomicWriteJson(this.settingsJsonPath, cleaned);
   }
 
