@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.11.0.0] - 2026-05-28
+
+### Added
+- **8 workflow slash commands** (`/kai`, `/kai-profile`, `/kai-observe`, `/kai-why`, `/kai-plan`, `/kai-status`, `/kai-reflect`, `/kai-evolve`) — workflow definitions that map natural-language intents to MCP tool calls with profile-aware conditional content
+- **CommandGenerator** — compiles WorkflowDefinition schemas into Claude Code slash command markdown files with PII-safe trait baking (14 behavioral dimensions whitelisted, identity fields excluded)
+- **Hook generators** for SessionStart (profile injection into new sessions) and PostToolUse (auto-observe tool usage patterns with pattern detection and observation submission)
+- **Install generates commands + hooks** — `kai skills install` now writes workflow commands to `~/.claude/commands/kai/`, hook scripts to `~/.claude/hooks/kai/`, and merges hook registrations into `~/.claude/settings.json`
+- **Doctor validates commands + hooks** — `kai skills doctor` now checks workflow command files, hook scripts, and settings.json hook registration status
+- **Uninstall removes commands + hooks** — `kai skills uninstall` now cleans up `~/.claude/commands/kai/`, `~/.claude/hooks/kai/`, and removes hook registrations from settings.json
+- **OI-1 intent-based triggers** — overlapping domains (e.g., observe vs derive) use intent keywords for disambiguation instead of domain-only matching
+- **Tag-triggered release workflow** — CI releases triggered by `kai-profile-v*` tags instead of release-please
+
+### Changed
+- **Hook script generators extracted** — `generateSessionStartHook` and `generateAutoObserveHook` moved to `hooks/session-start.ts` and `hooks/auto-observe.ts` for maintainability
+- **Doctor reuses isKaiHook()** — settings.json hook validation now uses the shared detection function instead of duplicated inline logic
+- **WorkflowStep and ProfileCondition exported** — types now accessible for downstream consumers
+- **Profile load failure logs warning** — install command now distinguishes "profile unavailable" from "profile is empty"
+
+### Fixed
+- **Biome lint warnings** resolved across skills module
+- **rmSync typo** — `true: true` corrected to `force: true` in coverage tests
+
 ## [0.10.1.0] - 2026-05-28
 
 ### Changed
