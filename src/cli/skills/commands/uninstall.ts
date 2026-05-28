@@ -52,6 +52,30 @@ export function registerUninstallCommand(skills: Command): void {
         return;
       }
 
+      // --- Remove workflow commands ---
+      const commandsDir = target.commandsDir;
+      if (existsSync(commandsDir)) {
+        try {
+          rmSync(commandsDir, { recursive: true, force: true });
+          console.log(status("success", "Workflow commands removed."));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.log(status("warning", `Could not remove commands: ${msg}`));
+        }
+      }
+
+      // --- Remove hook scripts ---
+      const hooksDir = target.hooksDir;
+      if (existsSync(hooksDir)) {
+        try {
+          rmSync(hooksDir, { recursive: true, force: true });
+          console.log(status("success", "Hook scripts removed."));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.log(status("warning", `Could not remove hooks: ${msg}`));
+        }
+      }
+
       try {
         await target.removeMcp();
         console.log(
@@ -60,6 +84,16 @@ export function registerUninstallCommand(skills: Command): void {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.log(status("warning", `Could not remove MCP config: ${msg}`));
+      }
+
+      try {
+        await target.removeSettingsHooks();
+        console.log(
+          status("success", "Hooks removed from ~/.claude/settings.json."),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(status("warning", `Could not remove hooks: ${msg}`));
       }
     });
 }

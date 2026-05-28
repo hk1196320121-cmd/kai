@@ -13,11 +13,15 @@ Generate SKILL.md files from Kai's MCP tool schemas so you can invoke any Kai to
 kai skills install --configure-mcp
 ```
 
-This does two things:
+This does four things:
 
 1. **Generates skill files** in `~/.claude/skills/kai/`. One master `SKILL.md` plus 7 domain-specific files (profile, observe, derive, work, idea, prompt, telemetry). Each file contains the slash commands, tool descriptions, and parameter schemas for that domain.
 
-2. **Configures MCP** in `~/.claude.json` by adding the `kai` MCP server entry pointing to `kai mcp serve`. This is what makes the tools actually callable.
+2. **Generates workflow commands** in `~/.claude/commands/kai/`. 8 slash commands (`/kai`, `/kai-profile`, `/kai-observe`, `/kai-why`, `/kai-plan`, `/kai-status`, `/kai-reflect`, `/kai-evolve`) that map natural-language intents to MCP tool calls with profile-aware conditional content.
+
+3. **Generates hook scripts** in `~/.claude/hooks/kai/`. A SessionStart hook that injects profile context into new sessions, and a PostToolUse hook that detects tool usage patterns and submits observations automatically.
+
+4. **Configures MCP and hooks** — registers the `kai` MCP server in `~/.claude.json` and merges hook registrations into `~/.claude/settings.json`.
 
 If you see "Conflicting MCP entry", your `~/.claude.json` already has a `kai` entry with different settings. Either edit it manually or run:
 
@@ -43,6 +47,9 @@ This checks:
 - The Kai version in the manifest matches your current installation
 - No new tools have been added since the last install
 - No tools have been removed
+- All workflow command files are present in `~/.claude/commands/kai/`
+- All hook scripts are present in `~/.claude/hooks/kai/`
+- Hook registrations exist in `~/.claude/settings.json`
 
 Output looks like:
 
@@ -87,7 +94,7 @@ Generated: 2026-05-27T01:30:00.000Z
 kai skills uninstall
 ```
 
-Removes `~/.claude/skills/kai/` (all generated files) and the `kai` MCP entry from `~/.claude.json`. Prompts for confirmation unless you pass `--force`.
+Removes `~/.claude/skills/kai/` (skill files), `~/.claude/commands/kai/` (workflow commands), `~/.claude/hooks/kai/` (hook scripts), the `kai` MCP entry from `~/.claude.json`, and hook registrations from `~/.claude/settings.json`. Prompts for confirmation unless you pass `--force`.
 
 ## When to reinstall
 

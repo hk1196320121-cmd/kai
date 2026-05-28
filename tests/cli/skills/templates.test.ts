@@ -84,3 +84,33 @@ describe("templates.ts", () => {
     });
   });
 });
+
+import { OVERLAPPING_DOMAINS } from "../../../src/cli/skills/templates";
+
+describe("OI-1 intent-based triggers", () => {
+  const configs = buildSkillConfigs();
+
+  test("OVERLAPPING_DOMAINS lists the 6 domains with workflow commands", () => {
+    expect(OVERLAPPING_DOMAINS.sort()).toEqual(
+      ["profile", "observe", "idea", "work", "prompt", "telemetry"].sort(),
+    );
+  });
+
+  test("overlapping domains generate intent-based triggers (no /kai- in trigger line)", () => {
+    for (const config of configs) {
+      const md = generateSkillMarkdown(config);
+      if (OVERLAPPING_DOMAINS.includes(config.domain)) {
+        const triggerMatch = md.match(/Triggers: (.+)/);
+        expect(triggerMatch, `${config.domain} should have Triggers line`).not.toBeNull();
+        const triggerText = triggerMatch![1];
+        expect(triggerText, `${config.domain} triggers should be intent-based, not slash commands`).not.toMatch(/\/kai-\w+/);
+      }
+    }
+  });
+
+  test("derive domain keeps slash-command triggers", () => {
+    const deriveConfig = configs.find((c) => c.domain === "derive")!;
+    const md = generateSkillMarkdown(deriveConfig);
+    expect(md).toContain("/kai-derive");
+  });
+});

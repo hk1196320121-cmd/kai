@@ -133,10 +133,10 @@ kai mcp serve
 
 | Command | Description |
 |---------|-------------|
-| `install [--force]` | Generate SKILL.md files for Claude Code from Kai's MCP tool schemas |
+| `install [--force]` | Generate SKILL.md files, workflow commands, and hooks for Claude Code |
 | `list` | List installed skills and their associated MCP tools |
-| `doctor [--fix]` | Validate installed skills against current schemas; `--fix` reinstalls |
-| `uninstall` | Remove generated skill files and MCP configuration |
+| `doctor [--fix]` | Validate installed skills, commands, and hooks; `--fix` reinstalls |
+| `uninstall` | Remove generated skill files, commands, hooks, and MCP configuration |
 
 ### `kai mcp`
 
@@ -199,7 +199,7 @@ src/
   cli/            Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
     cli/renderers/   Typed output renderers for consistent CLI formatting
     cli/work/        Work command modules (start, status, recommendations, git-scan, ui, types)
-    cli/skills/      Skill compiler — generates SKILL.md files from MCP tool schemas (compiler, templates, targets, commands)
+    cli/skills/      Skill compiler + workflow commands + hook generators (compiler, templates, targets, commands, hooks, workflows)
   core/profile/   Profile engine, derivator, decay, provenance, collector
   core/orchestrator/  Idea-to-execution engine (planner, scheduler, dispatcher, observer, clustering, closed-loop)
   core/prompt/    Prompt genome system (gene-store, compiler, evolver, tournament-runner, judge-engine, segment-matcher)
@@ -246,7 +246,9 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
 | [How the Work Command Modules Work](docs/explanation-work-modules.md) | Explanation | PhaseResult control flow, cooperative SIGINT cancellation, module responsibilities |
 | [How to Install and Manage Kai Skills](docs/howto-skills.md) | How-to | Install, validate, update, and remove generated skill files |
+| [How to Use Workflow Slash Commands](docs/howto-workflow-commands.md) | How-to | Using the 8 personalized slash commands (/kai, /kai-profile, etc.) |
 | [How the Skill Compiler Works](docs/explanation-skill-compiler.md) | Explanation | Zod schema introspection, domain mapping, target adapter pattern, trade-offs |
+| [How Hooks and Workflow Commands Work](docs/explanation-hooks-and-commands.md) | Explanation | Hook architecture, profile-aware baking, intent triggers, design trade-offs |
 | [How the Module Decomposition Pattern Works](docs/explanation-module-decomposition.md) | Explanation | Thin facades, deps injection, declarative registries, and why monolith files were split |
 
 ## Development
