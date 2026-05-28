@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { buildSkillConfigs, sanitizeDomainName } from "../compiler";
@@ -16,6 +15,12 @@ export async function installSkills(opts: {
   force?: boolean;
   configureMcp?: boolean;
   installPath?: string;
+  _testPaths?: {
+    claudeJsonPath?: string;
+    settingsJsonPath?: string;
+    commandsDir?: string;
+    hooksDir?: string;
+  };
 }): Promise<number> {
   if (opts.target !== "claude-code") {
     throw new Error(
@@ -23,7 +28,14 @@ export async function installSkills(opts: {
     );
   }
 
-  const target = new ClaudeCodeTarget(opts.installPath);
+  const tp = opts._testPaths;
+  const target = new ClaudeCodeTarget(
+    opts.installPath,
+    tp?.claudeJsonPath,
+    tp?.settingsJsonPath,
+    tp?.commandsDir,
+    tp?.hooksDir,
+  );
   const installPath = target.skillInstallPath;
 
   const alreadyInstalled =
@@ -90,7 +102,7 @@ export async function installSkills(opts: {
     console.log(`Installed skill files to ${installPath}`);
 
     // --- Generate workflow commands ---
-    const commandsDir = join(homedir(), ".claude", "commands", "kai");
+    const commandsDir = target.commandsDir;
     mkdirSync(commandsDir, { recursive: true });
 
     // Read profile for trait baking
@@ -121,7 +133,7 @@ export async function installSkills(opts: {
     );
 
     // --- Generate hook scripts ---
-    const hooksDir = join(homedir(), ".claude", "hooks", "kai");
+    const hooksDir = target.hooksDir;
     writeHookScripts(hooksDir);
     console.log(`Installed hook scripts to ${hooksDir}`);
 

@@ -11,6 +11,13 @@ afterAll(() => {
   if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true, force: true });
 });
 
+const testPaths = {
+  claudeJsonPath: join(TEST_DIR, "claude.json"),
+  settingsJsonPath: join(TEST_DIR, "settings.json"),
+  commandsDir: join(TEST_DIR, "commands", "kai"),
+  hooksDir: join(TEST_DIR, "hooks", "kai"),
+};
+
 describe("install cycle integration", () => {
   test("install generates skill files", async () => {
     mkdirSync(TEST_DIR, { recursive: true });
@@ -18,6 +25,7 @@ describe("install cycle integration", () => {
       target: "claude-code",
       force: true,
       installPath: SKILLS_DIR,
+      _testPaths: testPaths,
     });
     expect(exitCode).toBe(0);
     expect(existsSync(join(SKILLS_DIR, "SKILL.md"))).toBe(true);
@@ -36,6 +44,7 @@ describe("install cycle integration", () => {
       target: "claude-code",
       force: true,
       installPath: SKILLS_DIR,
+      _testPaths: testPaths,
     });
     expect(exitCode).toBe(0);
     const manifest = JSON.parse(readFileSync(join(SKILLS_DIR, "manifest.json"), "utf-8"));

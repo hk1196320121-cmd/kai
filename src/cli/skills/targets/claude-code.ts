@@ -16,19 +16,26 @@ import type { TargetAdapter } from "./types";
 export class ClaudeCodeTarget implements TargetAdapter {
   readonly name = "claude-code";
   readonly skillInstallPath: string;
+  readonly commandsDir: string;
+  readonly hooksDir: string;
   private readonly claudeJsonPath: string;
-  private readonly settingsJsonPath: string;
+  readonly settingsJsonPath: string;
 
   constructor(
     skillInstallPath?: string,
     claudeJsonPath?: string,
     settingsJsonPath?: string,
+    commandsDir?: string,
+    hooksDir?: string,
   ) {
     this.skillInstallPath =
       skillInstallPath ?? join(homedir(), ".claude", "skills", "kai");
     this.claudeJsonPath = claudeJsonPath ?? join(homedir(), ".claude.json");
     this.settingsJsonPath =
       settingsJsonPath ?? join(homedir(), ".claude", "settings.json");
+    this.commandsDir =
+      commandsDir ?? join(homedir(), ".claude", "commands", "kai");
+    this.hooksDir = hooksDir ?? join(homedir(), ".claude", "hooks", "kai");
   }
 
   validateInstallation(): ValidationResult {
@@ -129,10 +136,11 @@ export class ClaudeCodeTarget implements TargetAdapter {
         const resolved = realpathSync(this.settingsJsonPath);
         const raw = readFileSync(resolved, "utf-8");
         settings = JSON.parse(raw);
-      } catch {
-        const backup = `${this.settingsJsonPath}.kai-backup`;
-        renameSync(this.settingsJsonPath, backup);
-        settings = {};
+      } catch (err) {
+        throw new Error(
+          `Cannot parse ${this.settingsJsonPath}: ${err instanceof Error ? err.message : String(err)}. ` +
+            `Fix or remove the file manually, then re-run install.`,
+        );
       }
     } else {
       settings = {};
@@ -154,15 +162,15 @@ export class ClaudeCodeTarget implements TargetAdapter {
       return;
     }
 
-    const { removeHookFromSettings } = await import("../hooks");
-    let cleaned = removeHookFromSettings(settings, {
-      eventType: "SessionStart",
-      hookId: "kai-session-start",
-    });
-    cleaned = removeHookFromSettings(cleaned, {
-      eventType: "PostToolUse",
-      hookId: "kai-auto-observe",
-    });
+    const { removeHookFromSettings, getHookConfigs } = await import("../hooks");
+    const hookConfigs = getHookConfigs(this.hooksDir);
+    let cleaned = settings;
+    for (const hc of hookConfigs) {
+      cleaned = removeHookFromSettings(cleaned, {
+        eventType: hc.eventType,
+        hookId: hc.hookId,
+      });
+    }
     this.atomicWriteJson(this.settingsJsonPath, cleaned);
   }
 

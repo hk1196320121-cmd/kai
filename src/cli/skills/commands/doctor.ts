@@ -1,5 +1,4 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
@@ -99,7 +98,7 @@ export function registerDoctorCommand(skills: Command): void {
       }
 
       // --- Validate workflow commands ---
-      const commandsDir = join(homedir(), ".claude", "commands", "kai");
+      const commandsDir = target.commandsDir;
       if (!existsSync(commandsDir)) {
         console.log(
           status(
@@ -142,8 +141,8 @@ export function registerDoctorCommand(skills: Command): void {
       }
 
       // --- Validate hook scripts ---
-      const hooksDir = join(homedir(), ".claude", "hooks", "kai");
-      const expectedHooks = ["kai-session-start.cjs", "kai-auto-observe.cjs"];
+      const hooksDir = target.hooksDir;
+      const { KAI_HOOK_SCRIPTS: expectedHooks } = await import("../hooks");
       if (!existsSync(hooksDir)) {
         console.log(
           status(
@@ -171,7 +170,7 @@ export function registerDoctorCommand(skills: Command): void {
       }
 
       // --- Validate hooks in settings.json ---
-      const settingsPath = join(homedir(), ".claude", "settings.json");
+      const settingsPath = target.settingsJsonPath;
       if (existsSync(settingsPath)) {
         try {
           const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));

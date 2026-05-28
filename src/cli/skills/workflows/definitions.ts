@@ -1,5 +1,7 @@
 import type { WorkflowDefinition } from "./types";
 
+const DEFAULT_THRESHOLD = 0.7;
+
 export const WORKFLOWS: WorkflowDefinition[] = [
   {
     name: "kai",
@@ -12,13 +14,13 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     profileConditions: [
       {
         trait: "early_riser",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Peak Focus Time\nBased on your early_riser trait, your peak focus window is typically 6-10 AM. Schedule deep work accordingly.",
       },
       {
         trait: "tinkerer",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Experimentation Opportunity\nYour tinkerer trait suggests you enjoy hands-on exploration. Consider trying a new workflow or tool configuration.",
       },
@@ -30,25 +32,17 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     name: "kai-profile",
     description:
       "View your full behavioral profile with trait evolution over time",
-    tools: [
-      { id: "profile.read", params: { scope: "full" } },
-      {
-        id: "telemetry.query",
-        params: {
-          sql: "SELECT dimension, value, confidence, reasoning, updated_at FROM traits ORDER BY dimension",
-        },
-      },
-    ],
+    tools: [{ id: "profile.read", params: { scope: "full" } }],
     profileConditions: [
       {
         trait: "early_riser",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Morning Pattern Detected\nYour early_riser trait is above 0.7. Consider scheduling reviews and planning sessions in your morning block.",
       },
       {
         trait: "detail_oriented",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Detail View Mode\nYour detail_oriented trait suggests you prefer comprehensive output. Showing full trait breakdowns with provenance.",
       },
@@ -65,7 +59,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   {
     name: "kai-why",
     description:
-      "Explain why a specific behavioral trait has its current value",
+      "Explain why a specific behavioral trait has its current value. Ask the user which dimension to explain, or use the one they mentioned.",
     tools: [{ id: "profile.why" }],
     profileConditions: [
       {
@@ -85,7 +79,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     profileConditions: [
       {
         trait: "planning_style",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Structured Planning Detected\nYour planning_style suggests you prefer detailed plans. Breaking the idea into granular tasks with clear dependencies.",
       },
@@ -100,7 +94,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     profileConditions: [
       {
         trait: "detail_oriented",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Detailed Status View\nShowing full execution traces and sub-task breakdowns based on your detail preference.",
       },
@@ -115,7 +109,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       {
         id: "telemetry.query",
         params: {
-          sql: "SELECT tool_name, COUNT(*) as cnt FROM tool_calls WHERE ts > datetime('now', '-1 hour') GROUP BY tool_name ORDER BY cnt DESC",
+          sql: "SELECT tool_name, COUNT(*) as cnt FROM runtime_events WHERE started_at > datetime('now', '-1 hour') GROUP BY tool_name ORDER BY cnt DESC",
         },
       },
       { id: "observe.batch" },
@@ -129,7 +123,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     profileConditions: [
       {
         trait: "risk_tolerance",
-        threshold: 0.7,
+        threshold: DEFAULT_THRESHOLD,
         include:
           "## Aggressive Evolution\nYour risk_tolerance suggests willingness to experiment. Running wider exploration with more mutation rounds.",
       },

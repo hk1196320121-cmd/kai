@@ -9,6 +9,12 @@ export interface HookConfig {
   timeout?: number;
 }
 
+export const KAI_HOOK_IDS = ["kai-session-start", "kai-auto-observe"] as const;
+export const KAI_HOOK_SCRIPTS = [
+  "kai-session-start.cjs",
+  "kai-auto-observe.cjs",
+] as const;
+
 export function generateSessionStartHook(): string {
   return `#!/usr/bin/env node
 // kai-session-start — inject profile context into new Claude Code sessions
@@ -45,7 +51,7 @@ try {
       .slice(0, 5)
       .map(t => t.dimension + "=" + t.value.toFixed(2))
       .join(", ");
-    const name = profile.identity?.name ? " (" + profile.identity.name + ")" : "";
+    const name = profile.identity?.name ? " (" + profile.identity.name.charAt(0).toUpperCase() + ")" : "";
     console.log("Kai profile active" + name + ". Top traits: " + topTraits);
   }
 } catch {
@@ -63,9 +69,23 @@ export function generateAutoObserveHook(): string {
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const crypto = require("crypto");
 
 const STATE_FILE = path.join(os.homedir(), ".kai", "auto-observe-state.json");
+const DB_PATH = process.env.KAI_DB || path.join(os.homedir(), ".kai", "kai.db");
 const PATTERN_THRESHOLD = 5;
+
+function atomicWriteJson(filePath, data) {
+  try {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, ".kai-observe-" + crypto.randomUUID() + ".tmp");
+    fs.writeFileSync(tmp, JSON.stringify(data));
+    fs.renameSync(tmp, filePath);
+  } catch {
+    // Best effort
+  }
+}
 
 function loadState() {
   try {
@@ -79,12 +99,27 @@ function loadState() {
 }
 
 function saveState(state) {
+  atomicWriteJson(STATE_FILE, state);
+}
+
+function submitObservation(toolName, count) {
   try {
-    const dir = path.dirname(STATE_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state));
+    if (!fs.existsSync(DB_PATH)) return;
+    const { Database } = require("bun:sqlite");
+    const db = new Database(DB_PATH);
+    db.query(
+      "INSERT INTO observations (type, key, value, confidence, source, provenance, ts) VALUES ($type, $key, $value, $confidence, $source, $provenance, datetime('now'))"
+    ).run({
+      $type: "tool_pattern",
+      $key: toolName,
+      $value: String(count),
+      $confidence: "0.6",
+      $source: "auto-observe",
+      $provenance: "threshold=" + PATTERN_THRESHOLD,
+    });
+    db.close();
   } catch {
-    // Best effort
+    // Non-critical — observation submission is best effort
   }
 }
 
@@ -92,10 +127,11 @@ function detectPattern(state) {
   const patterns = [];
   for (const [tool, count] of Object.entries(state.toolCounts)) {
     if (count >= PATTERN_THRESHOLD) {
-      patterns.push(tool + ":" + count);
+      patterns.push({ tool, count });
+      submitObservation(tool, count);
     }
   }
-  return patterns.length > 0 ? patterns.join(", ") : null;
+  return patterns.length > 0 ? patterns.map(p => p.tool + ":" + p.count).join(", ") : null;
 }
 
 try {
@@ -109,7 +145,8 @@ try {
   const parsed = input ? JSON.parse(input) : {};
   const toolName = parsed.tool_name || parsed.tool || "";
 
-  if (!toolName) return;
+  if (!toolName || typeof toolName !== "string") return;
+  if (!/^[a-zA-Z0-9_.]+$/.test(toolName)) return;
 
   const state = loadState();
   state.toolCounts[toolName] = (state.toolCounts[toolName] || 0) + 1;
@@ -119,6 +156,7 @@ try {
   if (pattern) {
     console.log("kai-auto-observe: pattern detected — " + pattern);
     state.toolCounts = {};
+    state.lastReset = new Date().toISOString();
     saveState(state);
   }
 } catch {
@@ -142,12 +180,13 @@ interface SettingsJson {
   [key: string]: unknown;
 }
 
-function isKaiHook(command: string, hookId: string): boolean {
-  return (
-    command.includes(hookId) ||
-    command.includes("kai-session-start") ||
-    command.includes("kai-auto-observe")
-  );
+function isKaiHook(command: string): boolean {
+  return KAI_HOOK_IDS.some((id) => {
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[/\\\\])${escaped}(?:\\.cjs)?(?:\\s|$|"|')`).test(
+      command,
+    );
+  });
 }
 
 export function mergeHookIntoSettings(
@@ -162,7 +201,7 @@ export function mergeHookIntoSettings(
 
   for (const group of groups) {
     for (let i = 0; i < group.hooks.length; i++) {
-      if (isKaiHook(group.hooks[i].command, config.hookId)) {
+      if (isKaiHook(group.hooks[i].command)) {
         group.hooks[i] = {
           type: "command",
           command: config.command,
@@ -197,9 +236,7 @@ export function removeHookFromSettings(
 
   const groups = result.hooks[config.eventType];
   for (const group of groups) {
-    group.hooks = group.hooks.filter(
-      (h) => !isKaiHook(h.command, config.hookId),
-    );
+    group.hooks = group.hooks.filter((h) => !isKaiHook(h.command));
   }
   result.hooks[config.eventType] = groups.filter((g) => g.hooks.length > 0);
 
@@ -209,27 +246,24 @@ export function removeHookFromSettings(
 export function writeHookScripts(hooksDir: string): void {
   mkdirSync(hooksDir, { recursive: true });
   writeFileSync(
-    join(hooksDir, "kai-session-start.cjs"),
+    join(hooksDir, KAI_HOOK_SCRIPTS[0]),
     generateSessionStartHook(),
   );
-  writeFileSync(
-    join(hooksDir, "kai-auto-observe.cjs"),
-    generateAutoObserveHook(),
-  );
+  writeFileSync(join(hooksDir, KAI_HOOK_SCRIPTS[1]), generateAutoObserveHook());
 }
 
 export function getHookConfigs(hooksDir: string): HookConfig[] {
   return [
     {
       eventType: "SessionStart",
-      command: `bun "${join(hooksDir, "kai-session-start.cjs")}"`,
-      hookId: "kai-session-start",
+      command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[0])}"`,
+      hookId: KAI_HOOK_IDS[0],
     },
     {
       eventType: "PostToolUse",
       matcher: "Bash|Read|Edit|Write",
-      command: `bun "${join(hooksDir, "kai-auto-observe.cjs")}"`,
-      hookId: "kai-auto-observe",
+      command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[1])}"`,
+      hookId: KAI_HOOK_IDS[1],
       timeout: 10,
     },
   ];

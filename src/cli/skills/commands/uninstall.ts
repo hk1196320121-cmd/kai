@@ -1,6 +1,4 @@
 import { existsSync, rmSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import * as readline from "node:readline";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
@@ -55,7 +53,7 @@ export function registerUninstallCommand(skills: Command): void {
       }
 
       // --- Remove workflow commands ---
-      const commandsDir = join(homedir(), ".claude", "commands", "kai");
+      const commandsDir = target.commandsDir;
       if (existsSync(commandsDir)) {
         try {
           rmSync(commandsDir, { recursive: true, force: true });
@@ -67,7 +65,7 @@ export function registerUninstallCommand(skills: Command): void {
       }
 
       // --- Remove hook scripts ---
-      const hooksDir = join(homedir(), ".claude", "hooks", "kai");
+      const hooksDir = target.hooksDir;
       if (existsSync(hooksDir)) {
         try {
           rmSync(hooksDir, { recursive: true, force: true });
