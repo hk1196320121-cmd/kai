@@ -36,3 +36,45 @@ describe("WorkflowDefinition schema", () => {
     expect(wf.profileConditions).toHaveLength(0);
   });
 });
+
+import { getBakedTraits, PII_WHITELIST } from "../../../../src/cli/skills/commands/profile-aware";
+
+describe("profile-aware trait baking", () => {
+  test("PII whitelist contains only behavioral dimensions", () => {
+    expect(PII_WHITELIST).toContain("early_riser");
+    expect(PII_WHITELIST).toContain("tinkerer");
+    expect(PII_WHITELIST).toContain("risk_tolerance");
+    expect(PII_WHITELIST).toContain("detail_oriented");
+    expect(PII_WHITELIST).toContain("planning_style");
+    // Identity fields must NOT be in whitelist
+    expect(PII_WHITELIST).not.toContain("name");
+    expect(PII_WHITELIST).not.toContain("role");
+    expect(PII_WHITELIST).not.toContain("email");
+  });
+
+  test("getBakedTraits returns empty map when no profile", () => {
+    const traits = getBakedTraits(null);
+    expect(traits.size).toBe(0);
+  });
+
+  test("getBakedTraits filters to whitelist only", () => {
+    const mockTraits = [
+      { dimension: "early_riser", value: 0.9, confidence: 8, source: "observed" as const, reasoning: "test", id: "1", updated_at: "" },
+      { dimension: "name", value: 0, confidence: 0, source: "declared" as const, reasoning: "PII", id: "2", updated_at: "" },
+    ];
+    const traits = getBakedTraits({ identity: null, traits: mockTraits, preferences: [], observationCount: 5, recentObservations: [] });
+    expect(traits.size).toBe(1);
+    expect(traits.get("early_riser")).toBe(0.9);
+    expect(traits.has("name")).toBe(false);
+  });
+
+  test("getBakedTraits returns map of dimension to value", () => {
+    const mockTraits = [
+      { dimension: "early_riser", value: 0.85, confidence: 7, source: "observed" as const, reasoning: "", id: "1", updated_at: "" },
+      { dimension: "tinkerer", value: 0.6, confidence: 5, source: "inferred" as const, reasoning: "", id: "2", updated_at: "" },
+    ];
+    const traits = getBakedTraits({ identity: null, traits: mockTraits, preferences: [], observationCount: 10, recentObservations: [] });
+    expect(traits.get("early_riser")).toBe(0.85);
+    expect(traits.get("tinkerer")).toBe(0.6);
+  });
+});
