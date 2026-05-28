@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
 import { buildSkillConfigs } from "../compiler";
+import { isKaiHook } from "../hooks";
 import { ClaudeCodeTarget } from "../targets/claude-code";
 import { installSkills } from "./install";
 
@@ -174,32 +175,19 @@ export function registerDoctorCommand(skills: Command): void {
       if (existsSync(settingsPath)) {
         try {
           const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
-          const hasSessionStart = settings?.hooks?.SessionStart?.some(
-            (g: Record<string, unknown>) =>
-              (g.hooks as unknown[])?.some(
+          const hasHook = (eventType: string) =>
+            (settings?.hooks?.[eventType] ?? []).some((g: Record<string, unknown>) =>
+              ((g.hooks as unknown[]) ?? []).some(
                 (h) =>
                   typeof h === "object" &&
                   h !== null &&
                   "command" in h &&
                   typeof (h as Record<string, unknown>).command === "string" &&
-                  ((h as Record<string, unknown>).command as string).includes(
-                    "kai-session-start",
-                  ),
+                  isKaiHook((h as Record<string, unknown>).command as string),
               ),
-          );
-          const hasPostToolUse = settings?.hooks?.PostToolUse?.some(
-            (g: Record<string, unknown>) =>
-              (g.hooks as unknown[])?.some(
-                (h) =>
-                  typeof h === "object" &&
-                  h !== null &&
-                  "command" in h &&
-                  typeof (h as Record<string, unknown>).command === "string" &&
-                  ((h as Record<string, unknown>).command as string).includes(
-                    "kai-auto-observe",
-                  ),
-              ),
-          );
+            );
+          const hasSessionStart = hasHook("SessionStart");
+          const hasPostToolUse = hasHook("PostToolUse");
 
           if (!hasSessionStart) {
             console.log(

@@ -1,9 +1,9 @@
-interface WorkflowStep {
+export interface WorkflowStep {
   id: string;
   params?: Record<string, unknown>;
 }
 
-interface ProfileCondition {
+export interface ProfileCondition {
   trait: string;
   threshold: number;
   include: string;

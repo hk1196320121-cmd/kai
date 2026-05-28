@@ -1,12 +1,12 @@
 import { describe, test, expect } from "bun:test";
 import {
-  generateSessionStartHook,
-  generateAutoObserveHook,
   mergeHookIntoSettings,
   removeHookFromSettings,
   KAI_HOOK_IDS,
   KAI_HOOK_SCRIPTS,
 } from "../../../src/cli/skills/hooks";
+import { generateSessionStartHook } from "../../../src/cli/skills/hooks/session-start";
+import { generateAutoObserveHook } from "../../../src/cli/skills/hooks/auto-observe";
 
 describe("HookGenerator", () => {
   describe("generateSessionStartHook", () => {

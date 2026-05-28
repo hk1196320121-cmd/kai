@@ -119,7 +119,8 @@ export async function installSkills(opts: {
         );
         console.log("  Run `kai work start` to build your profile.");
       }
-    } catch {
+    } catch (e) {
+      console.log("Warning: Could not load profile. Commands will use defaults.");
       bakedTraits = new Map();
     }
 

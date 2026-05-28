@@ -25,7 +25,7 @@ describe("writeHookScripts + getHookConfigs", () => {
   });
 
   afterEach(() => {
-    rmSync(tempDir, { recursive: true, true: true });
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   test("writeHookScripts creates both .cjs files on disk", () => {
@@ -112,7 +112,7 @@ describe("ClaudeCodeTarget: mergeSettingsHook", () => {
   });
 
   afterEach(() => {
-    rmSync(tempDir, { recursive: true, true: true });
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   test("creates settings.json with hooks when file does not exist", async () => {
@@ -184,7 +184,7 @@ describe("ClaudeCodeTarget: removeSettingsHooks", () => {
   });
 
   afterEach(() => {
-    rmSync(tempDir, { recursive: true, true: true });
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   test("removes Kai hooks from settings.json", async () => {
@@ -256,7 +256,7 @@ describe("install cycle: commands + hooks generation", () => {
   });
 
   afterEach(() => {
-    rmSync(tempDir, { recursive: true, true: true });
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   test("install generates workflow command .md files", async () => {
