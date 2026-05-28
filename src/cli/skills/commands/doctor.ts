@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { homedir } from "node:os";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
 import { buildSkillConfigs } from "../compiler";
@@ -95,6 +96,71 @@ export function registerDoctorCommand(skills: Command): void {
             `${removedTools.length} tool(s) removed: ${removedTools.join(", ")}`,
           ),
         );
+      }
+
+      // --- Validate workflow commands ---
+      const commandsDir = join(homedir(), ".claude", "commands", "kai");
+      if (!existsSync(commandsDir)) {
+        console.log(status("warning", "No workflow commands found. Run `kai skills install` to generate."));
+      } else {
+        const { WORKFLOWS } = await import("../workflows/definitions");
+        const expectedCommands = WORKFLOWS.map(w => w.name + ".md");
+        const existingFiles = readdirSync(commandsDir).filter(f => f.endsWith(".md"));
+        const missing = expectedCommands.filter(f => !existingFiles.includes(f));
+        const extra = existingFiles.filter(f => !expectedCommands.includes(f));
+
+        if (missing.length > 0) {
+          console.log(status("warning", `Missing ${missing.length} command(s): ${missing.join(", ")}`));
+        }
+        if (extra.length > 0) {
+          console.log(status("info", `Extra command(s): ${extra.join(", ")}`));
+        }
+        if (missing.length === 0 && extra.length === 0) {
+          console.log(status("success", `All ${expectedCommands.length} workflow commands present.`));
+        }
+      }
+
+      // --- Validate hook scripts ---
+      const hooksDir = join(homedir(), ".claude", "hooks", "kai");
+      const expectedHooks = ["kai-session-start.cjs", "kai-auto-observe.cjs"];
+      if (!existsSync(hooksDir)) {
+        console.log(status("warning", "No Kai hook scripts found. Run `kai skills install` to generate."));
+      } else {
+        const hookFiles = readdirSync(hooksDir).filter(f => f.endsWith(".cjs"));
+        const missingHooks = expectedHooks.filter(h => !hookFiles.includes(h));
+        if (missingHooks.length > 0) {
+          console.log(status("warning", `Missing hook script(s): ${missingHooks.join(", ")}`));
+        } else {
+          console.log(status("success", "All hook scripts present."));
+        }
+      }
+
+      // --- Validate hooks in settings.json ---
+      const settingsPath = join(homedir(), ".claude", "settings.json");
+      if (existsSync(settingsPath)) {
+        try {
+          const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+          const hasSessionStart = settings?.hooks?.SessionStart?.some(
+            (g: any) => g.hooks?.some((h: any) => h.command?.includes("kai-session-start"))
+          );
+          const hasPostToolUse = settings?.hooks?.PostToolUse?.some(
+            (g: any) => g.hooks?.some((h: any) => h.command?.includes("kai-auto-observe"))
+          );
+
+          if (!hasSessionStart) {
+            console.log(status("warning", "SessionStart hook not found in settings.json"));
+          }
+          if (!hasPostToolUse) {
+            console.log(status("warning", "PostToolUse hook not found in settings.json"));
+          }
+          if (hasSessionStart && hasPostToolUse) {
+            console.log(status("success", "All hooks registered in settings.json"));
+          }
+        } catch {
+          console.log(status("warning", "Cannot parse settings.json for hook validation"));
+        }
+      } else {
+        console.log(status("warning", "~/.claude/settings.json not found. Hooks not registered."));
       }
 
       for (const warn of validation.warnings) {
