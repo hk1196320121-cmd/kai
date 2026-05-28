@@ -1,6 +1,8 @@
 import { existsSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import * as readline from "node:readline";
 import type { Command } from "commander";
+import { join } from "node:path";
 import { dim, header, status } from "../../format";
 import { ClaudeCodeTarget } from "../targets/claude-code";
 
@@ -50,6 +52,30 @@ export function registerUninstallCommand(skills: Command): void {
         const msg = err instanceof Error ? err.message : String(err);
         console.log(status("error", `Failed to remove skill files: ${msg}`));
         return;
+      }
+
+      // --- Remove workflow commands ---
+      const commandsDir = join(homedir(), ".claude", "commands", "kai");
+      if (existsSync(commandsDir)) {
+        try {
+          rmSync(commandsDir, { recursive: true, force: true });
+          console.log(status("success", "Workflow commands removed."));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.log(status("warning", `Could not remove commands: ${msg}`));
+        }
+      }
+
+      // --- Remove hook scripts ---
+      const hooksDir = join(homedir(), ".claude", "hooks", "kai");
+      if (existsSync(hooksDir)) {
+        try {
+          rmSync(hooksDir, { recursive: true, force: true });
+          console.log(status("success", "Hook scripts removed."));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.log(status("warning", `Could not remove hooks: ${msg}`));
+        }
       }
 
       try {
