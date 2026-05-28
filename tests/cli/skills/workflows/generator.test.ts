@@ -141,3 +141,66 @@ describe("workflow definitions", () => {
     }
   });
 });
+
+import { CommandGenerator } from "../../../../src/cli/skills/workflows/generator";
+
+describe("CommandGenerator", () => {
+  test("generateCommand produces markdown for a workflow", () => {
+    const gen = new CommandGenerator(new Map());
+    const wf = WORKFLOWS.find((w) => w.name === "kai-observe")!;
+    const md = gen.generateCommand(wf);
+    expect(md).toContain("kai-observe");
+    expect(md).toContain("mcp__kai__observe_submit");
+    expect(md).toContain("observe_batch");
+  });
+
+  test("generateCommand includes profile conditions when trait meets threshold", () => {
+    const traits = new Map([["early_riser", 0.9]]);
+    const gen = new CommandGenerator(traits);
+    const wf = WORKFLOWS.find((w) => w.name === "kai")!;
+    const md = gen.generateCommand(wf);
+    expect(md).toContain("Peak Focus Time");
+    expect(md).toContain("early_riser");
+  });
+
+  test("generateCommand excludes profile conditions when trait is below threshold", () => {
+    const traits = new Map([["early_riser", 0.3]]);
+    const gen = new CommandGenerator(traits);
+    const wf = WORKFLOWS.find((w) => w.name === "kai")!;
+    const md = gen.generateCommand(wf);
+    expect(md).not.toContain("Peak Focus Time");
+  });
+
+  test("generateCommand shows emptyProfileFallback when no traits", () => {
+    const gen = new CommandGenerator(new Map());
+    const wf = WORKFLOWS.find((w) => w.name === "kai")!;
+    const md = gen.generateCommand(wf);
+    expect(md).toContain("Welcome to Kai");
+  });
+
+  test("generateAll produces 8 command strings", () => {
+    const gen = new CommandGenerator(new Map());
+    const commands = gen.generateAll(WORKFLOWS);
+    expect(commands).toHaveLength(8);
+    for (const { name, content } of commands) {
+      expect(name).toMatch(/^kai/);
+      expect(content.length).toBeGreaterThan(50);
+    }
+  });
+
+  test("generateAll names match workflow names", () => {
+    const gen = new CommandGenerator(new Map());
+    const commands = gen.generateAll(WORKFLOWS);
+    const names = commands.map((c) => c.name).sort();
+    const wfNames = WORKFLOWS.map((w) => w.name).sort();
+    expect(names).toEqual(wfNames);
+  });
+
+  test("generated command references MCP tools in mcp__kai__ format", () => {
+    const gen = new CommandGenerator(new Map());
+    const commands = gen.generateAll(WORKFLOWS);
+    const dashboard = commands.find((c) => c.name === "kai")!;
+    expect(dashboard.content).toContain("mcp__kai__profile_read");
+    expect(dashboard.content).toContain("mcp__kai__kai_work_recommend");
+  });
+});
