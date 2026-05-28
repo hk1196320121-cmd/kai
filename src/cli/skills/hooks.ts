@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { generateSessionStartHook } from "./hooks/session-start";
 import { generateAutoObserveHook } from "./hooks/auto-observe";
+import { generateSessionStartHook } from "./hooks/session-start";
 
 export interface HookConfig {
   eventType: string;

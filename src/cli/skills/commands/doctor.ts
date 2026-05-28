@@ -176,15 +176,17 @@ export function registerDoctorCommand(skills: Command): void {
         try {
           const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
           const hasHook = (eventType: string) =>
-            (settings?.hooks?.[eventType] ?? []).some((g: Record<string, unknown>) =>
-              ((g.hooks as unknown[]) ?? []).some(
-                (h) =>
-                  typeof h === "object" &&
-                  h !== null &&
-                  "command" in h &&
-                  typeof (h as Record<string, unknown>).command === "string" &&
-                  isKaiHook((h as Record<string, unknown>).command as string),
-              ),
+            (settings?.hooks?.[eventType] ?? []).some(
+              (g: Record<string, unknown>) =>
+                ((g.hooks as unknown[]) ?? []).some(
+                  (h) =>
+                    typeof h === "object" &&
+                    h !== null &&
+                    "command" in h &&
+                    typeof (h as Record<string, unknown>).command ===
+                      "string" &&
+                    isKaiHook((h as Record<string, unknown>).command as string),
+                ),
             );
           const hasSessionStart = hasHook("SessionStart");
           const hasPostToolUse = hasHook("PostToolUse");
