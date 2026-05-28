@@ -78,3 +78,66 @@ describe("profile-aware trait baking", () => {
     expect(traits.get("tinkerer")).toBe(0.6);
   });
 });
+
+import { WORKFLOWS } from "../../../../src/cli/skills/workflows/definitions";
+
+describe("workflow definitions", () => {
+  test("exports exactly 8 workflows", () => {
+    expect(WORKFLOWS).toHaveLength(8);
+  });
+
+  test("every workflow has a unique name", () => {
+    const names = WORKFLOWS.map((w) => w.name);
+    expect(new Set(names).size).toBe(8);
+  });
+
+  test("every workflow name starts with kai", () => {
+    for (const wf of WORKFLOWS) {
+      expect(wf.name).toMatch(/^kai/);
+    }
+  });
+
+  test("every workflow has at least one tool", () => {
+    for (const wf of WORKFLOWS) {
+      expect(wf.tools.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  test("every tool id references a known MCP tool", () => {
+    const knownTools = new Set([
+      "profile.read", "profile.why",
+      "observe.submit", "observe.batch",
+      "derive.trigger",
+      "kai_work_recommend", "kai_execution_status",
+      "kai_idea_submit", "kai_idea_plan",
+      "prompt.compile", "prompt.evolve",
+      "telemetry.query",
+    ]);
+    for (const wf of WORKFLOWS) {
+      for (const tool of wf.tools) {
+        expect(knownTools.has(tool.id), `Unknown tool: ${tool.id} in ${wf.name}`).toBe(true);
+      }
+    }
+  });
+
+  test("dashboard workflow (/kai) composes profile.read + kai_work_recommend", () => {
+    const dashboard = WORKFLOWS.find((w) => w.name === "kai")!;
+    expect(dashboard).toBeDefined();
+    const toolIds = dashboard.tools.map((t) => t.id);
+    expect(toolIds).toContain("profile.read");
+    expect(toolIds).toContain("kai_work_recommend");
+  });
+
+  test("profile workflow has early_riser condition", () => {
+    const profile = WORKFLOWS.find((w) => w.name === "kai-profile")!;
+    expect(profile.profileConditions.some((c) => c.trait === "early_riser")).toBe(true);
+  });
+
+  test("every workflow with profileConditions has an emptyProfileFallback", () => {
+    for (const wf of WORKFLOWS) {
+      if (wf.profileConditions.length > 0) {
+        expect(wf.emptyProfileFallback, `${wf.name} has conditions but no fallback`).toBeDefined();
+      }
+    }
+  });
+});
