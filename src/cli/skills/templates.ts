@@ -5,10 +5,38 @@ import { DOMAIN_DESCRIPTIONS, describeParameters } from "./compiler";
 import type { SkillConfig } from "./types";
 
 /**
+ * Domains whose slash commands overlap with workflow commands.
+ * These use intent-based triggers instead of slash-command triggers.
+ */
+export const OVERLAPPING_DOMAINS = [
+  "profile",
+  "observe",
+  "idea",
+  "work",
+  "prompt",
+  "telemetry",
+];
+
+const INTENT_TRIGGERS: Record<string, string> = {
+  profile:
+    "questions about behavioral profile, trait values, profile summary, trait explanations",
+  observe:
+    "submitting observations, recording behavioral data, logging preferences or patterns",
+  idea:
+    "managing ideas, creating plans, approving tasks, executing work, orchestrating projects",
+  work:
+    "getting work recommendations, checking task status, finding what to work on next",
+  prompt:
+    "compiling prompts, evolving prompts, inspecting prompt variants, champion prompts",
+  telemetry:
+    "querying telemetry, tracing requests, explaining system behavior, performance data",
+};
+
+/**
  * Convert a tool ID like "profile.read" or "kai_work_recommend" into the
  * MCP tool name format used in allowed-tools: mcp__kai__profile_read
  */
-function mcpToolName(toolId: string): string {
+export function mcpToolName(toolId: string): string {
   return toolId.replace(/\./g, "_");
 }
 
@@ -23,6 +51,10 @@ export function generateSkillMarkdown(config: SkillConfig): string {
   };
 
   const commandList = config.slashCommands.join(", ");
+
+  const triggerLine = OVERLAPPING_DOMAINS.includes(config.domain)
+    ? INTENT_TRIGGERS[config.domain] ?? commandList
+    : commandList;
 
   const allowedTools = [
     "Bash",
@@ -51,7 +83,7 @@ export function generateSkillMarkdown(config: SkillConfig): string {
 name: ${config.skillName}
 description: |
   ${domainInfo.description}
-  Triggers: ${commandList}
+  Triggers: ${triggerLine}
 allowed-tools:
 ${allowedTools.map((t) => `  - ${t}`).join("\n")}
 ---
