@@ -59,10 +59,12 @@ export function detectPlatforms(
 ): string[] {
   const result: string[] = [];
   for (const name of Object.keys(PLATFORM_HOME_PATHS)) {
-    const detector = overrides?.[name] ?? (() => {
-      const homePath = PLATFORM_HOME_PATHS[name]();
-      return existsSync(homePath) && readdirSync(homePath).length > 0;
-    });
+    const detector =
+      overrides?.[name] ??
+      (() => {
+        const homePath = PLATFORM_HOME_PATHS[name]();
+        return existsSync(homePath) && readdirSync(homePath).length > 0;
+      });
     if (detector()) {
       result.push(name);
     }

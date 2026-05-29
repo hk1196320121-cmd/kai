@@ -1,17 +1,22 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { resolve as resolvePath } from "node:path";
 import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve as resolvePath } from "node:path";
 import type { Command } from "commander";
 import { buildSkillConfigs, sanitizeDomainName } from "../compiler";
-import { detectPlatforms, getTarget, validateTargetName } from "../targets/registry";
+import {
+  detectPlatforms,
+  getTarget,
+  validateTargetName,
+} from "../targets/registry";
+import type { TargetAdapter } from "../targets/types";
 import { generateMasterSkill, generateSkillMarkdown } from "../templates";
 import type { McpConfig, SkillFile, SkillManifest } from "../types";
-import type { TargetAdapter } from "../targets/types";
 
 function resolveKaiCommand(): string {
   try {
-    const which = execSync("which kai 2>/dev/null", { encoding: "utf-8" }).trim();
+    const which = execSync("which kai 2>/dev/null", {
+      encoding: "utf-8",
+    }).trim();
     if (which && existsSync(which)) return resolvePath(which);
   } catch {}
   const kaiPath = process.argv[1];
@@ -19,10 +24,13 @@ function resolveKaiCommand(): string {
   return "kai";
 }
 
-async function buildAdapter(targetName: string, opts?: {
-  installPath?: string;
-  _testPaths?: Record<string, string | undefined>;
-}): Promise<TargetAdapter> {
+async function buildAdapter(
+  targetName: string,
+  opts?: {
+    installPath?: string;
+    _testPaths?: Record<string, string | undefined>;
+  },
+): Promise<TargetAdapter> {
   if (opts?.installPath || opts?._testPaths) {
     const tp = opts._testPaths;
     switch (targetName) {
@@ -80,7 +88,10 @@ async function installToTarget(
     const skills: SkillFile[] = [];
 
     // Master SKILL.md
-    skills.push({ filename: "SKILL.md", content: generateMasterSkill(configs) });
+    skills.push({
+      filename: "SKILL.md",
+      content: generateMasterSkill(configs),
+    });
 
     // Domain-specific SKILL.md files
     for (const config of configs) {
@@ -172,10 +183,14 @@ export async function installSkills(opts: {
   if (opts.target === "all") {
     const detected = detectPlatforms();
     if (detected.length === 0 && !opts.force) {
-      console.log("No AI platforms detected. Use --force to install to all registered platforms.");
+      console.log(
+        "No AI platforms detected. Use --force to install to all registered platforms.",
+      );
       return 1;
     }
-    targetNames.push(...(opts.force ? ["claude-code", "hermes", "gemini-cli"] : detected));
+    targetNames.push(
+      ...(opts.force ? ["claude-code", "hermes", "gemini-cli"] : detected),
+    );
   } else {
     validateTargetName(opts.target);
     targetNames.push(opts.target);
@@ -212,10 +227,7 @@ export function registerInstallCommand(skills: Command): void {
       "claude-code",
     )
     .option("--force", "Overwrite existing skills without prompting")
-    .option(
-      "--configure-mcp",
-      "Automatically configure MCP server",
-    )
+    .option("--configure-mcp", "Automatically configure MCP server")
     .action(
       async (opts: {
         target: string;

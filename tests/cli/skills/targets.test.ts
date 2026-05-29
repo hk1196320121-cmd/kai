@@ -93,4 +93,58 @@ describe("ClaudeCodeTarget", () => {
     await target.removeMcp();
     // Should not throw
   });
+
+  test("capabilities returns all true for Claude Code", () => {
+    const target = new ClaudeCodeTarget(tempDir);
+    const caps = target.capabilities();
+    expect(caps.skillMd).toBe(true);
+    expect(caps.mcp).toBe(true);
+    expect(caps.hooks).toBe(true);
+    expect(caps.commands).toBe(true);
+    expect(caps.terminal).toBe(true);
+    expect(caps.skillDirectory).toBe(true);
+  });
+
+  test("installSkills writes skill files and manifest", async () => {
+    const settingsPath = join(tempDir, "settings.json");
+    const commandsDir = join(tempDir, "commands");
+    const hooksDir = join(tempDir, "hooks");
+    const target = new ClaudeCodeTarget(tempDir, undefined, settingsPath, commandsDir, hooksDir);
+
+    const skills = [
+      { filename: "SKILL.md", content: "# Kai Master" },
+      { filename: "profile/SKILL.md", content: "# Profile" },
+    ];
+    const manifest = {
+      kaiVersion: "0.11.0",
+      generatedAt: new Date().toISOString(),
+      skills: { profile: ["profile.read"] },
+      target: "claude-code",
+    };
+
+    await target.installSkills(skills, manifest);
+
+    expect(existsSync(join(tempDir, "SKILL.md"))).toBe(true);
+    expect(existsSync(join(tempDir, "profile", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(tempDir, "manifest.json"))).toBe(true);
+  });
+
+  test("removeSkills removes commands, hooks, and skill directory", async () => {
+    const settingsPath = join(tempDir, "settings.json");
+    const commandsDir = join(tempDir, "commands");
+    const hooksDir = join(tempDir, "hooks");
+    mkdirSync(commandsDir, { recursive: true });
+    mkdirSync(hooksDir, { recursive: true });
+    writeFileSync(join(commandsDir, "test.md"), "test");
+    writeFileSync(join(hooksDir, "test.cjs"), "test");
+    writeFileSync(join(tempDir, "SKILL.md"), "test");
+    writeFileSync(settingsPath, "{}");
+
+    const target = new ClaudeCodeTarget(tempDir, undefined, settingsPath, commandsDir, hooksDir);
+    await target.removeSkills();
+
+    expect(existsSync(commandsDir)).toBe(false);
+    expect(existsSync(hooksDir)).toBe(false);
+    expect(existsSync(tempDir)).toBe(false);
+  });
 });

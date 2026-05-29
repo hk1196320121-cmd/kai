@@ -1,6 +1,13 @@
-import { chmodSync, existsSync, mkdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  realpathSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { stringify as yamlStringify } from "yaml";
 
 export function atomicWriteJson(filePath: string, data: unknown): void {

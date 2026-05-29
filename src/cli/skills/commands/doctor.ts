@@ -4,7 +4,11 @@ import type { Command } from "commander";
 import { dim, header, status } from "../../format";
 import { buildSkillConfigs } from "../compiler";
 import { isKaiHook } from "../hooks";
-import { detectPlatforms, getTarget, validateTargetName } from "../targets/registry";
+import {
+  detectPlatforms,
+  getTarget,
+  validateTargetName,
+} from "../targets/registry";
 import { installSkills } from "./install";
 
 export function registerDoctorCommand(skills: Command): void {
@@ -17,15 +21,24 @@ export function registerDoctorCommand(skills: Command): void {
       const targetFlag = opts.target ?? "all";
 
       if (opts.fix) {
-        const targetNames = targetFlag === "all" ? detectPlatforms() : [targetFlag];
+        const targetNames =
+          targetFlag === "all" ? detectPlatforms() : [targetFlag];
         for (const name of targetNames) {
           console.log(`Reinstalling skills for ${name}...`);
           try {
-            await installSkills({ target: name, force: true, configureMcp: true });
-            console.log(status("success", `${name}: Skills reinstalled successfully.`));
+            await installSkills({
+              target: name,
+              force: true,
+              configureMcp: true,
+            });
+            console.log(
+              status("success", `${name}: Skills reinstalled successfully.`),
+            );
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            console.log(status("error", `${name}: Failed to reinstall: ${msg}`));
+            console.log(
+              status("error", `${name}: Failed to reinstall: ${msg}`),
+            );
           }
         }
         return;
@@ -34,15 +47,20 @@ export function registerDoctorCommand(skills: Command): void {
       console.log(header("Kai Skills Doctor"));
       console.log();
 
-      const targetNames = targetFlag === "all"
-        ? detectPlatforms()
-        : (() => {
-          validateTargetName(targetFlag);
-          return [targetFlag];
-        })();
+      const targetNames =
+        targetFlag === "all"
+          ? detectPlatforms()
+          : (() => {
+              validateTargetName(targetFlag);
+              return [targetFlag];
+            })();
 
       if (targetNames.length === 0) {
-        console.log(dim("No installed platforms detected. Run `kai skills install` first."));
+        console.log(
+          dim(
+            "No installed platforms detected. Run `kai skills install` first.",
+          ),
+        );
         return;
       }
 
@@ -77,10 +95,7 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
   const pkg = JSON.parse(
-    readFileSync(
-      new URL("../../../../package.json", import.meta.url),
-      "utf-8",
-    ),
+    readFileSync(new URL("../../../../package.json", import.meta.url), "utf-8"),
   );
 
   if (manifest.kaiVersion !== pkg.version) {
@@ -102,19 +117,23 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
   const currentTools = configs.flatMap((c) => c.tools.map((t) => t.toolId));
   const currentToolSet = new Set(currentTools);
   const newTools = currentTools.filter((t) => !manifestTools.has(t));
-  const removedTools = [...manifestTools].filter(
-    (t) => !currentToolSet.has(t),
-  );
+  const removedTools = [...manifestTools].filter((t) => !currentToolSet.has(t));
 
   if (newTools.length > 0) {
     console.log(
-      status("info", `${newTools.length} new tool(s) available: ${newTools.join(", ")}`),
+      status(
+        "info",
+        `${newTools.length} new tool(s) available: ${newTools.join(", ")}`,
+      ),
     );
   }
 
   if (removedTools.length > 0) {
     console.log(
-      status("warning", `${removedTools.length} tool(s) removed: ${removedTools.join(", ")}`),
+      status(
+        "warning",
+        `${removedTools.length} tool(s) removed: ${removedTools.join(", ")}`,
+      ),
     );
   }
 
@@ -124,26 +143,47 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
   if (caps.commands && adapter.commandsDir) {
     const commandsDir = adapter.commandsDir;
     if (!existsSync(commandsDir)) {
-      console.log(status("warning", "No workflow commands found. Run `kai skills install` to generate."));
+      console.log(
+        status(
+          "warning",
+          "No workflow commands found. Run `kai skills install` to generate.",
+        ),
+      );
     } else {
       const { WORKFLOWS } = await import("../workflows/definitions");
       const expectedCommands = WORKFLOWS.map((w) => `${w.name}.md`);
-      const existingFiles = readdirSync(commandsDir).filter((f) => f.endsWith(".md"));
-      const missing = expectedCommands.filter((f) => !existingFiles.includes(f));
+      const existingFiles = readdirSync(commandsDir).filter((f) =>
+        f.endsWith(".md"),
+      );
+      const missing = expectedCommands.filter(
+        (f) => !existingFiles.includes(f),
+      );
       const extra = existingFiles.filter((f) => !expectedCommands.includes(f));
 
       if (missing.length > 0) {
-        console.log(status("warning", `Missing ${missing.length} command(s): ${missing.join(", ")}`));
+        console.log(
+          status(
+            "warning",
+            `Missing ${missing.length} command(s): ${missing.join(", ")}`,
+          ),
+        );
       }
       if (extra.length > 0) {
         console.log(status("info", `Extra command(s): ${extra.join(", ")}`));
       }
       if (missing.length === 0 && extra.length === 0) {
-        console.log(status("success", `All ${expectedCommands.length} workflow commands present.`));
+        console.log(
+          status(
+            "success",
+            `All ${expectedCommands.length} workflow commands present.`,
+          ),
+        );
       }
     }
   } else {
-    console.log(status("info", "Commands: not supported (expected for this platform)"));
+    console.log(
+      status("info", "Commands: not supported (expected for this platform)"),
+    );
   }
 
   // Hooks check
@@ -151,12 +191,22 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
     const hooksDir = adapter.hooksDir;
     const { KAI_HOOK_SCRIPTS: expectedHooks } = await import("../hooks");
     if (!existsSync(hooksDir)) {
-      console.log(status("warning", "No Kai hook scripts found. Run `kai skills install` to generate."));
+      console.log(
+        status(
+          "warning",
+          "No Kai hook scripts found. Run `kai skills install` to generate.",
+        ),
+      );
     } else {
       const hookFiles = readdirSync(hooksDir).filter((f) => f.endsWith(".cjs"));
       const missingHooks = expectedHooks.filter((h) => !hookFiles.includes(h));
       if (missingHooks.length > 0) {
-        console.log(status("warning", `Missing hook script(s): ${missingHooks.join(", ")}`));
+        console.log(
+          status(
+            "warning",
+            `Missing hook script(s): ${missingHooks.join(", ")}`,
+          ),
+        );
       } else {
         console.log(status("success", "All hook scripts present."));
       }
@@ -183,22 +233,34 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
         const hasPostToolUse = hasHook("PostToolUse");
 
         if (!hasSessionStart) {
-          console.log(status("warning", "SessionStart hook not found in settings.json"));
+          console.log(
+            status("warning", "SessionStart hook not found in settings.json"),
+          );
         }
         if (!hasPostToolUse) {
-          console.log(status("warning", "PostToolUse hook not found in settings.json"));
+          console.log(
+            status("warning", "PostToolUse hook not found in settings.json"),
+          );
         }
         if (hasSessionStart && hasPostToolUse) {
-          console.log(status("success", "All hooks registered in settings.json"));
+          console.log(
+            status("success", "All hooks registered in settings.json"),
+          );
         }
       } catch {
-        console.log(status("warning", "Cannot parse settings.json for hook validation"));
+        console.log(
+          status("warning", "Cannot parse settings.json for hook validation"),
+        );
       }
     } else {
-      console.log(status("warning", "settings.json not found. Hooks not registered."));
+      console.log(
+        status("warning", "settings.json not found. Hooks not registered."),
+      );
     }
   } else {
-    console.log(status("info", "Hooks: not supported (expected for this platform)"));
+    console.log(
+      status("info", "Hooks: not supported (expected for this platform)"),
+    );
   }
 
   // MCP check — actually validate registration
@@ -215,7 +277,9 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
       console.log(status("warning", warn));
     }
   } else {
-    console.log(status("info", "MCP: not supported (expected for this platform)"));
+    console.log(
+      status("info", "MCP: not supported (expected for this platform)"),
+    );
   }
 
   for (const warn of validation.warnings) {

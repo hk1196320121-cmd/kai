@@ -1,4 +1,10 @@
-import type { McpConfig, SkillFile, SkillManifest, TargetCapabilities, ValidationResult } from "../types";
+import type {
+  McpConfig,
+  SkillFile,
+  SkillManifest,
+  TargetCapabilities,
+  ValidationResult,
+} from "../types";
 
 export interface TargetAdapter {
   readonly name: string;

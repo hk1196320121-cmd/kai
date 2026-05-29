@@ -1,23 +1,32 @@
 import * as readline from "node:readline";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
-import { detectPlatforms, getTarget, validateTargetName } from "../targets/registry";
+import {
+  detectPlatforms,
+  getTarget,
+  validateTargetName,
+} from "../targets/registry";
 
 export function registerUninstallCommand(skills: Command): void {
   skills
     .command("uninstall")
     .description("Remove all installed Kai skills")
-    .option("--target <target>", "Target agent to uninstall from (or 'all')", "all")
+    .option(
+      "--target <target>",
+      "Target agent to uninstall from (or 'all')",
+      "all",
+    )
     .option("--force", "Skip confirmation prompt")
     .action(async (opts: { target?: string; force?: boolean }) => {
       const targetFlag = opts.target ?? "all";
 
-      const targetNames = targetFlag === "all"
-        ? detectPlatforms()
-        : (() => {
-          validateTargetName(targetFlag);
-          return [targetFlag];
-        })();
+      const targetNames =
+        targetFlag === "all"
+          ? detectPlatforms()
+          : (() => {
+              validateTargetName(targetFlag);
+              return [targetFlag];
+            })();
 
       if (targetNames.length === 0) {
         console.log(dim("No installed platforms detected."));

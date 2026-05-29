@@ -11,7 +11,9 @@ export function validateSkillManifest(
 
   const manifestPath = join(skillInstallPath, "manifest.json");
   if (!existsSync(manifestPath)) {
-    errors.push(`No manifest.json found. Run \`kai skills install --target ${targetName}\` first.`);
+    errors.push(
+      `No manifest.json found. Run \`kai skills install --target ${targetName}\` first.`,
+    );
     return { valid: false, errors, warnings };
   }
 

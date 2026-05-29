@@ -4,11 +4,11 @@ import {
   mkdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { rmSync } from "node:fs";
 import type {
   McpConfig,
   SkillFile,
@@ -16,9 +16,9 @@ import type {
   TargetCapabilities,
   ValidationResult,
 } from "../types";
-import type { TargetAdapter } from "./types";
 import { atomicWriteJson } from "../utils/fs";
 import { validateSkillManifest } from "../utils/validate";
+import type { TargetAdapter } from "./types";
 
 export class ClaudeCodeTarget implements TargetAdapter {
   readonly name = "claude-code";
@@ -56,7 +56,10 @@ export class ClaudeCodeTarget implements TargetAdapter {
     };
   }
 
-  async installSkills(skills: SkillFile[], manifest: SkillManifest): Promise<void> {
+  async installSkills(
+    skills: SkillFile[],
+    manifest: SkillManifest,
+  ): Promise<void> {
     // Write skill files
     mkdirSync(this.skillInstallPath, { recursive: true });
     for (const skill of skills) {
@@ -71,7 +74,9 @@ export class ClaudeCodeTarget implements TargetAdapter {
 
     // Write workflow commands (capability-gated)
     if (this.capabilities().commands) {
-      const { buildSkillConfigs, sanitizeDomainName } = await import("../compiler");
+      const { buildSkillConfigs: _, sanitizeDomainName: __ } = await import(
+        "../compiler"
+      );
       const { WORKFLOWS } = await import("../workflows/definitions");
       const { CommandGenerator } = await import("../workflows/generator");
       const { getBakedTraits } = await import("../commands/profile-aware");
@@ -136,7 +141,9 @@ export class ClaudeCodeTarget implements TargetAdapter {
     const warnings: string[] = [];
 
     if (!existsSync(this.claudeJsonPath)) {
-      warnings.push("No ~/.claude.json found. Run with --configure-mcp to register.");
+      warnings.push(
+        "No ~/.claude.json found. Run with --configure-mcp to register.",
+      );
       return { valid: true, errors, warnings };
     }
 
@@ -144,7 +151,9 @@ export class ClaudeCodeTarget implements TargetAdapter {
       const resolved = realpathSync(this.claudeJsonPath);
       const config = JSON.parse(readFileSync(resolved, "utf-8"));
       if (!config.mcpServers?.kai) {
-        errors.push('No "kai" MCP server registered in ~/.claude.json. Run with --configure-mcp.');
+        errors.push(
+          'No "kai" MCP server registered in ~/.claude.json. Run with --configure-mcp.',
+        );
       }
     } catch {
       errors.push("Cannot parse ~/.claude.json for MCP validation.");

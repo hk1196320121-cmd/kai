@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type {
@@ -8,19 +15,16 @@ import type {
   TargetCapabilities,
   ValidationResult,
 } from "../types";
-import type { TargetAdapter } from "./types";
 import { atomicWriteJson } from "../utils/fs";
 import { validateSkillManifest } from "../utils/validate";
+import type { TargetAdapter } from "./types";
 
 export class GeminiCliTarget implements TargetAdapter {
   readonly name = "gemini-cli";
   readonly skillInstallPath: string;
   readonly settingsPath: string;
 
-  constructor(
-    skillInstallPath?: string,
-    settingsPath?: string,
-  ) {
+  constructor(skillInstallPath?: string, settingsPath?: string) {
     this.skillInstallPath =
       skillInstallPath ?? join(homedir(), ".gemini", "skills", "kai");
     this.settingsPath =
@@ -38,7 +42,10 @@ export class GeminiCliTarget implements TargetAdapter {
     };
   }
 
-  async installSkills(skills: SkillFile[], manifest: SkillManifest): Promise<void> {
+  async installSkills(
+    skills: SkillFile[],
+    manifest: SkillManifest,
+  ): Promise<void> {
     mkdirSync(this.skillInstallPath, { recursive: true });
     for (const skill of skills) {
       const filePath = join(this.skillInstallPath, skill.filename);
@@ -63,7 +70,9 @@ export class GeminiCliTarget implements TargetAdapter {
     const warnings: string[] = [];
 
     if (!existsSync(this.settingsPath)) {
-      warnings.push("No ~/.gemini/settings.json found. Run with --configure-mcp to register.");
+      warnings.push(
+        "No ~/.gemini/settings.json found. Run with --configure-mcp to register.",
+      );
       return { valid: true, errors, warnings };
     }
 
@@ -71,7 +80,9 @@ export class GeminiCliTarget implements TargetAdapter {
       const resolved = realpathSync(this.settingsPath);
       const config = JSON.parse(readFileSync(resolved, "utf-8"));
       if (!config.mcpServers?.kai) {
-        errors.push('No "kai" MCP server registered in ~/.gemini/settings.json. Run with --configure-mcp.');
+        errors.push(
+          'No "kai" MCP server registered in ~/.gemini/settings.json. Run with --configure-mcp.',
+        );
       }
     } catch {
       errors.push("Cannot parse ~/.gemini/settings.json for MCP validation.");
