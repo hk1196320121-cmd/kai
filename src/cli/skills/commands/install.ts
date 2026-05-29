@@ -92,10 +92,15 @@ async function installToTarget(
             `Manifest target "${manifest.target}" does not match "${targetName}" after force reinstall. Delete ${adapter.skillInstallPath} manually.`,
           );
         }
-        return installToTarget(targetName, { ...opts, force: true, _isRetry: true });
+        return installToTarget(targetName, {
+          ...opts,
+          force: true,
+          _isRetry: true,
+        });
       }
     } catch (err) {
-      if (err instanceof Error && err.message.includes("does not match")) throw err;
+      if (err instanceof Error && err.message.includes("does not match"))
+        throw err;
       // Corrupt manifest — fall through to reinstall
     }
   }

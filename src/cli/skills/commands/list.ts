@@ -2,7 +2,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
-import { detectPlatforms, getTarget, validateTargetName } from "../targets/registry";
+import {
+  detectPlatforms,
+  getTarget,
+  validateTargetName,
+} from "../targets/registry";
 import type { SkillManifest } from "../types";
 
 export function registerListCommand(skills: Command): void {
