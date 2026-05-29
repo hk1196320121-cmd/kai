@@ -1,14 +1,7 @@
 // src/cli/skills/targets/hermes.ts
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { parse as yamlParse } from "yaml";
 import type {
   McpConfig,
   SkillFile,
@@ -16,7 +9,12 @@ import type {
   TargetCapabilities,
   ValidationResult,
 } from "../types";
-import { atomicWriteJson, atomicWriteYaml } from "../utils/fs";
+import { atomicWriteJson } from "../utils/fs";
+import {
+  configureMcpInConfig,
+  removeMcpFromConfig,
+  validateMcpInConfig,
+} from "../utils/mcp-config";
 import { validateSkillManifest } from "../utils/validate";
 import type { TargetAdapter } from "./types";
 
@@ -66,96 +64,30 @@ export class HermesTarget implements TargetAdapter {
   }
 
   validateMcp(): ValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    if (!existsSync(this.configPath)) {
-      warnings.push(
-        "No ~/.hermes/config.yaml found. Run with --configure-mcp to register.",
-      );
-      return { valid: true, errors, warnings };
-    }
-
-    try {
-      const raw = readFileSync(this.configPath, "utf-8");
-      const config = yamlParse(raw) as Record<string, unknown> | null;
-      const servers = config?.mcp_servers as
-        | Record<string, unknown>
-        | undefined;
-      if (!servers?.kai) {
-        errors.push(
-          'No "kai" MCP server registered in ~/.hermes/config.yaml. Run with --configure-mcp.',
-        );
-      }
-    } catch {
-      errors.push("Cannot parse ~/.hermes/config.yaml for MCP validation.");
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
+    return validateMcpInConfig({
+      configPath: this.configPath,
+      mcpServersKey: "mcp_servers",
+      format: "yaml",
+    });
   }
 
   async configureMcp(config: McpConfig, force = false): Promise<void> {
-    let existing: Record<string, unknown> = {};
-
-    if (existsSync(this.configPath)) {
-      try {
-        existing =
-          (yamlParse(readFileSync(this.configPath, "utf-8")) as Record<
-            string,
-            unknown
-          >) ?? {};
-      } catch {
-        throw new Error(
-          `Cannot read ${this.configPath}. Check the file contains valid YAML.`,
-        );
-      }
-    }
-
-    if (
-      typeof existing.mcp_servers !== "object" ||
-      existing.mcp_servers === null
-    ) {
-      existing.mcp_servers = {};
-    }
-
-    const servers = existing.mcp_servers as Record<string, unknown>;
-    if (servers.kai && !force) {
-      const existingEntry = servers.kai as Record<string, unknown>;
-      if (
-        existingEntry.command !== config.command ||
-        JSON.stringify(existingEntry.args) !== JSON.stringify(config.args)
-      ) {
-        throw new Error(
-          `Conflicting MCP entry for "kai" in ${this.configPath}. Use --force to overwrite, or edit manually.`,
-        );
-      }
-      return;
-    }
-
-    servers.kai = config;
-    atomicWriteYaml(this.configPath, existing);
+    await configureMcpInConfig(
+      config,
+      {
+        configPath: this.configPath,
+        mcpServersKey: "mcp_servers",
+        format: "yaml",
+      },
+      force,
+    );
   }
 
   async removeMcp(): Promise<void> {
-    if (!existsSync(this.configPath)) return;
-
-    let existing: Record<string, unknown>;
-    try {
-      existing = yamlParse(readFileSync(this.configPath, "utf-8")) as Record<
-        string,
-        unknown
-      >;
-    } catch {
-      return;
-    }
-
-    if (
-      typeof existing?.mcp_servers === "object" &&
-      existing.mcp_servers !== null &&
-      (existing.mcp_servers as Record<string, unknown>).kai
-    ) {
-      delete (existing.mcp_servers as Record<string, unknown>).kai;
-      atomicWriteYaml(this.configPath, existing);
-    }
+    await removeMcpFromConfig({
+      configPath: this.configPath,
+      mcpServersKey: "mcp_servers",
+      format: "yaml",
+    });
   }
 }

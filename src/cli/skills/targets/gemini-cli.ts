@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type {
@@ -16,6 +9,11 @@ import type {
   ValidationResult,
 } from "../types";
 import { atomicWriteJson } from "../utils/fs";
+import {
+  configureMcpInConfig,
+  removeMcpFromConfig,
+  validateMcpInConfig,
+} from "../utils/mcp-config";
 import { validateSkillManifest } from "../utils/validate";
 import type { TargetAdapter } from "./types";
 
@@ -66,92 +64,30 @@ export class GeminiCliTarget implements TargetAdapter {
   }
 
   validateMcp(): ValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    if (!existsSync(this.settingsPath)) {
-      warnings.push(
-        "No ~/.gemini/settings.json found. Run with --configure-mcp to register.",
-      );
-      return { valid: true, errors, warnings };
-    }
-
-    try {
-      const resolved = realpathSync(this.settingsPath);
-      const config = JSON.parse(readFileSync(resolved, "utf-8"));
-      if (!config.mcpServers?.kai) {
-        errors.push(
-          'No "kai" MCP server registered in ~/.gemini/settings.json. Run with --configure-mcp.',
-        );
-      }
-    } catch {
-      errors.push("Cannot parse ~/.gemini/settings.json for MCP validation.");
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
+    return validateMcpInConfig({
+      configPath: this.settingsPath,
+      mcpServersKey: "mcpServers",
+      format: "json",
+    });
   }
 
   async configureMcp(config: McpConfig, force = false): Promise<void> {
-    let existing: Record<string, unknown>;
-
-    if (existsSync(this.settingsPath)) {
-      try {
-        const resolved = realpathSync(this.settingsPath);
-        existing = JSON.parse(readFileSync(resolved, "utf-8"));
-      } catch {
-        throw new Error(
-          `Cannot read ${this.settingsPath}. Check the file contains valid JSON.`,
-        );
-      }
-    } else {
-      existing = {};
-    }
-
-    if (
-      typeof existing.mcpServers !== "object" ||
-      existing.mcpServers === null ||
-      Array.isArray(existing.mcpServers)
-    ) {
-      existing.mcpServers = {};
-    }
-
-    const servers = existing.mcpServers as Record<string, unknown>;
-    if (servers.kai && !force) {
-      const existingEntry = servers.kai as McpConfig;
-      if (
-        existingEntry.command !== config.command ||
-        JSON.stringify(existingEntry.args) !== JSON.stringify(config.args)
-      ) {
-        throw new Error(
-          `Conflicting MCP entry for "kai" in ${this.settingsPath}. Use --force to overwrite, or edit manually.`,
-        );
-      }
-      return;
-    }
-
-    servers.kai = config;
-    atomicWriteJson(this.settingsPath, existing);
+    await configureMcpInConfig(
+      config,
+      {
+        configPath: this.settingsPath,
+        mcpServersKey: "mcpServers",
+        format: "json",
+      },
+      force,
+    );
   }
 
   async removeMcp(): Promise<void> {
-    if (!existsSync(this.settingsPath)) return;
-
-    let existing: Record<string, unknown>;
-    try {
-      const resolved = realpathSync(this.settingsPath);
-      existing = JSON.parse(readFileSync(resolved, "utf-8"));
-    } catch {
-      return;
-    }
-
-    if (
-      typeof existing.mcpServers === "object" &&
-      existing.mcpServers !== null &&
-      !Array.isArray(existing.mcpServers) &&
-      (existing.mcpServers as Record<string, unknown>).kai
-    ) {
-      delete (existing.mcpServers as Record<string, unknown>).kai;
-      atomicWriteJson(this.settingsPath, existing);
-    }
+    await removeMcpFromConfig({
+      configPath: this.settingsPath,
+      mcpServersKey: "mcpServers",
+      format: "json",
+    });
   }
 }

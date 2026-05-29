@@ -59,4 +59,26 @@ describe("TargetRegistry", () => {
     });
     expect(detected).toEqual(["claude-code", "hermes", "gemini-cli"]);
   });
+
+  test("validateTargetName rejects unregistered but valid-format names", () => {
+    expect(() => validateTargetName("cursor")).toThrow(/not registered/i);
+    expect(() => validateTargetName("warp-terminal")).toThrow(/not registered/i);
+  });
+
+  test("validateTargetName rejects names starting with digit", () => {
+    expect(() => validateTargetName("1abc")).toThrow(/invalid/i);
+  });
+
+  test("validateTargetName accepts single-character names", () => {
+    // Regex allows single char — but it must also be registered
+    expect(() => validateTargetName("a")).toThrow(/not registered/i);
+  });
+
+  test("getTargetNames matches detectPlatforms keys", () => {
+    const names = getTargetNames();
+    const detected = detectPlatforms(
+      Object.fromEntries(names.map((n) => [n, () => true])),
+    );
+    expect(detected).toEqual(names);
+  });
 });

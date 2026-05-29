@@ -13,7 +13,7 @@ afterAll(() => {
 
 const testPaths = {
   claudeJsonPath: join(TEST_DIR, "claude.json"),
-  settingsJsonPath: join(TEST_DIR, "settings.json"),
+  settingsPath: join(TEST_DIR, "settings.json"),
   commandsDir: join(TEST_DIR, "commands", "kai"),
   hooksDir: join(TEST_DIR, "hooks", "kai"),
 };

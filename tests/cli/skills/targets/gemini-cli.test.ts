@@ -120,4 +120,19 @@ describe("GeminiCliTarget", () => {
 
     expect(existsSync(tempDir)).toBe(false);
   });
+
+  test("validateMcp returns error for malformed JSON", () => {
+    writeFileSync(settingsPath, "not valid json {{{");
+    const target = new GeminiCliTarget(tempDir, settingsPath);
+    const result = target.validateMcp();
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toContain("Cannot parse");
+  });
+
+  test("configureMcp throws for malformed JSON", async () => {
+    writeFileSync(settingsPath, "not valid json {{{");
+    const target = new GeminiCliTarget(tempDir, settingsPath);
+    const config: McpConfig = { command: "kai", args: ["mcp", "serve"] };
+    await expect(target.configureMcp(config)).rejects.toThrow(/Cannot read/);
+  });
 });

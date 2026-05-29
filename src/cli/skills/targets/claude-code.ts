@@ -17,6 +17,11 @@ import type {
   ValidationResult,
 } from "../types";
 import { atomicWriteJson } from "../utils/fs";
+import {
+  configureMcpInConfig,
+  removeMcpFromConfig,
+  validateMcpInConfig,
+} from "../utils/mcp-config";
 import { validateSkillManifest } from "../utils/validate";
 import type { TargetAdapter } from "./types";
 
@@ -31,7 +36,7 @@ export class ClaudeCodeTarget implements TargetAdapter {
   constructor(
     skillInstallPath?: string,
     claudeJsonPath?: string,
-    settingsJsonPath?: string,
+    settingsPath?: string,
     commandsDir?: string,
     hooksDir?: string,
   ) {
@@ -39,7 +44,7 @@ export class ClaudeCodeTarget implements TargetAdapter {
       skillInstallPath ?? join(homedir(), ".claude", "skills", "kai");
     this.claudeJsonPath = claudeJsonPath ?? join(homedir(), ".claude.json");
     this.settingsPath =
-      settingsJsonPath ?? join(homedir(), ".claude", "settings.json");
+      settingsPath ?? join(homedir(), ".claude", "settings.json");
     this.commandsDir =
       commandsDir ?? join(homedir(), ".claude", "commands", "kai");
     this.hooksDir = hooksDir ?? join(homedir(), ".claude", "hooks", "kai");
@@ -72,40 +77,36 @@ export class ClaudeCodeTarget implements TargetAdapter {
     // Write manifest
     atomicWriteJson(join(this.skillInstallPath, "manifest.json"), manifest);
 
-    // Write workflow commands (capability-gated)
-    if (this.capabilities().commands) {
-      const { WORKFLOWS } = await import("../workflows/definitions");
-      const { CommandGenerator } = await import("../workflows/generator");
-      const { getBakedTraits } = await import("../commands/profile-aware");
+    // Write workflow commands
+    const { WORKFLOWS } = await import("../workflows/definitions");
+    const { CommandGenerator } = await import("../workflows/generator");
+    const { getBakedTraits } = await import("../commands/profile-aware");
 
-      mkdirSync(this.commandsDir, { recursive: true });
+    mkdirSync(this.commandsDir, { recursive: true });
 
-      let bakedTraits: Map<string, number>;
-      try {
-        const { getEngine } = await import("../../utils");
-        const { db, engine } = getEngine();
-        const snapshot = engine.getProfile();
-        bakedTraits = getBakedTraits(snapshot);
-        db.close();
-      } catch {
-        bakedTraits = new Map();
-      }
-
-      const gen = new CommandGenerator(bakedTraits);
-      const commands = gen.generateAll(WORKFLOWS);
-      for (const cmd of commands) {
-        writeFileSync(join(this.commandsDir, `${cmd.name}.md`), cmd.content);
-      }
+    let bakedTraits: Map<string, number>;
+    try {
+      const { getEngine } = await import("../../utils");
+      const { db, engine } = getEngine();
+      const snapshot = engine.getProfile();
+      bakedTraits = getBakedTraits(snapshot);
+      db.close();
+    } catch {
+      bakedTraits = new Map();
     }
 
-    // Write hook scripts and register in settings.json (capability-gated)
-    if (this.capabilities().hooks) {
-      const { writeHookScripts, getHookConfigs } = await import("../hooks");
-      writeHookScripts(this.hooksDir);
-      const hookConfigs = getHookConfigs(this.hooksDir);
-      for (const hc of hookConfigs) {
-        await this.mergeSettingsHook(hc);
-      }
+    const gen = new CommandGenerator(bakedTraits);
+    const commands = gen.generateAll(WORKFLOWS);
+    for (const cmd of commands) {
+      writeFileSync(join(this.commandsDir, `${cmd.name}.md`), cmd.content);
+    }
+
+    // Write hook scripts and register in settings.json
+    const { writeHookScripts, getHookConfigs } = await import("../hooks");
+    writeHookScripts(this.hooksDir);
+    const hookConfigs = getHookConfigs(this.hooksDir);
+    for (const hc of hookConfigs) {
+      await this.mergeSettingsHook(hc);
     }
   }
 
@@ -134,93 +135,31 @@ export class ClaudeCodeTarget implements TargetAdapter {
   }
 
   validateMcp(): ValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    if (!existsSync(this.claudeJsonPath)) {
-      warnings.push(
-        "No ~/.claude.json found. Run with --configure-mcp to register.",
-      );
-      return { valid: true, errors, warnings };
-    }
-
-    try {
-      const resolved = realpathSync(this.claudeJsonPath);
-      const config = JSON.parse(readFileSync(resolved, "utf-8"));
-      if (!config.mcpServers?.kai) {
-        errors.push(
-          'No "kai" MCP server registered in ~/.claude.json. Run with --configure-mcp.',
-        );
-      }
-    } catch {
-      errors.push("Cannot parse ~/.claude.json for MCP validation.");
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
+    return validateMcpInConfig({
+      configPath: this.claudeJsonPath,
+      mcpServersKey: "mcpServers",
+      format: "json",
+    });
   }
 
   async configureMcp(config: McpConfig, force = false): Promise<void> {
-    let existing: Record<string, unknown>;
-
-    if (existsSync(this.claudeJsonPath)) {
-      try {
-        const resolved = realpathSync(this.claudeJsonPath);
-        existing = JSON.parse(readFileSync(resolved, "utf-8"));
-      } catch {
-        throw new Error(
-          `Cannot read ${this.claudeJsonPath}. Check the file contains valid JSON.`,
-        );
-      }
-    } else {
-      existing = {};
-    }
-
-    if (
-      typeof existing.mcpServers !== "object" ||
-      existing.mcpServers === null ||
-      Array.isArray(existing.mcpServers)
-    ) {
-      existing.mcpServers = {};
-    }
-
-    const servers = existing.mcpServers as Record<string, unknown>;
-    if (servers.kai && !force) {
-      const existingEntry = servers.kai as McpConfig;
-      if (
-        existingEntry.command !== config.command ||
-        JSON.stringify(existingEntry.args) !== JSON.stringify(config.args)
-      ) {
-        throw new Error(
-          `Conflicting MCP entry for "kai" in ${this.claudeJsonPath}. Use --force to overwrite, or edit manually.`,
-        );
-      }
-      return;
-    }
-
-    servers.kai = config;
-    atomicWriteJson(this.claudeJsonPath, existing);
+    await configureMcpInConfig(
+      config,
+      {
+        configPath: this.claudeJsonPath,
+        mcpServersKey: "mcpServers",
+        format: "json",
+      },
+      force,
+    );
   }
 
   async removeMcp(): Promise<void> {
-    if (!existsSync(this.claudeJsonPath)) return;
-
-    let existing: Record<string, unknown>;
-    try {
-      const resolved = realpathSync(this.claudeJsonPath);
-      existing = JSON.parse(readFileSync(resolved, "utf-8"));
-    } catch {
-      return;
-    }
-
-    if (
-      typeof existing.mcpServers === "object" &&
-      existing.mcpServers !== null &&
-      !Array.isArray(existing.mcpServers) &&
-      (existing.mcpServers as Record<string, unknown>).kai
-    ) {
-      delete (existing.mcpServers as Record<string, unknown>).kai;
-      atomicWriteJson(this.claudeJsonPath, existing);
-    }
+    await removeMcpFromConfig({
+      configPath: this.claudeJsonPath,
+      mcpServersKey: "mcpServers",
+      format: "json",
+    });
   }
 
   async mergeSettingsHook(

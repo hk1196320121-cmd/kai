@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve as resolvePath } from "node:path";
 import type { Command } from "commander";
@@ -6,6 +5,7 @@ import { buildSkillConfigs, sanitizeDomainName } from "../compiler";
 import {
   detectPlatforms,
   getTarget,
+  getTargetNames,
   validateTargetName,
 } from "../targets/registry";
 import type { TargetAdapter } from "../targets/types";
@@ -13,14 +13,17 @@ import { generateMasterSkill, generateSkillMarkdown } from "../templates";
 import type { McpConfig, SkillFile, SkillManifest } from "../types";
 
 function resolveKaiCommand(): string {
-  try {
-    const which = execSync("which kai 2>/dev/null", {
-      encoding: "utf-8",
-    }).trim();
-    if (which && existsSync(which)) return resolvePath(which);
-  } catch {}
+  // Try process.argv first (most reliable in CLI context)
   const kaiPath = process.argv[1];
   if (kaiPath && existsSync(kaiPath)) return resolvePath(kaiPath);
+
+  // Fallback: scan PATH for kai binary
+  const pathEnv = process.env.PATH ?? "";
+  for (const dir of pathEnv.split(":")) {
+    const candidate = join(dir, "kai");
+    if (existsSync(candidate)) return resolvePath(candidate);
+  }
+
   return "kai";
 }
 
@@ -39,7 +42,7 @@ async function buildAdapter(
         return new ClaudeCodeTarget(
           opts.installPath,
           tp?.claudeJsonPath,
-          tp?.settingsJsonPath,
+          tp?.settingsPath,
           tp?.commandsDir,
           tp?.hooksDir,
         );
@@ -73,6 +76,21 @@ async function installToTarget(
 
   const alreadyInstalled =
     existsSync(join(adapter.skillInstallPath, "manifest.json")) && !opts.force;
+
+  // Verify manifest target matches if already installed
+  if (alreadyInstalled) {
+    try {
+      const manifest = JSON.parse(
+        readFileSync(join(adapter.skillInstallPath, "manifest.json"), "utf-8"),
+      );
+      if (manifest.target && manifest.target !== targetName) {
+        // Manifest was for a different target — force reinstall
+        return installToTarget(targetName, { ...opts, force: true });
+      }
+    } catch {
+      // Corrupt manifest — fall through to reinstall
+    }
+  }
 
   if (alreadyInstalled && !opts.configureMcp) {
     return {
@@ -142,13 +160,26 @@ async function installToTarget(
     }
   }
 
-  // Auto-verify
+  // Auto-verify manifest + key skill files
   const validation = adapter.validateInstallation();
   if (!validation.valid) {
     return {
       target: targetName,
       success: false,
       message: `Installation verification failed: ${validation.errors.join("; ")}`,
+    };
+  }
+
+  // Verify key skill files were written
+  if (
+    !alreadyInstalled &&
+    !existsSync(join(adapter.skillInstallPath, "SKILL.md"))
+  ) {
+    return {
+      target: targetName,
+      success: false,
+      message:
+        "Installation verification failed: SKILL.md not found after write.",
     };
   }
 
@@ -171,11 +202,10 @@ export async function installSkills(opts: {
   installPath?: string;
   _testPaths?: {
     claudeJsonPath?: string;
-    settingsJsonPath?: string;
+    settingsPath?: string;
     commandsDir?: string;
     hooksDir?: string;
     configPath?: string;
-    settingsPath?: string;
   };
 }): Promise<number> {
   const targetNames: string[] = [];
@@ -188,12 +218,16 @@ export async function installSkills(opts: {
       );
       return 1;
     }
-    targetNames.push(
-      ...(opts.force ? ["claude-code", "hermes", "gemini-cli"] : detected),
-    );
+    targetNames.push(...(opts.force ? getTargetNames() : detected));
   } else {
-    validateTargetName(opts.target);
-    targetNames.push(opts.target);
+    try {
+      validateTargetName(opts.target);
+      targetNames.push(opts.target);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`ERROR: ${msg}`);
+      return 1;
+    }
   }
 
   let hasError = false;

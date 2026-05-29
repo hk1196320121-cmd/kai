@@ -131,4 +131,28 @@ describe("HermesTarget", () => {
 
     expect(existsSync(tempDir)).toBe(false);
   });
+
+  test("validateMcp returns error for malformed YAML", () => {
+    writeFileSync(configPath, "not: [valid: yaml: {{{");
+    const target = new HermesTarget(tempDir, configPath);
+    const result = target.validateMcp();
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toContain("Cannot parse");
+  });
+
+  test("configureMcp throws for malformed YAML", async () => {
+    writeFileSync(configPath, "not: [valid: yaml: {{{");
+    const target = new HermesTarget(tempDir, configPath);
+    const config: McpConfig = { command: "kai", args: ["mcp", "serve"] };
+    await expect(target.configureMcp(config)).rejects.toThrow(/Cannot read/);
+  });
+
+  test("configureMcp handles mcp_servers as array", async () => {
+    writeFileSync(configPath, "mcp_servers:\n  - item1\n  - item2\n");
+    const target = new HermesTarget(tempDir, configPath);
+    const config: McpConfig = { command: "kai", args: ["mcp", "serve"] };
+    await target.configureMcp(config);
+    const raw = readFileSync(configPath, "utf-8");
+    expect(raw).toContain("kai");
+  });
 });
