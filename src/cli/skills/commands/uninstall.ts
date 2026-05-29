@@ -1,36 +1,58 @@
-import { existsSync, rmSync } from "node:fs";
 import * as readline from "node:readline";
 import type { Command } from "commander";
 import { dim, header, status } from "../../format";
-import { ClaudeCodeTarget } from "../targets/claude-code";
+import {
+  detectPlatforms,
+  getTarget,
+  validateTargetName,
+} from "../targets/registry";
 
 export function registerUninstallCommand(skills: Command): void {
   skills
     .command("uninstall")
     .description("Remove all installed Kai skills")
+    .option(
+      "--target <target>",
+      "Target agent to uninstall from (or 'all')",
+      "all",
+    )
     .option("--force", "Skip confirmation prompt")
-    .action(async (opts: { force?: boolean }) => {
-      const target = new ClaudeCodeTarget();
-      const installPath = target.skillInstallPath;
+    .action(async (opts: { target?: string; force?: boolean }) => {
+      const targetFlag = opts.target ?? "all";
 
-      if (!existsSync(installPath)) {
-        console.log(dim("No skills installed."));
+      const targetNames =
+        targetFlag === "all"
+          ? detectPlatforms()
+          : (() => {
+              validateTargetName(targetFlag);
+              return [targetFlag];
+            })();
+
+      if (targetNames.length === 0) {
+        console.log(dim("No installed platforms detected."));
         return;
       }
 
       console.log(header("Kai Skills Uninstall"));
-      console.log(`This will remove: ${installPath}`);
+      console.log(`Targets: ${targetNames.join(", ")}`);
       console.log();
 
-      // Confirmation prompt (skip with --force)
       if (!opts.force) {
         const confirmed = await new Promise<boolean>((resolve) => {
           const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
           });
+          // SIGINT handler to prevent Bun readline deadlock
+          const onSigint = () => {
+            rl.close();
+            process.off("SIGINT", onSigint);
+            resolve(false);
+          };
+          process.on("SIGINT", onSigint);
           rl.question("Remove all Kai skills? [y/N] ", (answer) => {
             rl.close();
+            process.off("SIGINT", onSigint);
             resolve(
               answer.toLowerCase() === "y" || answer.toLowerCase() === "yes",
             );
@@ -43,57 +65,21 @@ export function registerUninstallCommand(skills: Command): void {
         }
       }
 
-      try {
-        rmSync(installPath, { recursive: true, force: true });
-        console.log(status("success", "Skill files removed."));
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.log(status("error", `Failed to remove skill files: ${msg}`));
-        return;
-      }
-
-      // --- Remove workflow commands ---
-      const commandsDir = target.commandsDir;
-      if (existsSync(commandsDir)) {
+      for (const name of targetNames) {
         try {
-          rmSync(commandsDir, { recursive: true, force: true });
-          console.log(status("success", "Workflow commands removed."));
+          const adapter = getTarget(name);
+
+          // Remove skill files + commands + hooks
+          await adapter.removeSkills();
+          console.log(status("success", `${name}: Skill files removed.`));
+
+          // Remove MCP config
+          await adapter.removeMcp();
+          console.log(status("success", `${name}: MCP configuration removed.`));
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.log(status("warning", `Could not remove commands: ${msg}`));
+          console.log(status("error", `${name}: ${msg}`));
         }
-      }
-
-      // --- Remove hook scripts ---
-      const hooksDir = target.hooksDir;
-      if (existsSync(hooksDir)) {
-        try {
-          rmSync(hooksDir, { recursive: true, force: true });
-          console.log(status("success", "Hook scripts removed."));
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.log(status("warning", `Could not remove hooks: ${msg}`));
-        }
-      }
-
-      try {
-        await target.removeMcp();
-        console.log(
-          status("success", "MCP configuration removed from ~/.claude.json."),
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.log(status("warning", `Could not remove MCP config: ${msg}`));
-      }
-
-      try {
-        await target.removeSettingsHooks();
-        console.log(
-          status("success", "Hooks removed from ~/.claude/settings.json."),
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.log(status("warning", `Could not remove hooks: ${msg}`));
       }
     });
 }

@@ -27,8 +27,18 @@ describe("Orchestrator MCP Handlers", () => {
   let db: KaiDB;
   let dbPath: string;
   let registered: Record<string, any>;
+  let savedLlmEnv: { apiKey: string | undefined; baseUrl: string | undefined };
 
   beforeEach(() => {
+    // Save and clear LLM env vars so planner falls back to single-task
+    // instead of making real API calls that hang/timeout in CI.
+    savedLlmEnv = {
+      apiKey: process.env.LLM_API_KEY,
+      baseUrl: process.env.LLM_BASE_URL,
+    };
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+
     dbPath = join(tmpdir(), `kai-orch-handler-${Date.now()}.db`);
     db = new KaiDB(dbPath);
     registered = setup(db);
@@ -46,6 +56,10 @@ describe("Orchestrator MCP Handlers", () => {
     if (existsSync(pendingDir)) {
       try { rmSync(pendingDir, { recursive: true }); } catch {}
     }
+
+    // Restore LLM env vars
+    if (savedLlmEnv.apiKey !== undefined) process.env.LLM_API_KEY = savedLlmEnv.apiKey;
+    if (savedLlmEnv.baseUrl !== undefined) process.env.LLM_BASE_URL = savedLlmEnv.baseUrl;
   });
 
   // ------------------------------------------------------------------ //

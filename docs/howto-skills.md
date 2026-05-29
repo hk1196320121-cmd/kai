@@ -1,11 +1,23 @@
 # How to Install and Manage Kai Skills
 
-Generate SKILL.md files from Kai's MCP tool schemas so you can invoke any Kai tool from Claude Code via slash commands like `/kai-profile`, `/kai-work`, `/kai-idea`.
+Generate SKILL.md files from Kai's MCP tool schemas so you can invoke any Kai tool from your AI coding tool via slash commands like `/kai-profile`, `/kai-work`, `/kai-idea`.
 
 ## Prerequisites
 
 - Kai installed (`bun add -g kai-profile` or cloned from source)
-- Claude Code CLI configured
+- An AI coding tool: Claude Code, Gemini CLI, or Hermes
+
+## Multi-platform support
+
+Kai skills support three target platforms:
+
+| Platform | Install path | MCP config format |
+|----------|-------------|-------------------|
+| Claude Code | `~/.claude/skills/kai/` | `~/.claude.json` (JSON) |
+| Gemini CLI | `~/.gemini/skills/kai/` | `~/.gemini/settings.json` (JSON) |
+| Hermes | `~/.hermes/skills/kai/` | YAML config |
+
+All `kai skills` commands auto-detect which platforms are installed on your machine. Use `--target` to override when you have multiple platforms installed.
 
 ## Install skills
 
@@ -13,7 +25,13 @@ Generate SKILL.md files from Kai's MCP tool schemas so you can invoke any Kai to
 kai skills install --configure-mcp
 ```
 
-This does four things:
+This auto-detects your installed AI tools and installs for all of them. To target a specific platform:
+
+```bash
+kai skills install --configure-mcp --target gemini-cli
+```
+
+For each detected (or specified) platform, the install does four things:
 
 1. **Generates skill files** in `~/.claude/skills/kai/`. One master `SKILL.md` plus 7 domain-specific files (profile, observe, derive, work, idea, prompt, telemetry). Each file contains the slash commands, tool descriptions, and parameter schemas for that domain.
 
@@ -55,7 +73,7 @@ Output looks like:
 
 ```
 ✓ Installation valid.
-ℹ Version: v0.10.0.1
+ℹ Version: v0.12.0.0
 ```
 
 If something is wrong, fix it with:
@@ -76,7 +94,7 @@ Shows each domain and its associated tools:
 
 ```
 Kai Skills
-Version: 0.10.0.1
+Version: 0.12.0.0
 Generated: 2026-05-27T01:30:00.000Z
 
   ✓ derive — derive.trigger

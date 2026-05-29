@@ -65,10 +65,9 @@ describe("installSkills()", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test("throws on unsupported target", async () => {
-    await expect(
-      installSkills({ target: "cursor" }),
-    ).rejects.toThrow(/not supported/);
+  test("returns error for unregistered target", async () => {
+    const result = await installSkills({ target: "cursor" });
+    expect(result).toBe(1);
   });
 
   test("already installed without force returns 0 without error", async () => {
@@ -389,7 +388,7 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     expect(content.mcpServers.kai.command).toBe("kai");
   });
 
-  test("configureMcp initializes mcpServers when field is invalid type", async () => {
+  test("configureMcp rejects when mcpServers field is invalid type", async () => {
     writeFileSync(
       claudeJsonPath,
       JSON.stringify({ mcpServers: "not-an-object" }),
@@ -397,11 +396,9 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     const target = new ClaudeCodeTarget(tempDir, claudeJsonPath);
     const config = { command: "kai", args: ["mcp", "serve"] };
 
-    await target.configureMcp(config);
-
-    const content = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
-    expect(typeof content.mcpServers).toBe("object");
-    expect(content.mcpServers.kai.command).toBe("kai");
+    await expect(target.configureMcp(config)).rejects.toThrow(
+      "is string, expected an object",
+    );
   });
 
   test("configureMcp initializes mcpServers when field is null", async () => {
@@ -419,7 +416,7 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     expect(content.mcpServers.kai.command).toBe("kai");
   });
 
-  test("configureMcp initializes mcpServers when field is array", async () => {
+  test("configureMcp rejects when mcpServers field is array", async () => {
     writeFileSync(
       claudeJsonPath,
       JSON.stringify({ mcpServers: [1, 2, 3] }),
@@ -427,11 +424,9 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     const target = new ClaudeCodeTarget(tempDir, claudeJsonPath);
     const config = { command: "kai", args: ["mcp", "serve"] };
 
-    await target.configureMcp(config);
-
-    const content = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
-    expect(typeof content.mcpServers).toBe("object");
-    expect(content.mcpServers.kai.command).toBe("kai");
+    await expect(target.configureMcp(config)).rejects.toThrow(
+      "is an array",
+    );
   });
 });
 
@@ -450,9 +445,8 @@ describe("installSkills: MCP configure error", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test("installSkills with unsupported target throws immediately", async () => {
-    await expect(
-      installSkills({ target: "vscode" }),
-    ).rejects.toThrow(/not supported/);
+  test("installSkills with unregistered target returns error code", async () => {
+    const result = await installSkills({ target: "vscode" });
+    expect(result).toBe(1);
   });
 });

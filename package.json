@@ -1,6 +1,6 @@
 {
   "name": "kai-profile",
-  "version": "0.11.0.0",
+  "version": "0.12.0.0",
   "description": "AI behavioral profile engine — MCP server that builds and serves user profiles from observations",
   "type": "module",
   "bin": {
@@ -26,6 +26,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "commander": "^13.0.0",
+    "yaml": "^2.9.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

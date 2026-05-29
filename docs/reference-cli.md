@@ -409,6 +409,82 @@ kai prompt tournament results --task planner --last 5
 | `--task <task>` | Yes | Task to show tournaments for |
 | `--last <n>` | No | Number of recent tournaments (default: 10) |
 
+## `kai skills`
+
+Generate, validate, and manage SKILL.md files for AI coding tools. Supports multiple platforms: Claude Code (default), Gemini CLI, and Hermes.
+
+### `kai skills install`
+
+Generate SKILL.md files, workflow commands, and hooks for an AI coding tool. Auto-detects installed platforms, or installs for a specific target.
+
+```bash
+kai skills install                     # Auto-detect platform and install
+kai skills install --force             # Overwrite existing files
+kai skills install --target gemini-cli # Install for Gemini CLI
+kai skills install --target hermes     # Install for Hermes
+kai skills install --target all        # Install for all detected platforms
+kai skills install --configure-mcp     # Also configure MCP server entry
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--force` | No | Overwrite existing skill files |
+| `--target <platform>` | No | Target platform: `claude-code`, `gemini-cli`, `hermes`, or `all` (default: auto-detect) |
+| `--configure-mcp` | No | Register or update the `kai` MCP server entry in the target's config file |
+
+### `kai skills list`
+
+List installed skills and their associated MCP tools. Shows platform, version, and which domains are installed.
+
+```bash
+kai skills list                        # Auto-detect platform and list
+kai skills list --target claude-code   # List Claude Code installation
+kai skills list --target all           # List all platform installations
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--target <platform>` | No | Filter by platform: `claude-code`, `gemini-cli`, `hermes`, or `all` (default: auto-detect) |
+
+### `kai skills doctor`
+
+Validate the health of an installed skill set. Checks manifest, skill files, workflow commands, hook scripts, and MCP configuration.
+
+```bash
+kai skills doctor                      # Check all detected platforms
+kai skills doctor --fix                # Reinstall to fix issues
+kai skills doctor --target gemini-cli  # Check only Gemini CLI
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--fix` | No | Reinstall skill files to fix detected issues |
+| `--target <platform>` | No | Check specific platform: `claude-code`, `gemini-cli`, `hermes`, or `all` (default: all) |
+
+### `kai skills uninstall`
+
+Remove generated skill files, workflow commands, hook scripts, and MCP configuration. Prompts for confirmation unless `--force` is passed.
+
+```bash
+kai skills uninstall                   # Remove all platform installations
+kai skills uninstall --force           # Skip confirmation prompt
+kai skills uninstall --target hermes   # Remove only Hermes installation
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--force` | No | Skip confirmation prompt |
+| `--target <platform>` | No | Remove specific platform: `claude-code`, `gemini-cli`, `hermes`, or `all` (default: all) |
+
+### Platform detection
+
+All `kai skills` commands auto-detect installed AI tools on the current machine. Detection checks for platform-specific home directories and configuration files. Use `--target` to override auto-detection when multiple platforms are installed.
+
+Supported platforms:
+- **claude-code** — Installs to `~/.claude/skills/kai/`, configures MCP in `~/.claude.json` (JSON), registers hooks in `~/.claude/settings.json`
+- **gemini-cli** — Installs to `~/.gemini/skills/kai/`, configures MCP in `~/.gemini/settings.json` (JSON)
+- **hermes** — Installs to `~/.hermes/skills/kai/`, configures MCP via YAML config
+
 ## Exit codes
 
 | Code | Meaning |

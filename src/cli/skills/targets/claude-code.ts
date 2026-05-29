@@ -1,16 +1,28 @@
-import { randomUUID } from "node:crypto";
+// src/cli/skills/targets/claude-code.ts
 import {
-  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
   realpathSync,
-  renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { McpConfig, ValidationResult } from "../types";
+import type {
+  McpConfig,
+  SkillFile,
+  SkillManifest,
+  TargetCapabilities,
+  ValidationResult,
+} from "../types";
+import { atomicWriteJson } from "../utils/fs";
+import {
+  configureMcpInConfig,
+  removeMcpFromConfig,
+  validateMcpInConfig,
+} from "../utils/mcp-config";
+import { validateSkillManifest } from "../utils/validate";
 import type { TargetAdapter } from "./types";
 
 export class ClaudeCodeTarget implements TargetAdapter {
@@ -19,126 +31,149 @@ export class ClaudeCodeTarget implements TargetAdapter {
   readonly commandsDir: string;
   readonly hooksDir: string;
   private readonly claudeJsonPath: string;
-  readonly settingsJsonPath: string;
+  readonly settingsPath: string;
 
   constructor(
     skillInstallPath?: string,
     claudeJsonPath?: string,
-    settingsJsonPath?: string,
+    settingsPath?: string,
     commandsDir?: string,
     hooksDir?: string,
   ) {
     this.skillInstallPath =
       skillInstallPath ?? join(homedir(), ".claude", "skills", "kai");
     this.claudeJsonPath = claudeJsonPath ?? join(homedir(), ".claude.json");
-    this.settingsJsonPath =
-      settingsJsonPath ?? join(homedir(), ".claude", "settings.json");
+    this.settingsPath =
+      settingsPath ?? join(homedir(), ".claude", "settings.json");
     this.commandsDir =
       commandsDir ?? join(homedir(), ".claude", "commands", "kai");
     this.hooksDir = hooksDir ?? join(homedir(), ".claude", "hooks", "kai");
   }
 
-  validateInstallation(): ValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+  capabilities(): TargetCapabilities {
+    return {
+      skillMd: true,
+      mcp: true,
+      hooks: true,
+      commands: true,
+      terminal: true,
+      skillDirectory: true,
+    };
+  }
 
-    const manifestPath = join(this.skillInstallPath, "manifest.json");
-    if (!existsSync(manifestPath)) {
-      errors.push("No manifest.json found. Run `kai skills install` first.");
-      return { valid: false, errors, warnings };
+  async installSkills(
+    skills: SkillFile[],
+    manifest: SkillManifest,
+  ): Promise<void> {
+    // Write skill files
+    mkdirSync(this.skillInstallPath, { recursive: true });
+    for (const skill of skills) {
+      const filePath = join(this.skillInstallPath, skill.filename);
+      const dir = dirname(filePath);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(filePath, skill.content);
     }
 
+    // Write manifest
+    atomicWriteJson(join(this.skillInstallPath, "manifest.json"), manifest);
+
+    // Write workflow commands
+    const { WORKFLOWS } = await import("../workflows/definitions");
+    const { CommandGenerator } = await import("../workflows/generator");
+    const { getBakedTraits } = await import("../commands/profile-aware");
+
+    mkdirSync(this.commandsDir, { recursive: true });
+
+    let bakedTraits: Map<string, number>;
     try {
-      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-      if (!manifest.kaiVersion) {
-        errors.push("Manifest missing kaiVersion field.");
-      }
-      if (!manifest.skills || Object.keys(manifest.skills).length === 0) {
-        warnings.push("Manifest has no skills registered.");
-      }
+      const { getEngine } = await import("../../utils");
+      const { db, engine } = getEngine();
+      const snapshot = engine.getProfile();
+      bakedTraits = getBakedTraits(snapshot);
+      db.close();
     } catch {
-      errors.push("Manifest file contains invalid JSON.");
+      bakedTraits = new Map();
     }
 
-    return { valid: errors.length === 0, errors, warnings };
+    const gen = new CommandGenerator(bakedTraits);
+    const commands = gen.generateAll(WORKFLOWS);
+    for (const cmd of commands) {
+      writeFileSync(join(this.commandsDir, `${cmd.name}.md`), cmd.content);
+    }
+
+    // Write hook scripts and register in settings.json
+    const { writeHookScripts, getHookConfigs } = await import("../hooks");
+    writeHookScripts(this.hooksDir);
+    const hookConfigs = getHookConfigs(this.hooksDir);
+    for (const hc of hookConfigs) {
+      await this.mergeSettingsHook(hc);
+    }
+  }
+
+  async removeSkills(): Promise<void> {
+    // Remove command files
+    if (existsSync(this.commandsDir)) {
+      rmSync(this.commandsDir, { recursive: true, force: true });
+    }
+
+    // Remove hook scripts
+    if (existsSync(this.hooksDir)) {
+      rmSync(this.hooksDir, { recursive: true, force: true });
+    }
+
+    // Remove hook registrations from settings.json
+    await this.removeSettingsHooks();
+
+    // Remove skill files
+    if (existsSync(this.skillInstallPath)) {
+      rmSync(this.skillInstallPath, { recursive: true, force: true });
+    }
+  }
+
+  validateInstallation(): ValidationResult {
+    return validateSkillManifest(this.skillInstallPath, this.name);
+  }
+
+  validateMcp(): ValidationResult {
+    return validateMcpInConfig({
+      configPath: this.claudeJsonPath,
+      mcpServersKey: "mcpServers",
+      format: "json",
+    });
   }
 
   async configureMcp(config: McpConfig, force = false): Promise<void> {
-    let existing: Record<string, unknown>;
-
-    if (existsSync(this.claudeJsonPath)) {
-      try {
-        const resolved = realpathSync(this.claudeJsonPath);
-        existing = JSON.parse(readFileSync(resolved, "utf-8"));
-      } catch {
-        throw new Error(
-          `Cannot read ${this.claudeJsonPath}. Check the file contains valid JSON.`,
-        );
-      }
-    } else {
-      existing = {};
-    }
-
-    if (
-      typeof existing.mcpServers !== "object" ||
-      existing.mcpServers === null ||
-      Array.isArray(existing.mcpServers)
-    ) {
-      existing.mcpServers = {};
-    }
-
-    const servers = existing.mcpServers as Record<string, unknown>;
-    if (servers.kai && !force) {
-      const existingEntry = servers.kai as McpConfig;
-      if (
-        existingEntry.command !== config.command ||
-        JSON.stringify(existingEntry.args) !== JSON.stringify(config.args)
-      ) {
-        throw new Error(
-          `Conflicting MCP entry for "kai" in ${this.claudeJsonPath}. Use --force to overwrite, or edit manually.`,
-        );
-      }
-      return;
-    }
-
-    servers.kai = config;
-    this.atomicWriteJson(this.claudeJsonPath, existing);
+    await configureMcpInConfig(
+      config,
+      {
+        configPath: this.claudeJsonPath,
+        mcpServersKey: "mcpServers",
+        format: "json",
+      },
+      force,
+    );
   }
 
   async removeMcp(): Promise<void> {
-    if (!existsSync(this.claudeJsonPath)) return;
-
-    let existing: Record<string, unknown>;
-    try {
-      const resolved = realpathSync(this.claudeJsonPath);
-      existing = JSON.parse(readFileSync(resolved, "utf-8"));
-    } catch {
-      return;
-    }
-
-    if (
-      typeof existing.mcpServers === "object" &&
-      existing.mcpServers !== null &&
-      !Array.isArray(existing.mcpServers) &&
-      (existing.mcpServers as Record<string, unknown>).kai
-    ) {
-      delete (existing.mcpServers as Record<string, unknown>).kai;
-      this.atomicWriteJson(this.claudeJsonPath, existing);
-    }
+    await removeMcpFromConfig({
+      configPath: this.claudeJsonPath,
+      mcpServersKey: "mcpServers",
+      format: "json",
+    });
   }
 
   async mergeSettingsHook(
     hookConfig: import("../hooks").HookConfig,
   ): Promise<void> {
     let settings: Record<string, unknown>;
-    if (existsSync(this.settingsJsonPath)) {
+    if (existsSync(this.settingsPath)) {
       try {
-        const resolved = realpathSync(this.settingsJsonPath);
+        const resolved = realpathSync(this.settingsPath);
         const raw = readFileSync(resolved, "utf-8");
         settings = JSON.parse(raw);
       } catch (err) {
         throw new Error(
-          `Cannot parse ${this.settingsJsonPath}: ${err instanceof Error ? err.message : String(err)}. ` +
+          `Cannot parse ${this.settingsPath}: ${err instanceof Error ? err.message : String(err)}. ` +
             `Fix or remove the file manually, then re-run install.`,
         );
       }
@@ -148,15 +183,15 @@ export class ClaudeCodeTarget implements TargetAdapter {
 
     const { mergeHookIntoSettings } = await import("../hooks");
     const merged = mergeHookIntoSettings(settings, hookConfig);
-    this.atomicWriteJson(this.settingsJsonPath, merged);
+    atomicWriteJson(this.settingsPath, merged);
   }
 
   async removeSettingsHooks(): Promise<void> {
-    if (!existsSync(this.settingsJsonPath)) return;
+    if (!existsSync(this.settingsPath)) return;
 
     let settings: Record<string, unknown>;
     try {
-      const resolved = realpathSync(this.settingsJsonPath);
+      const resolved = realpathSync(this.settingsPath);
       settings = JSON.parse(readFileSync(resolved, "utf-8"));
     } catch {
       return;
@@ -171,16 +206,6 @@ export class ClaudeCodeTarget implements TargetAdapter {
         hookId: hc.hookId,
       });
     }
-    this.atomicWriteJson(this.settingsJsonPath, cleaned);
-  }
-
-  private atomicWriteJson(filePath: string, data: unknown): void {
-    const resolved = existsSync(filePath) ? realpathSync(filePath) : filePath;
-    const dir = dirname(resolved);
-    mkdirSync(dir, { recursive: true });
-    const tmpPath = join(dir, `.kai-skills-${randomUUID()}.tmp`);
-    writeFileSync(tmpPath, JSON.stringify(data, null, 2));
-    chmodSync(tmpPath, 0o600);
-    renameSync(tmpPath, resolved);
+    atomicWriteJson(this.settingsPath, cleaned);
   }
 }

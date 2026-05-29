@@ -24,9 +24,12 @@ compiler.ts — introspects schemas via z.toJSONSchema(), groups tools into 7 do
   │
   ▼
 targets/claude-code.ts — writes to ~/.claude/skills/kai/ + commands/ + hooks/ + configures MCP + registers hooks
+	targets/gemini-cli.ts — writes to ~/.gemini/skills/kai/ + configures MCP in settings.json (JSON)
+	targets/hermes.ts — writes to ~/.hermes/skills/kai/ + configures MCP (YAML)
+	targets/registry.ts — TargetRegistry: discovery, validation, adapter resolution + detectPlatforms()
   │
   ▼
-Claude Code discovers skills on next launch → slash commands + hooks active
+AI tool discovers skills on next launch → slash commands + hooks active
 ```
 
 ## Domain mapping
@@ -53,15 +56,17 @@ If `z.toJSONSchema()` fails on an unsupported type, the compiler falls back to l
 
 ## Target adapter pattern
 
-The compiler uses a `TargetAdapter` interface with a single implementation: `ClaudeCodeTarget`. The adapter handles:
+The compiler uses a `TargetAdapter` interface with three implementations: `ClaudeCodeTarget`, `GeminiCliTarget`, and `HermesTarget`. A `TargetRegistry` manages adapter discovery and validation. Each adapter handles:
 
-- **Install paths**: `~/.claude/skills/kai/` (skills), `~/.claude/commands/kai/` (workflow commands), `~/.claude/hooks/kai/` (hook scripts)
-- **MCP configuration**: reads and writes `~/.claude.json` to register the `kai` MCP server
-- **Hook registration**: reads and writes `~/.claude/settings.json` to register SessionStart and PostToolUse hooks
-- **Atomic writes**: uses `tmpfile + renameSync + chmodSync(0o600)` to avoid corrupting config files if the process crashes mid-write
-- **Validation**: checks `manifest.json` existence, command files, hook scripts, and settings.json hook registration
+- **Install paths**: Platform-specific directory for skill files (e.g., `~/.claude/skills/kai/` for Claude Code, `~/.gemini/skills/kai/` for Gemini CLI, `~/.hermes/skills/kai/` for Hermes)
+- **MCP configuration**: Reads and writes the platform's config file in the appropriate format (JSON for Claude Code and Gemini CLI, YAML for Hermes)
+- **Hook registration**: Reads and writes hook registrations where supported (Claude Code: `~/.claude/settings.json`)
+- **Atomic writes**: Uses `atomicWriteJson`/`atomicWriteYaml` utilities to avoid corrupting config files if the process crashes mid-write
+- **Validation**: Checks manifest, skill files, and platform-specific configuration
 
-Adding a new target (e.g., Cursor, Windsurf) means implementing the `TargetAdapter` interface with the correct install path and config file format. The compiler and templates don't change.
+`detectPlatforms()` auto-discovers installed AI tools by checking for platform-specific home directories and config files. The `--target` flag overrides auto-detection when multiple platforms are present.
+
+Adding a new target (e.g., Cursor, Windsurf) means implementing the `TargetAdapter` interface with the correct install path and config file format, then registering it in `TargetRegistry`. The compiler and templates don't change.
 
 ## Generated file structure
 

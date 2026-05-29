@@ -133,10 +133,10 @@ kai mcp serve
 
 | Command | Description |
 |---------|-------------|
-| `install [--force]` | Generate SKILL.md files, workflow commands, and hooks for Claude Code |
-| `list` | List installed skills and their associated MCP tools |
-| `doctor [--fix]` | Validate installed skills, commands, and hooks; `--fix` reinstalls |
-| `uninstall` | Remove generated skill files, commands, hooks, and MCP configuration |
+| `install [--force] [--target <platform>]` | Generate SKILL.md files, workflow commands, and hooks; `--target` selects platform (claude-code, gemini-cli, hermes, or all) |
+| `list [--target <platform>]` | List installed skills and their associated MCP tools; auto-detects or filters by platform |
+| `doctor [--fix] [--target <platform>]` | Validate installed skills, commands, and hooks; `--fix` reinstalls; `--target` scopes check to a platform |
+| `uninstall [--target <platform>]` | Remove generated skill files, commands, hooks, and MCP configuration; `--target` scopes removal |
 
 ### `kai mcp`
 
@@ -246,6 +246,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How CLI Output Rendering Works](docs/explanation-cli-renderers.md) | Explanation | Format primitives, typed renderers, color policy, ANSI-aware alignment |
 | [How the Work Command Modules Work](docs/explanation-work-modules.md) | Explanation | PhaseResult control flow, cooperative SIGINT cancellation, module responsibilities |
 | [How to Install and Manage Kai Skills](docs/howto-skills.md) | How-to | Install, validate, update, and remove generated skill files |
+| [How to Install Kai Skills on Multiple Platforms](docs/howto-multi-platform-skills.md) | How-to | Install skills into Gemini CLI or Hermes with platform-appropriate MCP configuration |
 | [How to Use Workflow Slash Commands](docs/howto-workflow-commands.md) | How-to | Using the 8 personalized slash commands (/kai, /kai-profile, etc.) |
 | [How the Skill Compiler Works](docs/explanation-skill-compiler.md) | Explanation | Zod schema introspection, domain mapping, target adapter pattern, trade-offs |
 | [How Hooks and Workflow Commands Work](docs/explanation-hooks-and-commands.md) | Explanation | Hook architecture, profile-aware baking, intent triggers, design trade-offs |

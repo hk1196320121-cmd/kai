@@ -25,6 +25,8 @@ export interface SkillManifest {
   kaiVersion: string;
   generatedAt: string;
   skills: Record<string, string[]>;
+  target?: string;
+  installScope?: string;
 }
 
 export interface ValidationResult {
@@ -32,3 +34,14 @@ export interface ValidationResult {
   errors: string[];
   warnings: string[];
 }
+
+export interface TargetCapabilities {
+  skillMd: boolean;
+  mcp: boolean;
+  hooks: boolean;
+  commands: boolean;
+  terminal: boolean;
+  skillDirectory: boolean;
+}
+
+export type SkillFile = { filename: string; content: string };

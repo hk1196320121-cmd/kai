@@ -270,7 +270,7 @@ describe("install cycle: commands + hooks generation", () => {
       installPath: skillsDir,
       _testPaths: {
         claudeJsonPath: join(tempDir, "claude.json"),
-        settingsJsonPath: join(tempDir, "settings.json"),
+        settingsPath: join(tempDir, "settings.json"),
         commandsDir,
         hooksDir,
       },
@@ -297,7 +297,7 @@ describe("install cycle: commands + hooks generation", () => {
       installPath: skillsDir,
       _testPaths: {
         claudeJsonPath: join(tempDir, "claude.json"),
-        settingsJsonPath: join(tempDir, "settings.json"),
+        settingsPath: join(tempDir, "settings.json"),
         commandsDir,
         hooksDir: join(tempDir, "hooks", "kai"),
       },

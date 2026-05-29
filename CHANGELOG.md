@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.12.0.0] - 2026-05-29
+
+### Added
+- **Multi-platform skills support** — `kai skills install --target <platform>` now installs skills into Claude Code, Gemini CLI, or Hermes with platform-appropriate MCP configuration (JSON for Gemini, YAML for Hermes). Auto-detects installed tools when `--target` is omitted
+- **TargetRegistry** — centralized target platform discovery, validation, and adapter resolution with `detectPlatforms()` auto-detecting installed AI tools
+- **GeminiCliTarget adapter** — installs skills and configures MCP via Gemini CLI's `settings.json` (JSON format)
+- **HermesTarget adapter** — installs skills and configures MCP via Hermes YAML config
+- **MCP config utilities** — shared `configureMcpInConfig`, `removeMcpFromConfig`, and `validateMcpInConfig` with atomic writes for both JSON and YAML formats
+- **Skill manifest validation** — `validateSkillManifest()` utility for atomic manifest reads/writes
+- **`kai skills list --target`** — list installed skills across any platform, auto-detecting or filtering by target
+- **28 new tests** for multi-platform coverage including registry, adapters, MCP config, and edge cases
+
+### Fixed
+- **doctor exits non-zero on MCP validation failure** — `runDoctorForTarget` now returns false when MCP validation fails, so CI gates work correctly
+- **readConfig eliminates double-read** — JSON config reads now resolve realpath once instead of reading the file twice
+- **atomicWrite cleans up .tmp files** — `atomicWriteJson`/`atomicWriteYaml` now clean up temp files on write failure
+- **installToTarget recursion guard** — prevents infinite loop when manifest target mismatches after force reinstall
+- **mcp-config rejects invalid types** — throws error instead of silently replacing non-object `mcpServers` entries
+
 ## [0.11.0.0] - 2026-05-28
 
 ### Added
