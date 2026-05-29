@@ -171,7 +171,7 @@ export function registerDoctorCommand(skills: Command): void {
       }
 
       // --- Validate hooks in settings.json ---
-      const settingsPath = target.settingsJsonPath;
+      const settingsPath = target.settingsPath;
       if (existsSync(settingsPath)) {
         try {
           const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
