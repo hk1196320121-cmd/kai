@@ -277,13 +277,18 @@ kai telemetry trace <trace-id>         # Full causal chain
 kai telemetry errors                   # Recent errors
 kai telemetry explain "question"       # LLM-powered analysis
 
-# Skills (generate SKILL.md files for Claude Code)
-kai skills install                     # Generate skill files, workflow commands, and hooks
+# Skills (generate SKILL.md files for Claude Code, Gemini CLI, or Hermes)
+kai skills install                     # Generate skill files, workflow commands, and hooks (auto-detect platform)
 kai skills install --force             # Overwrite existing skill files
-kai skills list                        # List installed skills and their tools
-kai skills doctor                      # Validate installed skills, commands, and hooks
+kai skills install --target gemini-cli # Install for Gemini CLI instead of Claude Code
+kai skills install --target all        # Install for all detected platforms
+kai skills list                        # List installed skills and their tools (auto-detect platform)
+kai skills list --target hermes        # List skills for a specific platform
+kai skills doctor                      # Validate installed skills, commands, and hooks (all platforms)
 kai skills doctor --fix                # Reinstall to fix issues
-kai skills uninstall                   # Remove skill files, commands, and hooks
+kai skills doctor --target claude-code # Check only Claude Code installation
+kai skills uninstall                   # Remove skill files, commands, and hooks (all platforms)
+kai skills uninstall --target gemini-cli # Remove only Gemini CLI installation
 ```
 
 ## Architecture
@@ -295,7 +300,7 @@ src/
     skills/          Skill compiler — generates SKILL.md files, workflow commands, and hooks
       compiler.ts    Introspects MCP tool schemas via Zod, builds skill configs
       templates.ts   Generates SKILL.md markdown from skill configs + intent-based triggers
-      targets/       Pluggable target adapters (Claude Code adapter)
+      targets/       Pluggable target adapters (Claude Code, Gemini CLI, Hermes) + TargetRegistry
       commands/      CLI commands — install, list, doctor, uninstall
       hooks/         Hook script generators (SessionStart, PostToolUse auto-observe)
       workflows/     Workflow definitions + CommandGenerator (slash commands)
@@ -377,7 +382,7 @@ Data flows:
 - **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
 - **Prompt genome path**: Genes → Genome → Compiler (profile-aware segments) → Variant → Tournament (A/B battle) → Judge (LLM-as-judge) → Champion promotion → Evolution loop
 - **Telemetry path**: MCP tool call → withTrace wrapper → Trace + Spans + Events + State changes + Errors → SQLite telemetry tables → 30-day retention pruning. `telemetry.query`/`trace`/`explain` tools read back telemetry data
-- **Skill compiler path**: MCP tool schemas (Zod) → Compiler → Skill configs → Templates → SKILL.md files → Target adapter (Claude Code) → Install directory + MCP config
+- **Skill compiler path**: MCP tool schemas (Zod) → Compiler → Skill configs → Templates → SKILL.md files → TargetRegistry → Target adapter (Claude Code / Gemini CLI / Hermes) → Platform-appropriate install directory + MCP config (JSON or YAML)
 - **Workflow command path**: Workflow definitions → CommandGenerator (profile-aware trait baking) → Slash command .md files → `~/.claude/commands/kai/`
 - **Hook path**: Hook generators (SessionStart, PostToolUse) → Hook scripts → `~/.claude/hooks/kai/` → Settings.json hook registration
 - All paths share the same database (`~/.kai/kai.db`)

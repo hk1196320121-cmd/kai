@@ -3,7 +3,7 @@
 ## [0.12.0.0] - 2026-05-29
 
 ### Added
-- **Multi-platform skills support** — `kai skills install`, `doctor`, and `uninstall` now support `--target` to install into Claude Code, Gemini CLI, or Hermes with platform-appropriate MCP configuration (JSON for Gemini, YAML for Hermes)
+- **Multi-platform skills support** — `kai skills install --target <platform>` now installs skills into Claude Code, Gemini CLI, or Hermes with platform-appropriate MCP configuration (JSON for Gemini, YAML for Hermes). Auto-detects installed tools when `--target` is omitted
 - **TargetRegistry** — centralized target platform discovery, validation, and adapter resolution with `detectPlatforms()` auto-detecting installed AI tools
 - **GeminiCliTarget adapter** — installs skills and configures MCP via Gemini CLI's `settings.json` (JSON format)
 - **HermesTarget adapter** — installs skills and configures MCP via Hermes YAML config

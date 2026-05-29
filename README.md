@@ -133,10 +133,10 @@ kai mcp serve
 
 | Command | Description |
 |---------|-------------|
-| `install [--force]` | Generate SKILL.md files, workflow commands, and hooks for Claude Code |
-| `list` | List installed skills and their associated MCP tools |
-| `doctor [--fix]` | Validate installed skills, commands, and hooks; `--fix` reinstalls |
-| `uninstall` | Remove generated skill files, commands, hooks, and MCP configuration |
+| `install [--force] [--target <platform>]` | Generate SKILL.md files, workflow commands, and hooks; `--target` selects platform (claude-code, gemini-cli, hermes, or all) |
+| `list [--target <platform>]` | List installed skills and their associated MCP tools; auto-detects or filters by platform |
+| `doctor [--fix] [--target <platform>]` | Validate installed skills, commands, and hooks; `--fix` reinstalls; `--target` scopes check to a platform |
+| `uninstall [--target <platform>]` | Remove generated skill files, commands, hooks, and MCP configuration; `--target` scopes removal |
 
 ### `kai mcp`
 
