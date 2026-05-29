@@ -1,6 +1,6 @@
 {
   "name": "kai-profile",
-  "version": "0.11.0.0",
+  "version": "0.12.0.0",
   "description": "AI behavioral profile engine — MCP server that builds and serves user profiles from observations",
   "type": "module",
   "bin": {
