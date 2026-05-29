@@ -20,7 +20,18 @@ const PLATFORM_HOME_PATHS: Record<string, () => string> = {
   "gemini-cli": () => join(homedir(), ".gemini"),
 };
 
-// Marker files that prove the platform is actually installed (not just a stale directory)
+// Kai skill install paths — checked first so skills installed without
+// --configure-mcp are still detected (manifest exists even when MCP
+// config files like config.yaml / settings.json are absent).
+const KAI_SKILL_PATHS: Record<string, () => string> = {
+  "claude-code": () => join(homedir(), ".claude", "skills", "kai"),
+  hermes: () => join(homedir(), ".hermes", "skills", "kai"),
+  "gemini-cli": () => join(homedir(), ".gemini", "skills", "kai"),
+};
+
+// Fallback marker files — prove the platform itself is installed when no
+// Kai manifest is present (e.g., the user has the platform but hasn't
+// installed Kai skills yet).
 const PLATFORM_MARKERS: Record<string, string> = {
   "claude-code": "settings.json",
   hermes: "config.yaml",
@@ -69,6 +80,12 @@ export function detectPlatforms(
     const detector =
       overrides?.[name] ??
       (() => {
+        // Priority 1: Kai manifest present → platform has Kai skills installed
+        const skillPath = KAI_SKILL_PATHS[name]?.();
+        if (skillPath && existsSync(join(skillPath, "manifest.json"))) {
+          return true;
+        }
+        // Priority 2: Platform home + marker file (original behavior)
         const homePath = PLATFORM_HOME_PATHS[name]();
         const marker = PLATFORM_MARKERS[name];
         return (

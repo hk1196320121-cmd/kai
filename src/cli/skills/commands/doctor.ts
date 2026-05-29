@@ -23,23 +23,35 @@ export function registerDoctorCommand(skills: Command): void {
       if (opts.fix) {
         const targetNames =
           targetFlag === "all" ? detectPlatforms() : [targetFlag];
+        let fixFailed = false;
         for (const name of targetNames) {
           console.log(`Reinstalling skills for ${name}...`);
           try {
-            await installSkills({
+            const rc = await installSkills({
               target: name,
               force: true,
               configureMcp: true,
             });
-            console.log(
-              status("success", `${name}: Skills reinstalled successfully.`),
-            );
+            if (rc !== 0) {
+              fixFailed = true;
+              console.log(
+                status("error", `${name}: Reinstall returned errors.`),
+              );
+            } else {
+              console.log(
+                status("success", `${name}: Skills reinstalled successfully.`),
+              );
+            }
           } catch (err) {
+            fixFailed = true;
             const msg = err instanceof Error ? err.message : String(err);
             console.log(
               status("error", `${name}: Failed to reinstall: ${msg}`),
             );
           }
+        }
+        if (fixFailed) {
+          process.exitCode = 1;
         }
         return;
       }
@@ -64,14 +76,19 @@ export function registerDoctorCommand(skills: Command): void {
         return;
       }
 
+      let hasFailure = false;
       for (const name of targetNames) {
-        await runDoctorForTarget(name);
+        const healthy = await runDoctorForTarget(name);
+        if (!healthy) hasFailure = true;
         console.log();
+      }
+      if (hasFailure) {
+        process.exitCode = 1;
       }
     });
 }
 
-async function runDoctorForTarget(targetName: string): Promise<void> {
+async function runDoctorForTarget(targetName: string): Promise<boolean> {
   const adapter = getTarget(targetName);
   const caps = adapter.capabilities();
 
@@ -85,7 +102,7 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
       console.log(status("error", err));
     }
     console.log(dim("  Run `kai skills doctor --fix` to reinstall."));
-    return;
+    return false;
   }
 
   console.log(status("success", "Installation valid."));
@@ -285,4 +302,6 @@ async function runDoctorForTarget(targetName: string): Promise<void> {
   for (const warn of validation.warnings) {
     console.log(status("warning", warn));
   }
+
+  return true;
 }
