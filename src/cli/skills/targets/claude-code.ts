@@ -74,9 +74,6 @@ export class ClaudeCodeTarget implements TargetAdapter {
 
     // Write workflow commands (capability-gated)
     if (this.capabilities().commands) {
-      const { buildSkillConfigs: _, sanitizeDomainName: __ } = await import(
-        "../compiler"
-      );
       const { WORKFLOWS } = await import("../workflows/definitions");
       const { CommandGenerator } = await import("../workflows/generator");
       const { getBakedTraits } = await import("../commands/profile-aware");
