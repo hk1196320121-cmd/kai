@@ -69,6 +69,7 @@ async function installToTarget(
     configureMcp?: boolean;
     installPath?: string;
     _testPaths?: Record<string, string | undefined>;
+    _isRetry?: boolean;
   },
 ): Promise<{ target: string; success: boolean; message: string }> {
   const adapter = await buildAdapter(targetName, opts);
@@ -85,9 +86,16 @@ async function installToTarget(
       );
       if (manifest.target && manifest.target !== targetName) {
         // Manifest was for a different target — force reinstall
-        return installToTarget(targetName, { ...opts, force: true });
+        // Guard against infinite recursion if manifest never updates
+        if (opts._isRetry) {
+          throw new Error(
+            `Manifest target "${manifest.target}" does not match "${targetName}" after force reinstall. Delete ${adapter.skillInstallPath} manually.`,
+          );
+        }
+        return installToTarget(targetName, { ...opts, force: true, _isRetry: true });
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("does not match")) throw err;
       // Corrupt manifest — fall through to reinstall
     }
   }

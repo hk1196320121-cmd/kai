@@ -147,12 +147,10 @@ describe("HermesTarget", () => {
     await expect(target.configureMcp(config)).rejects.toThrow(/Cannot read/);
   });
 
-  test("configureMcp handles mcp_servers as array", async () => {
+  test("configureMcp rejects mcp_servers when it is an array", async () => {
     writeFileSync(configPath, "mcp_servers:\n  - item1\n  - item2\n");
     const target = new HermesTarget(tempDir, configPath);
     const config: McpConfig = { command: "kai", args: ["mcp", "serve"] };
-    await target.configureMcp(config);
-    const raw = readFileSync(configPath, "utf-8");
-    expect(raw).toContain("kai");
+    await expect(target.configureMcp(config)).rejects.toThrow("is an array");
   });
 });

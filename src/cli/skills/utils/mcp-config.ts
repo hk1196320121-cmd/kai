@@ -16,12 +16,12 @@ function readConfig(
   format: ConfigFormat,
 ): Record<string, unknown> | null {
   if (!existsSync(configPath)) return null;
-  const raw = readFileSync(configPath, "utf-8");
+  const resolved = realpathSync(configPath);
+  const raw = readFileSync(resolved, "utf-8");
   if (format === "yaml") {
     return (yamlParse(raw) as Record<string, unknown>) ?? null;
   }
-  const resolved = realpathSync(configPath);
-  return JSON.parse(readFileSync(resolved, "utf-8"));
+  return JSON.parse(raw);
 }
 
 function writeConfig(
@@ -83,11 +83,14 @@ export async function configureMcpInConfig(
     existing = {};
   }
 
-  if (
-    typeof existing[opts.mcpServersKey] !== "object" ||
-    existing[opts.mcpServersKey] === null ||
-    Array.isArray(existing[opts.mcpServersKey])
-  ) {
+  const existingValue = existing[opts.mcpServersKey];
+  if (existingValue !== undefined && existingValue !== null) {
+    if (Array.isArray(existingValue) || typeof existingValue !== "object") {
+      throw new Error(
+        `Cannot configure MCP: "${opts.mcpServersKey}" in ${opts.configPath} is ${Array.isArray(existingValue) ? "an array" : typeof existingValue}, expected an object. Fix manually or use --force to overwrite.`,
+      );
+    }
+  } else {
     existing[opts.mcpServersKey] = {};
   }
 

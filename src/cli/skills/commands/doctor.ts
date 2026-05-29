@@ -281,11 +281,13 @@ async function runDoctorForTarget(targetName: string): Promise<boolean> {
   }
 
   // MCP check — actually validate registration
+  let mcpOk = true;
   if (caps.mcp) {
     const mcpValidation = adapter.validateMcp();
     if (mcpValidation.valid) {
       console.log(status("success", "MCP server registered."));
     } else {
+      mcpOk = false;
       for (const err of mcpValidation.errors) {
         console.log(status("error", err));
       }
@@ -303,5 +305,5 @@ async function runDoctorForTarget(targetName: string): Promise<boolean> {
     console.log(status("warning", warn));
   }
 
-  return true;
+  return mcpOk;
 }

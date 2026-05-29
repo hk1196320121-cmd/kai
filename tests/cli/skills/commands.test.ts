@@ -388,7 +388,7 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     expect(content.mcpServers.kai.command).toBe("kai");
   });
 
-  test("configureMcp initializes mcpServers when field is invalid type", async () => {
+  test("configureMcp rejects when mcpServers field is invalid type", async () => {
     writeFileSync(
       claudeJsonPath,
       JSON.stringify({ mcpServers: "not-an-object" }),
@@ -396,11 +396,9 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     const target = new ClaudeCodeTarget(tempDir, claudeJsonPath);
     const config = { command: "kai", args: ["mcp", "serve"] };
 
-    await target.configureMcp(config);
-
-    const content = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
-    expect(typeof content.mcpServers).toBe("object");
-    expect(content.mcpServers.kai.command).toBe("kai");
+    await expect(target.configureMcp(config)).rejects.toThrow(
+      "is string, expected an object",
+    );
   });
 
   test("configureMcp initializes mcpServers when field is null", async () => {
@@ -418,7 +416,7 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     expect(content.mcpServers.kai.command).toBe("kai");
   });
 
-  test("configureMcp initializes mcpServers when field is array", async () => {
+  test("configureMcp rejects when mcpServers field is array", async () => {
     writeFileSync(
       claudeJsonPath,
       JSON.stringify({ mcpServers: [1, 2, 3] }),
@@ -426,11 +424,9 @@ describe("ClaudeCodeTarget: configureMcp same config already present", () => {
     const target = new ClaudeCodeTarget(tempDir, claudeJsonPath);
     const config = { command: "kai", args: ["mcp", "serve"] };
 
-    await target.configureMcp(config);
-
-    const content = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
-    expect(typeof content.mcpServers).toBe("object");
-    expect(content.mcpServers.kai.command).toBe("kai");
+    await expect(target.configureMcp(config)).rejects.toThrow(
+      "is an array",
+    );
   });
 });
 
