@@ -21,7 +21,11 @@ export function atomicWriteJson(filePath: string, data: unknown): void {
     chmodSync(tmpPath, 0o600);
     renameSync(tmpPath, resolved);
   } catch {
-    try { rmSync(tmpPath, { force: true }); } catch { /* best effort */ }
+    try {
+      rmSync(tmpPath, { force: true });
+    } catch {
+      /* best effort */
+    }
     throw new Error(`Failed to write ${filePath}`);
   }
 }
@@ -36,7 +40,11 @@ export function atomicWriteYaml(filePath: string, data: unknown): void {
     chmodSync(tmpPath, 0o600);
     renameSync(tmpPath, resolved);
   } catch {
-    try { rmSync(tmpPath, { force: true }); } catch { /* best effort */ }
+    try {
+      rmSync(tmpPath, { force: true });
+    } catch {
+      /* best effort */
+    }
     throw new Error(`Failed to write ${filePath}`);
   }
 }
