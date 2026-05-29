@@ -337,14 +337,22 @@ describe("MCP handlers: rate limiting", () => {
 describe("MCP handlers: derive.trigger edge cases", () => {
   let db: KaiDB;
   let dbPath: string;
+  let savedApiKey: string | undefined;
 
   beforeEach(() => {
     ({ db, path: dbPath } = makeDb());
+    // Save and clear LLM_API_KEY so the handler sees "no API key"
+    savedApiKey = process.env.LLM_API_KEY;
+    delete process.env.LLM_API_KEY;
   });
 
   afterEach(() => {
     db.close();
     cleanupDb(dbPath);
+    // Restore LLM_API_KEY
+    if (savedApiKey !== undefined) {
+      process.env.LLM_API_KEY = savedApiKey;
+    }
   });
 
   test("derive.trigger method=llm returns error when no API key", async () => {

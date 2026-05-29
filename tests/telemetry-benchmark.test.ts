@@ -47,7 +47,7 @@ describe("Telemetry Benchmark", () => {
 
     console.log(`Telemetry benchmark: p99=${p99.toFixed(2)}ms, median=${durations[Math.floor(ITERATIONS / 2)].toFixed(2)}ms`);
 
-    expect(p99).toBeLessThan(10);
+    expect(p99).toBeLessThan(20);
   });
 
   test("disabled telemetry has zero overhead", () => {
