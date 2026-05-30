@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.12.1.0] - 2026-05-30
+## [0.12.1] - 2026-05-30
 
 ### Added
 - **Autopilot hook system** — three lifecycle hooks (SessionStart, PostToolUse, Stop) that observe your work style and derive behavioral traits automatically between sessions
