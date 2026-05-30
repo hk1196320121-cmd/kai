@@ -1,12 +1,20 @@
-import { sqlSourceCheck, sqlTypeCheck } from "../../core/profile/types";
+import {
+  sqlSourceCheck,
+  sqlTypeCheck,
+  VALID_OBSERVATION_SOURCES,
+} from "../../core/profile/types";
 
 export const MIGRATION_V9 = `
 PRAGMA foreign_keys = OFF;
+PRAGMA busy_timeout = 5000;
 
 BEGIN TRANSACTION;
 
+-- Drop temp table first for idempotent table-rebuild safety
+DROP TABLE IF EXISTS observations_v9;
+
 -- Expand observations type CHECK to include tool_usage + add source CHECK
-CREATE TABLE IF NOT EXISTS observations_v9 (
+CREATE TABLE observations_v9 (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL ${sqlTypeCheck()},
   key TEXT NOT NULL,
@@ -17,8 +25,15 @@ CREATE TABLE IF NOT EXISTS observations_v9 (
   ts TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO observations_v9 (id, type, key, value, confidence, source, provenance, ts)
-  SELECT id, type, key, value, confidence, source, provenance, ts FROM observations;
+-- Map legacy source values (v5 had no CHECK, so arbitrary values could exist)
+-- Unknown sources are mapped to 'session_log' to preserve data.
+INSERT INTO observations_v9 (id, type, key, value, confidence, source, provenance, ts)
+  SELECT id, type, key, value, confidence,
+    CASE
+      WHEN source IN (${VALID_OBSERVATION_SOURCES.map((s) => `'${s}'`).join(",")}) THEN source
+      ELSE 'session_log'
+    END,
+    provenance, ts FROM observations;
 
 DROP TABLE IF EXISTS observations;
 ALTER TABLE observations_v9 RENAME TO observations;
@@ -51,7 +66,6 @@ INSERT OR REPLACE INTO schema_version (version) VALUES (9);
 COMMIT;
 
 PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
 
 PRAGMA integrity_check;
 `;

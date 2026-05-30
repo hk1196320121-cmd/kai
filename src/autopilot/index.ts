@@ -36,20 +36,20 @@ export class AutopilotManager {
       join(this.hooksDir, HOOK_SCRIPTS[1]),
       generateAutoObserveHook(),
     );
-    writeFileSync(join(this.hooksDir, HOOK_SCRIPTS[2]), generateStopHook());
 
-    // [D7/D17] Compile derive-shared to kai-derive.cjs
+    // [D7/D17] Resolve derive-shared path at install time and embed in Stop hook.
+    // Bun natively require()'s TypeScript, so no transpile/bundle needed.
+    let derivePath: string | undefined;
     try {
-      const deriveSourcePath = require.resolve("./derive-shared");
-      if (existsSync(deriveSourcePath)) {
-        const { transpileSync } = require("bun");
-        const source = readFileSync(deriveSourcePath, "utf-8");
-        const transpiled = transpileSync(source, undefined, { target: "cjs" });
-        writeFileSync(join(this.hooksDir, "kai-derive.cjs"), transpiled);
-      }
+      derivePath = require.resolve("./derive-shared");
+      if (!existsSync(derivePath)) derivePath = undefined;
     } catch {
-      // Non-critical — Stop hook will fall back to skipping derivation
+      // derive-shared not found — Stop hook will skip derivation
     }
+    writeFileSync(
+      join(this.hooksDir, HOOK_SCRIPTS[2]),
+      generateStopHook(derivePath),
+    );
 
     // Merge each hook config into settings.json
     let settings: Record<string, unknown> = {};
@@ -90,16 +90,32 @@ export class AutopilotManager {
     const { Database } = require("bun:sqlite");
     const db = new Database(dbPath, { readonly: true });
 
-    const sessions = db
-      .query(
-        "SELECT * FROM autopilot_sessions ORDER BY started_at DESC LIMIT 10",
-      )
-      .all() as AutopilotSession[];
+    try {
+      // Pre-v9 compat: check if autopilot_sessions table exists before querying
+      const tableExists = db
+        .query(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='autopilot_sessions'",
+        )
+        .get();
+      if (!tableExists) {
+        db.close();
+        return { sessions: [], activeSession: null };
+      }
 
-    const activeSession = sessions.find((s) => s.stopped_at === null) ?? null;
+      const sessions = db
+        .query(
+          "SELECT * FROM autopilot_sessions ORDER BY started_at DESC LIMIT 10",
+        )
+        .all() as AutopilotSession[];
 
-    db.close();
-    return { sessions, activeSession };
+      const activeSession = sessions.find((s) => s.stopped_at === null) ?? null;
+
+      db.close();
+      return { sessions, activeSession };
+    } catch {
+      db.close();
+      return { sessions: [], activeSession: null };
+    }
   }
 
   private getHookConfigs(): HookConfig[] {
@@ -111,7 +127,9 @@ export class AutopilotManager {
       },
       {
         eventType: "PostToolUse",
-        // [D19] No matcher — filtering happens inside hook script via allowlist
+        // Matcher prevents spawning a process for every tool call; allowlist inside hook script handles finer filtering
+        matcher:
+          "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|WebSearch|WebFetch|TodoRead|TodoWrite",
         command: `bun "${join(this.hooksDir, HOOK_SCRIPTS[1])}"`,
         hookId: HOOK_IDS[1],
         timeout: 10,
