@@ -421,4 +421,36 @@ export const RULES: Rule[] = [
         "autonomy",
       ),
   },
+  {
+    dimension: "autonomy",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return v.tool === "Bash";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.4 + count * 0.1),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `Autopilot: ${count} Bash tool_usage signals (direct execution)`,
+    }),
+  },
+  {
+    dimension: "detail_oriented",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return v.tool === "Edit";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.1),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `Autopilot: ${count} Edit tool_usage signals (precise edits)`,
+    }),
+  },
 ];
