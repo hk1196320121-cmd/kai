@@ -101,14 +101,20 @@ export function removeHookFromSettings(
   return result;
 }
 
-export function writeHookScripts(hooksDir: string): void {
+export function writeHookScripts(
+  hooksDir: string,
+  derivePath?: string,
+): void {
   mkdirSync(hooksDir, { recursive: true });
   writeFileSync(
     join(hooksDir, KAI_HOOK_SCRIPTS[0]),
     generateSessionStartHook(),
   );
   writeFileSync(join(hooksDir, KAI_HOOK_SCRIPTS[1]), generateAutoObserveHook());
-  writeFileSync(join(hooksDir, KAI_HOOK_SCRIPTS[2]), generateStopHook());
+  writeFileSync(
+    join(hooksDir, KAI_HOOK_SCRIPTS[2]),
+    generateStopHook(derivePath),
+  );
 }
 
 export function getHookConfigs(hooksDir: string): HookConfig[] {
@@ -120,7 +126,9 @@ export function getHookConfigs(hooksDir: string): HookConfig[] {
     },
     {
       eventType: "PostToolUse",
-      // [D19] No matcher — filtering happens inside hook script via allowlist
+      // Matcher prevents spawning a process for every tool call; allowlist inside hook script handles finer filtering
+      matcher:
+        "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|WebSearch|WebFetch|TodoRead|TodoWrite",
       command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[1])}"`,
       hookId: KAI_HOOK_IDS[1],
       timeout: 10,
