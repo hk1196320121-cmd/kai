@@ -101,10 +101,7 @@ export function removeHookFromSettings(
   return result;
 }
 
-export function writeHookScripts(
-  hooksDir: string,
-  derivePath?: string,
-): void {
+export function writeHookScripts(hooksDir: string, derivePath?: string): void {
   mkdirSync(hooksDir, { recursive: true });
   writeFileSync(
     join(hooksDir, KAI_HOOK_SCRIPTS[0]),
