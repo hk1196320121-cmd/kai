@@ -16,8 +16,7 @@
 - **Schema version gates** — all hooks check minimum schema version before executing, preventing errors on un-migrated databases
 - **Migration V9** — expands observations CHECK constraints, adds `session_id` FK column, creates `autopilot_sessions` table with down-migration support
 - **DB permission hardening** — database files set to 0o600 (owner-only read/write)
-- **Shared constants** — `MIN_SCHEMA_VERSION`, `ALLOWED_TOOLS`, `BUSY_TIMEOUT_MS` in single source-of-truth module
-- **12 new test files** covering autopilot lifecycle, hook runtime, migration V9, derivation, and regressions
+- **Shared constants** — `MIN_SCHEMA_VERSION`, `ALLOWED_TOOLS`, `BUSY_TIMEOUT_MS` in single source-of-truth module for cross-hook consistency
 
 ### Changed
 - **Auto-observe hook rewritten** — fixed P0 bugs (invalid `type=tool_pattern`, string confidence), added session_id FK, privacy allowlist, and schema version gate

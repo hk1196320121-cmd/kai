@@ -8,7 +8,7 @@ Default path: `$KAI_DB` or `~/.kai/kai.db`. Override with the `KAI_DB` environme
 
 The database uses WAL (write-ahead logging) mode for concurrent read/write safety. Foreign keys are enabled. Busy timeout is 5000ms.
 
-Migrations run automatically on startup. The schema is versioned from v1 to v8.
+Migrations run automatically on startup. The schema is versioned from v1 to v9.
 
 ## Tables
 
@@ -62,17 +62,36 @@ Behavioral observations collected from various sources. The central data store f
 | Column | Type | Default | Constraints |
 |--------|------|---------|-------------|
 | id | INTEGER | AUTO | PRIMARY KEY |
-| type | TEXT | — | NOT NULL, CHECK(IN ('behavior','preference','feedback','context','signal')) |
+| type | TEXT | — | NOT NULL, CHECK(IN ('behavior','preference','feedback','context','signal','tool_usage')) |
 | key | TEXT | — | NOT NULL |
 | value | TEXT | `'{}'` | NOT NULL (JSON) |
 | confidence | INTEGER | 5 | NOT NULL, CHECK(1 <= confidence <= 10) |
-| source | TEXT | — | NOT NULL |
+| source | TEXT | — | NOT NULL, CHECK(IN ('cron_output','session_log','user_stated','inferred','mcp','coldstart','workspace','execution_result','auto_observe','hook_error')) |
 | provenance | TEXT | `'{}'` | NOT NULL (JSON) |
+| session_id | TEXT | NULL | Optional FK link to autopilot_sessions |
 | ts | TEXT | `datetime('now')` | NOT NULL |
 
-Source values by schema version: v1 (`cron_output`, `session_log`, `user_stated`, `inferred`), v2 (added `mcp`), v4 (added `coldstart`, `workspace`), v5 (removed CHECK constraint — accepts any string, added `execution_result`).
+Source values by schema version: v1 (`cron_output`, `session_log`, `user_stated`, `inferred`), v2 (added `mcp`), v4 (added `coldstart`, `workspace`), v5 (removed CHECK constraint — accepts any string, added `execution_result`), v9 (restored CHECK constraint with full source list, added `auto_observe`, `hook_error`, added `session_id` column, added `tool_usage` type).
 
-**Indexes:** `idx_observations_type`, `idx_observations_key`, `idx_observations_ts`.
+**Indexes:** `idx_observations_type`, `idx_observations_key`, `idx_observations_ts`, `idx_observations_source`, `idx_observations_session_id`.
+
+### `autopilot_sessions` (v9)
+
+Tracks autopilot sessions for lifecycle management. Each session represents a Claude Code session with observation counting and trait derivation status.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | INTEGER | AUTO | PRIMARY KEY |
+| session_id | TEXT | — | NOT NULL, UNIQUE |
+| started_at | TEXT | `datetime('now')` | NOT NULL |
+| stopped_at | TEXT | NULL | Set when session ends |
+| observations_count | INTEGER | 0 | Number of observations collected during this session |
+| traits_derived | INTEGER | 0 | Number of traits derived at session end |
+| traits_changed | INTEGER | 0 | Number of traits that changed during derivation |
+| derivation_status | TEXT | `'pending'` | NOT NULL, CHECK(IN ('pending','completed','failed','skipped')) |
+| project_path | TEXT | NULL | Working directory at session start |
+
+**Indexes:** `idx_autopilot_sessions_started` on `started_at DESC`, `idx_autopilot_sessions_session_id` on `session_id`.
 
 ### `corrections` (v3)
 
@@ -438,6 +457,7 @@ Read-only views that expose telemetry data without internal fields. These are th
 | v6 | Add `prompt_genes`, `prompt_genomes`, `prompt_variants`, `prompt_segments`, `prompt_eval_cases`, `prompt_tournaments`, `prompt_champions`, `prompt_champion_history` tables. Prompt genome system for evolutionary prompt optimization |
 | v7 | Add `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors` tables with 10+ indexes. Add 5 telemetry views (`telemetry_*_v1`). Flight recorder telemetry system for full causal chain tracing |
 | v8 | Extend `workspace_events` event_type CHECK with `recommendation_shown`, `recommendation_accepted`, `recommendation_rejected`, `task_auto_executed`. Table rebuild with transaction-safe DDL |
+| v9 | Expand observations `type` CHECK to include `tool_usage`, add `source` CHECK constraint (restored), add `session_id` column for FK link to `autopilot_sessions`, create `autopilot_sessions` table with session lifecycle tracking. Down-migration drops `autopilot_sessions` and rebuilds observations without `session_id`. Table rebuild with transaction-safe DDL |
 
 All migrations use `PRAGMA foreign_keys = OFF` during table rebuilds, then re-enable. Transactions wrap destructive operations. `PRAGMA integrity_check` runs after each rebuild migration.
 

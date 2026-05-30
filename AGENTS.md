@@ -289,20 +289,33 @@ kai skills doctor --fix                # Reinstall to fix issues
 kai skills doctor --target claude-code # Check only Claude Code installation
 kai skills uninstall                   # Remove skill files, commands, and hooks (all platforms)
 kai skills uninstall --target gemini-cli # Remove only Gemini CLI installation
+
+# Hooks (manage autopilot hooks for Claude Code)
+kai hooks install                      # Install autopilot hooks (SessionStart, PostToolUse, Stop) into Claude Code settings
+kai hooks uninstall                    # Remove Kai autopilot hooks from Claude Code settings
+kai hooks status                       # Show current hook installation status (scripts and settings registration)
+
+# Autopilot (session tracking and trait derivation)
+kai autopilot status                   # Show autopilot session history and active session info
 ```
 
 ## Architecture
 
 ```
 src/
-  cli/              Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
+  autopilot/        AutopilotManager — installs/uninstalls hooks, session tracking, shared derive module
+    index.ts        AutopilotManager class (install, uninstall, status)
+    types.ts        AutopilotSession, HookInput interfaces
+    derive-shared.ts  Shared deriveFromRulesCore for Stop hook + Derivator
+  cli/              Commander.js CLI (profile, observe, work, mcp, prompt, skills, hooks, autopilot, telemetry subcommands)
     work/            Work command modules — start, status, recommendations, git-scan, ui, types
     skills/          Skill compiler — generates SKILL.md files, workflow commands, and hooks
       compiler.ts    Introspects MCP tool schemas via Zod, builds skill configs
       templates.ts   Generates SKILL.md markdown from skill configs + intent-based triggers
       targets/       Pluggable target adapters (Claude Code, Gemini CLI, Hermes) + TargetRegistry
       commands/      CLI commands — install, list, doctor, uninstall
-      hooks/         Hook script generators (SessionStart, PostToolUse auto-observe)
+      hooks/         Hook script generators (SessionStart, PostToolUse, Stop)
+        constants.ts   Shared constants (MIN_SCHEMA_VERSION, ALLOWED_TOOLS, BUSY_TIMEOUT_MS)
       workflows/     Workflow definitions + CommandGenerator (slash commands)
   mcp/              MCP server — handlers, resources, schema, stdio transport
     server.ts       Server creation and startup
@@ -366,11 +379,11 @@ src/
     types.ts        Workspace, Task, Event type definitions
   bridge/           Bridges
     agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
-  db/               SQLite client with WAL mode and schema migrations (v1–v8)
+  db/               SQLite client with WAL mode and schema migrations (v1–v9)
     client.ts       Database connection, migration runner, query helpers
     migrations/     Declarative migration registry + individual migration SQL
       index.ts      Sequential ordering + self-bumps cross-validation
-      v1–v8.ts      Individual migration definitions
+      v1–v9.ts      Individual migration definitions
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
@@ -384,7 +397,8 @@ Data flows:
 - **Telemetry path**: MCP tool call → withTrace wrapper → Trace + Spans + Events + State changes + Errors → SQLite telemetry tables → 30-day retention pruning. `telemetry.query`/`trace`/`explain` tools read back telemetry data
 - **Skill compiler path**: MCP tool schemas (Zod) → Compiler → Skill configs → Templates → SKILL.md files → TargetRegistry → Target adapter (Claude Code / Gemini CLI / Hermes) → Platform-appropriate install directory + MCP config (JSON or YAML)
 - **Workflow command path**: Workflow definitions → CommandGenerator (profile-aware trait baking) → Slash command .md files → `~/.claude/commands/kai/`
-- **Hook path**: Hook generators (SessionStart, PostToolUse) → Hook scripts → `~/.claude/hooks/kai/` → Settings.json hook registration
+- **Hook path**: Hook generators (SessionStart, PostToolUse, Stop) → Hook scripts → `~/.claude/hooks/kai/` → Settings.json hook registration. Stop hook runs `deriveFromRulesCore` at session end to update traits
+- **Autopilot path**: SessionStart → Create session marker in `autopilot_sessions` → PostToolUse captures tool_usage observations (allowlisted tools) → Stop → Close session + derive traits + prune old observations
 - All paths share the same database (`~/.kai/kai.db`)
 
 ## Key Concepts
@@ -393,7 +407,7 @@ Data flows:
 
 **Deduplication**: Observations are hashed (SHA-256) using content + tags + context. Namespace format: `mcp:{tool}:{hash}`. Duplicate submissions return the existing observation.
 
-**Trait derivation rules** (20 rules across 16 unique dimensions):
+**Trait derivation rules** (25 rules across 21 unique dimensions):
 
 *MCP / cron rules (6):*
 - `early_riser`: Matches cron patterns indicating morning activity
@@ -421,6 +435,13 @@ Data flows:
 - `detail_oriented` (coldstart:git.commit_message_length): From commit message thoroughness
 - `scope_appetite` (coldstart:git.branch_pattern): From branch naming patterns
 
+*Autopilot tool_usage rules (5):*
+- `autonomy` (tool_usage:Bash): Direct execution signals — Bash usage indicates preference for hands-on action
+- `detail_oriented` (tool_usage:Edit): Precise edit signals — Edit usage indicates careful, surgical modifications
+- `exploratory` (tool_usage:Grep|Glob|WebSearch): Search/exploration signals — diverse search tool usage
+- `code_focus` (tool_usage:Edit|Write|Read): Code editing signals — heavy use of code manipulation tools
+- `planning_style` (tool_usage:TodoRead|TodoWrite): Structured planning signals — task management tool usage
+
 **Corrections**: When a user corrects a trait via `profile.correct`, the correction is stored in a `corrections` table. Derivation skips corrected dimensions — the trait won't reappear after re-running `derive.trigger`.
 
 **Decay**: Traits weaken over time unless reinforced by new observations. Declared traits (set directly by user) are immune to decay. Only available via CLI (`kai profile decay`), not MCP.
@@ -429,7 +450,7 @@ Data flows:
 
 **Identity**: name, role, location, timezone, communication_style, interests (user-editable fields)
 
-**Observation**: text, source (cron_output|session_log|user_stated|inferred|mcp|coldstart|workspace|execution_result), type (behavior|preference|feedback|context|signal), confidence (1–10), tags, context, timestamp
+**Observation**: text, source (cron_output|session_log|user_stated|inferred|mcp|coldstart|workspace|execution_result|auto_observe|hook_error), type (behavior|preference|feedback|context|signal|tool_usage), confidence (1–10), tags, context, session_id (optional FK to autopilot_sessions), timestamp
 
 **Trait**: dimension, value (0–1), confidence (1–10), source (declared|observed|inferred|cross-model), timestamp
 
@@ -437,7 +458,7 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v8). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v9). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 

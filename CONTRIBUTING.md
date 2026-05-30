@@ -85,6 +85,7 @@ CI runs these same checks on every push and PR. All five must pass before merge.
 
 ```
 src/
+  autopilot/          AutopilotManager — installs/uninstalls hooks, session tracking, shared derive module
   cli/                Commander.js CLI commands
     cli/renderers/       Typed output renderers (profile, prompt, recommendations, telemetry, workspace)
     cli/work/            Work command modules (start, status, recommendations, git-scan, ui, types)
@@ -95,7 +96,7 @@ src/
   workspace/          Workspace/task/event CRUD + event bus
   mcp/                MCP server (handlers with domain sub-files, resources, schema, stdio transport)
   bridge/             Hermes bridge (file reads) + agent bridge (task dispatch)
-  db/                 SQLite client with WAL mode and schema migrations (v1–v8), with declarative migration registry in db/migrations/
+  db/                 SQLite client with WAL mode and schema migrations (v1–v9), with declarative migration registry in db/migrations/
   llm/                OpenAI-compatible LLM provider with retry logic
 dist/                Compiled output (tsc), created by bun run build
 tests/                Mirrors src/ structure
@@ -122,7 +123,7 @@ docs/                 Documentation (Diataxis framework: tutorial/howto/referenc
 - **Observations** are the raw data. Everything flows from observations to traits.
 - **Traits** have source precedence: declared > corrected > observed > inferred. A derived trait cannot overwrite a user-declared one.
 - **The orchestrator** is a pipeline: idea → plan → schedule → dispatch → observe → closed-loop re-plan.
-- **Database** is SQLite with auto-migrating schema. The current version is v8.
+- **Database** is SQLite with auto-migrating schema. The current version is v9.
 
 ## License
 

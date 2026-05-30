@@ -15,10 +15,11 @@ Core capabilities:
 - **Prompt Genome** — evolutionary prompt optimization with genes, genomes, tournaments, and LLM-as-judge. Prompts improve over time through automated A/B testing
 - **Cold Start** — `kai work start` bootstraps a profile from a 10-question interview + git history scan, with task recommendations and auto-execution
 - **Profile Engine** — identity, observations, traits, and preferences with full CRUD
-- **Trait Derivation** — 20 rules across 16 dimensions + LLM-based inference, with source precedence protection
+- **Trait Derivation** — 25 rules across 21 dimensions + LLM-based inference, with source precedence protection
 - **Workspace System** — CRUD for workspaces, tasks, and events with event-driven observation collection
 - **Confidence Decay** — traits weaken over time unless reinforced, declared traits are immune
 - **Provenance** — every trait has a chain of evidence. Ask "why?" and get the reasoning
+- **Autopilot** — three lifecycle hooks (SessionStart, PostToolUse, Stop) that observe tool usage and derive traits automatically between sessions, with nudge system for behavior-adaptive guidance
 - **Observation Collection** — SHA-256 dedup, cron schedule parsing, daily batch collection
 - **Flight Recorder** — full causal chain telemetry tracing every MCP request through derivation, orchestration, and prompt genome. SQL query interface, LLM-powered explain, 30-day retention
 
@@ -138,6 +139,20 @@ kai mcp serve
 | `doctor [--fix] [--target <platform>]` | Validate installed skills, commands, and hooks; `--fix` reinstalls; `--target` scopes check to a platform |
 | `uninstall [--target <platform>]` | Remove generated skill files, commands, hooks, and MCP configuration; `--target` scopes removal |
 
+### `kai hooks`
+
+| Command | Description |
+|---------|-------------|
+| `install` | Install autopilot hooks (SessionStart, PostToolUse, Stop) into Claude Code settings |
+| `uninstall` | Remove Kai autopilot hooks from Claude Code settings |
+| `status` | Show current hook installation status (scripts and settings registration) |
+
+### `kai autopilot`
+
+| Command | Description |
+|---------|-------------|
+| `status` | Show autopilot session history and active session info |
+
 ### `kai mcp`
 
 | Command | Description |
@@ -196,7 +211,8 @@ kai mcp serve
 
 ```
 src/
-  cli/            Commander.js CLI (profile, observe, work, mcp, prompt, skills, telemetry subcommands)
+  autopilot/      AutopilotManager — installs/uninstalls hooks, session tracking, shared derive module
+  cli/            Commander.js CLI (profile, observe, work, mcp, prompt, skills, hooks, autopilot, telemetry subcommands)
     cli/renderers/   Typed output renderers for consistent CLI formatting
     cli/work/        Work command modules (start, status, recommendations, git-scan, ui, types)
     cli/skills/      Skill compiler + workflow commands + hook generators (compiler, templates, targets, commands, hooks, workflows)

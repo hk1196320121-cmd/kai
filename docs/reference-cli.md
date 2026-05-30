@@ -409,6 +409,64 @@ kai prompt tournament results --task planner --last 5
 | `--task <task>` | Yes | Task to show tournaments for |
 | `--last <n>` | No | Number of recent tournaments (default: 10) |
 
+## `kai hooks`
+
+Manage Kai autopilot hooks for Claude Code. Hooks run automatically at session start, after tool use, and at session stop.
+
+### `kai hooks install`
+
+Install autopilot hooks into Claude Code settings. Writes three hook scripts (`kai-session-start.cjs`, `kai-auto-observe.cjs`, `kai-stop.cjs`) and merges hook registrations into `~/.claude/settings.json`.
+
+```bash
+kai hooks install
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--hooks-dir <dir>` | No | Hook scripts directory (default: `~/.claude/hooks/kai`) |
+| `--settings <path>` | No | Claude Code settings.json path (default: `~/.claude/settings.json`) |
+
+### `kai hooks uninstall`
+
+Remove Kai autopilot hooks from Claude Code settings. Removes hook registrations from `~/.claude/settings.json`.
+
+```bash
+kai hooks uninstall
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--settings <path>` | No | Claude Code settings.json path (default: `~/.claude/settings.json`) |
+
+### `kai hooks status`
+
+Show current hook installation status. Checks which hook scripts exist on disk and which hook registrations appear in settings.json.
+
+```bash
+kai hooks status
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--hooks-dir <dir>` | No | Hook scripts directory (default: `~/.claude/hooks/kai`) |
+| `--settings <path>` | No | Claude Code settings.json path (default: `~/.claude/settings.json`) |
+
+## `kai autopilot`
+
+View autopilot session history and status.
+
+### `kai autopilot status`
+
+Show autopilot session history and active session information. Displays session IDs, observation counts, traits derived, derivation status, and session duration.
+
+```bash
+kai autopilot status
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--db <path>` | No | Kai database path (default: `~/.kai/kai.db`) |
+
 ## `kai skills`
 
 Generate, validate, and manage SKILL.md files for AI coding tools. Supports multiple platforms: Claude Code (default), Gemini CLI, and Hermes.
