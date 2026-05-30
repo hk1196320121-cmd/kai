@@ -1,3 +1,9 @@
+import {
+  ALLOWED_TOOLS,
+  BUSY_TIMEOUT_MS,
+  MIN_SCHEMA_VERSION,
+} from "./constants";
+
 export function generateAutoObserveHook(): string {
   return `#!/usr/bin/env bun
 // kai-auto-observe — observe tool usage and write structured observations
@@ -11,19 +17,11 @@ const path = require("path");
 const os = require("os");
 
 const DB_PATH = process.env.KAI_DB || path.join(os.homedir(), ".kai", "kai.db");
-const MIN_SCHEMA_VERSION = 9;
+const MIN_SCHEMA_VERSION = ${MIN_SCHEMA_VERSION};
+const BUSY_TIMEOUT_MS = ${BUSY_TIMEOUT_MS};
 
 // [D19] Tool category allowlist — only behaviorally meaningful tools
-const ALLOWED_TOOLS = new Set([
-  // Code tools
-  "Edit", "Write", "Read", "MultiEdit",
-  // Shell tools
-  "Bash",
-  // Search tools
-  "Grep", "Glob", "WebSearch", "WebFetch",
-  // Planning tools
-  "TodoRead", "TodoWrite",
-]);
+const ALLOWED_TOOLS = new Set(${JSON.stringify([...ALLOWED_TOOLS])});
 
 try {
   let input = "";
@@ -51,7 +49,7 @@ try {
     if (!row || row.v < MIN_SCHEMA_VERSION) { db.close(); process.exit(0); }
   } catch { db.close(); process.exit(0); }
 
-  db.run("PRAGMA busy_timeout = 5000");
+  db.run("PRAGMA busy_timeout = " + BUSY_TIMEOUT_MS);
 
   // Build observation value — capture only input keys (not values) for privacy
   const toolInput = parsed.tool_input || {};
@@ -63,14 +61,15 @@ try {
   });
 
   db.query(
-    "INSERT INTO observations (type, key, value, confidence, source, provenance, ts) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+    "INSERT INTO observations (type, key, value, confidence, source, provenance, session_id, ts) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))"
   ).run(
     "tool_usage",
     toolName,
     value,
     7,
     "auto_observe",
-    JSON.stringify({ session_id: sessionId, autopilot: true })
+    JSON.stringify({ session_id: sessionId, autopilot: true }),
+    sessionId,
   );
 
   db.close();

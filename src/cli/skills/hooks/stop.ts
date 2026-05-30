@@ -46,11 +46,11 @@ try {
     db.query("UPDATE autopilot_sessions SET stopped_at = datetime('now') WHERE session_id = ? AND stopped_at IS NULL").run(sessionId);
   }
 
-  // Count observations from this session
+  // Count observations from this session using session_id FK (exact match)
   let observationsCount = 0;
   try {
     if (sessionId) {
-      const row = db.query("SELECT COUNT(*) as cnt FROM observations WHERE source = 'auto_observe' AND ts >= (SELECT started_at FROM autopilot_sessions WHERE session_id = ? LIMIT 1)").get(sessionId);
+      const row = db.query("SELECT COUNT(*) as cnt FROM observations WHERE session_id = ?").get(sessionId);
       observationsCount = row ? row.cnt : 0;
     }
   } catch { observationsCount = 0; }
