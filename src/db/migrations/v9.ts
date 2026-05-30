@@ -1,4 +1,4 @@
-import { sqlTypeCheck, sqlSourceCheck } from "../../core/profile/types";
+import { sqlSourceCheck, sqlTypeCheck } from "../../core/profile/types";
 
 export const MIGRATION_V9 = `
 PRAGMA foreign_keys = OFF;

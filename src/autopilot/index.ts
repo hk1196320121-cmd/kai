@@ -1,16 +1,16 @@
-export type { NudgeTemplate, AutopilotSession, HookInput } from "./types";
+export type { AutopilotSession, HookInput, NudgeTemplate } from "./types";
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
-import type { AutopilotSession } from "./types";
-import { generateSessionStartHook } from "../cli/skills/hooks/session-start";
-import { generateAutoObserveHook } from "../cli/skills/hooks/auto-observe";
-import { generateStopHook } from "../cli/skills/hooks/stop";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import {
+  type HookConfig,
   mergeHookIntoSettings,
   removeHookFromSettings,
-  type HookConfig,
 } from "../cli/skills/hooks";
+import { generateAutoObserveHook } from "../cli/skills/hooks/auto-observe";
+import { generateSessionStartHook } from "../cli/skills/hooks/session-start";
+import { generateStopHook } from "../cli/skills/hooks/stop";
+import type { AutopilotSession } from "./types";
 
 const HOOK_SCRIPTS = [
   "kai-session-start.cjs",
@@ -18,11 +18,7 @@ const HOOK_SCRIPTS = [
   "kai-stop.cjs",
 ] as const;
 
-const HOOK_IDS = [
-  "kai-session-start",
-  "kai-auto-observe",
-  "kai-stop",
-] as const;
+const HOOK_IDS = ["kai-session-start", "kai-auto-observe", "kai-stop"] as const;
 
 export class AutopilotManager {
   constructor(private hooksDir: string) {}
@@ -95,7 +91,9 @@ export class AutopilotManager {
     const db = new Database(dbPath, { readonly: true });
 
     const sessions = db
-      .query("SELECT * FROM autopilot_sessions ORDER BY started_at DESC LIMIT 10")
+      .query(
+        "SELECT * FROM autopilot_sessions ORDER BY started_at DESC LIMIT 10",
+      )
       .all() as AutopilotSession[];
 
     const activeSession = sessions.find((s) => s.stopped_at === null) ?? null;

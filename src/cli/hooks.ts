@@ -1,20 +1,26 @@
-import { Command } from "commander";
-import { join } from "node:path";
-import { homedir } from "node:os";
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import type { Command } from "commander";
 import { AutopilotManager } from "../autopilot/index";
 
 const DEFAULT_HOOKS_DIR = join(homedir(), ".claude", "hooks", "kai");
 const DEFAULT_SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
 
 export function registerHooksCommands(program: Command): void {
-  const hooks = program.command("hooks").description("Manage Kai autopilot hooks");
+  const hooks = program
+    .command("hooks")
+    .description("Manage Kai autopilot hooks");
 
   hooks
     .command("install")
     .description("Install autopilot hooks into Claude Code settings")
     .option("--hooks-dir <dir>", "Hook scripts directory", DEFAULT_HOOKS_DIR)
-    .option("--settings <path>", "Claude Code settings.json path", DEFAULT_SETTINGS_PATH)
+    .option(
+      "--settings <path>",
+      "Claude Code settings.json path",
+      DEFAULT_SETTINGS_PATH,
+    )
     .action((opts) => {
       const manager = new AutopilotManager(opts.hooksDir);
       manager.install(opts.settings);
@@ -26,7 +32,11 @@ export function registerHooksCommands(program: Command): void {
   hooks
     .command("uninstall")
     .description("Remove Kai autopilot hooks from Claude Code settings")
-    .option("--settings <path>", "Claude Code settings.json path", DEFAULT_SETTINGS_PATH)
+    .option(
+      "--settings <path>",
+      "Claude Code settings.json path",
+      DEFAULT_SETTINGS_PATH,
+    )
     .action((opts) => {
       const manager = new AutopilotManager(DEFAULT_HOOKS_DIR);
       manager.uninstall(opts.settings);
@@ -37,10 +47,18 @@ export function registerHooksCommands(program: Command): void {
     .command("status")
     .description("Show current hook installation status")
     .option("--hooks-dir <dir>", "Hook scripts directory", DEFAULT_HOOKS_DIR)
-    .option("--settings <path>", "Claude Code settings.json path", DEFAULT_SETTINGS_PATH)
+    .option(
+      "--settings <path>",
+      "Claude Code settings.json path",
+      DEFAULT_SETTINGS_PATH,
+    )
     .action((opts) => {
       // Check if scripts exist
-      const scripts = ["kai-session-start.cjs", "kai-auto-observe.cjs", "kai-stop.cjs"];
+      const scripts = [
+        "kai-session-start.cjs",
+        "kai-auto-observe.cjs",
+        "kai-stop.cjs",
+      ];
       const scriptStatus = scripts.map((s) => ({
         name: s,
         exists: existsSync(join(opts.hooksDir, s)),
@@ -55,7 +73,10 @@ export function registerHooksCommands(program: Command): void {
           for (const groups of Object.values(settings.hooks || {})) {
             for (const group of groups as any[]) {
               for (const hook of group.hooks || []) {
-                if (hook.command && /kai-(session-start|auto-observe|stop)/.test(hook.command)) {
+                if (
+                  hook.command &&
+                  /kai-(session-start|auto-observe|stop)/.test(hook.command)
+                ) {
                   allCommands.push(hook.command);
                 }
               }

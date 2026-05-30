@@ -12,7 +12,11 @@ export interface HookConfig {
   timeout?: number;
 }
 
-export const KAI_HOOK_IDS = ["kai-session-start", "kai-auto-observe", "kai-stop"] as const;
+export const KAI_HOOK_IDS = [
+  "kai-session-start",
+  "kai-auto-observe",
+  "kai-stop",
+] as const;
 export const KAI_HOOK_SCRIPTS = [
   "kai-session-start.cjs",
   "kai-auto-observe.cjs",
