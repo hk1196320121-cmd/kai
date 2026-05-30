@@ -70,8 +70,10 @@ export function registerHooksCommands(program: Command): void {
         try {
           const settings = JSON.parse(readFileSync(opts.settings, "utf-8"));
           const allCommands: string[] = [];
-          for (const groups of Object.values(settings.hooks || {})) {
-            for (const group of groups as any[]) {
+          for (const groups of Object.values(settings.hooks || {}) as Array<
+            Array<{ hooks?: Array<{ command?: string }> }>
+          >) {
+            for (const group of groups) {
               for (const hook of group.hooks || []) {
                 if (
                   hook.command &&

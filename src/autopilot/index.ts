@@ -1,4 +1,4 @@
-export type { AutopilotSession, HookInput, NudgeTemplate } from "./types";
+export type { AutopilotSession, HookInput } from "./types";
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

@@ -1,3 +1,5 @@
+import { BUSY_TIMEOUT_MS, MIN_SCHEMA_VERSION } from "./constants";
+
 export function generateSessionStartHook(): string {
   return `#!/usr/bin/env bun
 // kai-session-start — inject profile context + nudges into new Claude Code sessions
@@ -9,7 +11,8 @@ const path = require("path");
 const os = require("os");
 
 const DB_PATH = process.env.KAI_DB || path.join(os.homedir(), ".kai", "kai.db");
-const MIN_SCHEMA_VERSION = 9;
+const MIN_SCHEMA_VERSION = ${MIN_SCHEMA_VERSION};
+const BUSY_TIMEOUT_MS = ${BUSY_TIMEOUT_MS};
 
 // Nudge templates (Phase 1: rule-based from top traits)
 const NUDGE_TEMPLATES = [
@@ -72,18 +75,18 @@ try {
     }
   } catch { db.close(); process.exit(0); }
 
-  db.run("PRAGMA busy_timeout = 5000");
+  db.run("PRAGMA busy_timeout = " + BUSY_TIMEOUT_MS);
 
   // [D20] Orphan session cleanup — close stale pending sessions (> 1 hour old)
   try {
     db.query(
-      "UPDATE autopilot_sessions SET stopped_at = datetime('now', '-1 hour'), derivation_status = 'skipped' WHERE stopped_at IS NULL AND started_at < datetime('now', '-1 hour')"
+      "UPDATE autopilot_sessions SET stopped_at = datetime('now'), derivation_status = 'skipped' WHERE stopped_at IS NULL AND started_at < datetime('now', '-1 hour')"
     ).run();
   } catch {}
 
-  // Write session marker
+  // Write session marker (OR IGNORE handles double-fire from Claude Code restart)
   db.query(
-    "INSERT INTO autopilot_sessions (session_id, started_at, derivation_status, project_path) VALUES (?, datetime('now'), 'pending', ?)"
+    "INSERT OR IGNORE INTO autopilot_sessions (session_id, started_at, derivation_status, project_path) VALUES (?, datetime('now'), 'pending', ?)"
   ).run(sessionId, projectPath);
 
   // Read profile (LIMIT 10 for performance)

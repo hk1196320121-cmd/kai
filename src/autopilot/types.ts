@@ -1,10 +1,3 @@
-/** Phase 2 nudge template — pre-architected for seamless Phase 2 integration. */
-export interface NudgeTemplate {
-  trait: string;
-  threshold: { min: number } | { max: number };
-  template: string;
-}
-
 /** Autopilot session row from autopilot_sessions table. */
 export interface AutopilotSession {
   id: number;
