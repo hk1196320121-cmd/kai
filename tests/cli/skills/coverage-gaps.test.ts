@@ -28,10 +28,11 @@ describe("writeHookScripts + getHookConfigs", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test("writeHookScripts creates both .cjs files on disk", () => {
+  test("writeHookScripts creates all .cjs files on disk", () => {
     writeHookScripts(tempDir);
     expect(existsSync(join(tempDir, "kai-session-start.cjs"))).toBe(true);
     expect(existsSync(join(tempDir, "kai-auto-observe.cjs"))).toBe(true);
+    expect(existsSync(join(tempDir, "kai-stop.cjs"))).toBe(true);
   });
 
   test("written hook scripts contain shebang", () => {
@@ -40,11 +41,11 @@ describe("writeHookScripts + getHookConfigs", () => {
     expect(content.startsWith("#!/usr/bin/env bun")).toBe(true);
   });
 
-  test("getHookConfigs returns 2 configs with correct event types", () => {
+  test("getHookConfigs returns 3 configs with correct event types", () => {
     const configs = getHookConfigs(tempDir);
-    expect(configs).toHaveLength(2);
+    expect(configs).toHaveLength(3);
     const eventTypes = configs.map((c) => c.eventType).sort();
-    expect(eventTypes).toEqual(["PostToolUse", "SessionStart"]);
+    expect(eventTypes).toEqual(["PostToolUse", "SessionStart", "Stop"]);
   });
 
   test("getHookConfigs SessionStart has no matcher", () => {
@@ -53,10 +54,10 @@ describe("writeHookScripts + getHookConfigs", () => {
     expect(sessionStart.matcher).toBeUndefined();
   });
 
-  test("getHookConfigs PostToolUse has matcher and timeout", () => {
+  test("getHookConfigs PostToolUse has no matcher and has timeout [D19]", () => {
     const configs = getHookConfigs(tempDir);
     const postToolUse = configs.find((c) => c.eventType === "PostToolUse")!;
-    expect(postToolUse.matcher).toBe("Bash|Read|Edit|Write");
+    expect(postToolUse.matcher).toBeUndefined();
     expect(postToolUse.timeout).toBe(10);
   });
 
@@ -284,7 +285,7 @@ describe("install cycle: commands + hooks generation", () => {
     // Check hook files
     expect(existsSync(hooksDir)).toBe(true);
     const hookFiles = readdirSync(hooksDir).filter((f) => f.endsWith(".cjs"));
-    expect(hookFiles.length).toBe(2);
+    expect(hookFiles.length).toBe(3);
   });
 
   test("installed command files have /kai heading", async () => {

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAutoObserveHook } from "./hooks/auto-observe";
 import { generateSessionStartHook } from "./hooks/session-start";
+import { generateStopHook } from "./hooks/stop";
 
 export interface HookConfig {
   eventType: string;
@@ -11,10 +12,11 @@ export interface HookConfig {
   timeout?: number;
 }
 
-export const KAI_HOOK_IDS = ["kai-session-start", "kai-auto-observe"] as const;
+export const KAI_HOOK_IDS = ["kai-session-start", "kai-auto-observe", "kai-stop"] as const;
 export const KAI_HOOK_SCRIPTS = [
   "kai-session-start.cjs",
   "kai-auto-observe.cjs",
+  "kai-stop.cjs",
 ] as const;
 
 interface HookGroup {
@@ -102,6 +104,7 @@ export function writeHookScripts(hooksDir: string): void {
     generateSessionStartHook(),
   );
   writeFileSync(join(hooksDir, KAI_HOOK_SCRIPTS[1]), generateAutoObserveHook());
+  writeFileSync(join(hooksDir, KAI_HOOK_SCRIPTS[2]), generateStopHook());
 }
 
 export function getHookConfigs(hooksDir: string): HookConfig[] {
@@ -113,10 +116,16 @@ export function getHookConfigs(hooksDir: string): HookConfig[] {
     },
     {
       eventType: "PostToolUse",
-      matcher: "Bash|Read|Edit|Write",
+      // [D19] No matcher — filtering happens inside hook script via allowlist
       command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[1])}"`,
       hookId: KAI_HOOK_IDS[1],
       timeout: 10,
+    },
+    {
+      eventType: "Stop",
+      command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[2])}"`,
+      hookId: KAI_HOOK_IDS[2],
+      timeout: 30,
     },
   ];
 }

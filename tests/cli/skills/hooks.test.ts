@@ -52,16 +52,18 @@ describe("HookGenerator", () => {
   });
 
   describe("KAI_HOOK_IDS and KAI_HOOK_SCRIPTS", () => {
-    test("exports 2 hook IDs", () => {
-      expect(KAI_HOOK_IDS).toHaveLength(2);
+    test("exports 3 hook IDs", () => {
+      expect(KAI_HOOK_IDS).toHaveLength(3);
       expect(KAI_HOOK_IDS).toContain("kai-session-start");
       expect(KAI_HOOK_IDS).toContain("kai-auto-observe");
+      expect(KAI_HOOK_IDS).toContain("kai-stop");
     });
 
-    test("exports 2 hook script filenames", () => {
-      expect(KAI_HOOK_SCRIPTS).toHaveLength(2);
+    test("exports 3 hook script filenames", () => {
+      expect(KAI_HOOK_SCRIPTS).toHaveLength(3);
       expect(KAI_HOOK_SCRIPTS[0]).toBe("kai-session-start.cjs");
       expect(KAI_HOOK_SCRIPTS[1]).toBe("kai-auto-observe.cjs");
+      expect(KAI_HOOK_SCRIPTS[2]).toBe("kai-stop.cjs");
     });
   });
 
@@ -80,17 +82,17 @@ describe("HookGenerator", () => {
       );
     });
 
-    test("adds PostToolUse hook with matcher", () => {
+    test("adds PostToolUse hook without matcher [D19]", () => {
       const settings = {};
       const result = mergeHookIntoSettings(settings, {
         eventType: "PostToolUse",
-        matcher: "Bash|Read|Edit|Write",
         command: 'node "/home/user/.claude/hooks/kai/kai-auto-observe.cjs"',
         hookId: "kai-auto-observe",
         timeout: 10,
       });
       expect(result.hooks.PostToolUse).toHaveLength(1);
-      expect(result.hooks.PostToolUse[0].matcher).toBe("Bash|Read|Edit|Write");
+      // [D19] No matcher — filtering happens inside hook script via allowlist
+      expect(result.hooks.PostToolUse[0].matcher).toBeUndefined();
     });
 
     test("merges into existing hooks without duplicating", () => {
