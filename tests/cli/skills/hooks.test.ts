@@ -82,17 +82,19 @@ describe("HookGenerator", () => {
       );
     });
 
-    test("adds PostToolUse hook without matcher [D19]", () => {
+    test("adds PostToolUse hook with matcher for allowlisted tools", () => {
       const settings = {};
       const result = mergeHookIntoSettings(settings, {
         eventType: "PostToolUse",
+        matcher:
+          "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|WebSearch|WebFetch|TodoRead|TodoWrite",
         command: 'node "/home/user/.claude/hooks/kai/kai-auto-observe.cjs"',
         hookId: "kai-auto-observe",
         timeout: 10,
       });
       expect(result.hooks.PostToolUse).toHaveLength(1);
-      // [D19] No matcher — filtering happens inside hook script via allowlist
-      expect(result.hooks.PostToolUse[0].matcher).toBeUndefined();
+      expect(result.hooks.PostToolUse[0].matcher).toContain("Bash");
+      expect(result.hooks.PostToolUse[0].matcher).toContain("Edit");
     });
 
     test("merges into existing hooks without duplicating", () => {

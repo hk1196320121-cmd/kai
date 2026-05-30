@@ -54,10 +54,11 @@ describe("writeHookScripts + getHookConfigs", () => {
     expect(sessionStart.matcher).toBeUndefined();
   });
 
-  test("getHookConfigs PostToolUse has no matcher and has timeout [D19]", () => {
+  test("getHookConfigs PostToolUse has matcher for allowlisted tools and has timeout", () => {
     const configs = getHookConfigs(tempDir);
     const postToolUse = configs.find((c) => c.eventType === "PostToolUse")!;
-    expect(postToolUse.matcher).toBeUndefined();
+    expect(postToolUse.matcher).toContain("Bash");
+    expect(postToolUse.matcher).toContain("Edit");
     expect(postToolUse.timeout).toBe(10);
   });
 
