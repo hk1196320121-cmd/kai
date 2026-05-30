@@ -20,7 +20,7 @@ Tracks the current database schema version.
 |--------|------|-------------|
 | version | INTEGER | PRIMARY KEY |
 
-Always contains a single row with the highest applied migration number (currently 8).
+Always contains a single row with the highest applied migration number (currently 9).
 
 ### `identity`
 

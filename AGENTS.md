@@ -342,7 +342,7 @@ src/
   core/profile/     Profile engine core
     engine.ts       CRUD for identity, observations, traits, preferences; source precedence
     derivator.ts    Thin facade re-exporting rules + LLM derivation
-    rules.ts        20 derivation rule definitions across 16 dimensions (with deriveFromValues)
+    rules.ts        25 derivation rule definitions across 21 dimensions (with deriveFromValues)
     llm-derive.ts   LLM-based trait inference logic
     interview-questions.ts  10-question interview catalog with trait targets
     interview.ts    InterviewEngine — cold start interview flow with signal extraction
@@ -464,7 +464,7 @@ SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v9).
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (922 across 97 files)
+bun test             # Run tests (1200 across 129 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome
