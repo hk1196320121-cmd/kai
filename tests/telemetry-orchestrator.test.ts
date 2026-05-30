@@ -243,7 +243,7 @@ describe("Orchestrator Telemetry", () => {
       key: "cron:job1",
       value: JSON.stringify({ contentLength: 100 }),
       confidence: 5,
-      source: "test",
+      source: "cron_output",
       provenance: "{}",
     });
 
@@ -287,7 +287,7 @@ describe("Orchestrator Telemetry", () => {
       key: "cron:job1",
       value: JSON.stringify({ contentLength: 100 }),
       confidence: 5,
-      source: "test",
+      source: "cron_output",
       provenance: "{}",
     });
 

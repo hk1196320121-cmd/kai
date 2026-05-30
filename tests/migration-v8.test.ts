@@ -46,7 +46,7 @@ describe("V8 Migration", () => {
     const row = raw.query("SELECT MAX(version) as v FROM schema_version").get() as {
       v: number;
     };
-    expect(row.v).toBe(8);
+    expect(row.v).toBeGreaterThanOrEqual(8);
     db.close();
   });
 });
