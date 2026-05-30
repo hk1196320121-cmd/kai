@@ -196,6 +196,24 @@ async function installToTarget(
     };
   }
 
+  // Delegate autopilot hook installation for Claude Code
+  if (targetName === "claude-code" && !alreadyInstalled) {
+    try {
+      const { AutopilotManager } = await import("../../../autopilot/index");
+      const hooksDir = adapter.hooksDir;
+      const settingsPath = adapter.settingsPath;
+      if (hooksDir && settingsPath) {
+        const manager = new AutopilotManager(hooksDir);
+        manager.install(settingsPath);
+        console.log("Autopilot hooks configured.");
+      }
+    } catch (err) {
+      // Non-critical — hook installation failure should not block skills install
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`Warning: Autopilot hook setup failed: ${msg}`);
+    }
+  }
+
   if (!opts.configureMcp) {
     console.log("\nTo complete setup, add the MCP server.");
     console.log("Run with --configure-mcp for automatic configuration.");

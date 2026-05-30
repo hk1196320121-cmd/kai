@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAutoObserveHook } from "./hooks/auto-observe";
 import { generateSessionStartHook } from "./hooks/session-start";
+import { generateStopHook } from "./hooks/stop";
 
 export interface HookConfig {
   eventType: string;
@@ -11,10 +12,15 @@ export interface HookConfig {
   timeout?: number;
 }
 
-export const KAI_HOOK_IDS = ["kai-session-start", "kai-auto-observe"] as const;
+export const KAI_HOOK_IDS = [
+  "kai-session-start",
+  "kai-auto-observe",
+  "kai-stop",
+] as const;
 export const KAI_HOOK_SCRIPTS = [
   "kai-session-start.cjs",
   "kai-auto-observe.cjs",
+  "kai-stop.cjs",
 ] as const;
 
 interface HookGroup {
@@ -95,13 +101,17 @@ export function removeHookFromSettings(
   return result;
 }
 
-export function writeHookScripts(hooksDir: string): void {
+export function writeHookScripts(hooksDir: string, derivePath?: string): void {
   mkdirSync(hooksDir, { recursive: true });
   writeFileSync(
     join(hooksDir, KAI_HOOK_SCRIPTS[0]),
     generateSessionStartHook(),
   );
   writeFileSync(join(hooksDir, KAI_HOOK_SCRIPTS[1]), generateAutoObserveHook());
+  writeFileSync(
+    join(hooksDir, KAI_HOOK_SCRIPTS[2]),
+    generateStopHook(derivePath),
+  );
 }
 
 export function getHookConfigs(hooksDir: string): HookConfig[] {
@@ -113,10 +123,18 @@ export function getHookConfigs(hooksDir: string): HookConfig[] {
     },
     {
       eventType: "PostToolUse",
-      matcher: "Bash|Read|Edit|Write",
+      // Matcher prevents spawning a process for every tool call; allowlist inside hook script handles finer filtering
+      matcher:
+        "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|WebSearch|WebFetch|TodoRead|TodoWrite",
       command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[1])}"`,
       hookId: KAI_HOOK_IDS[1],
       timeout: 10,
+    },
+    {
+      eventType: "Stop",
+      command: `bun "${join(hooksDir, KAI_HOOK_SCRIPTS[2])}"`,
+      hookId: KAI_HOOK_IDS[2],
+      timeout: 30,
     },
   ];
 }

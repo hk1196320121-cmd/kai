@@ -29,21 +29,47 @@ export interface Preference {
   created_at: string;
 }
 
+/** Canonical list of valid observation types. [D12] Single source of truth for TS union + SQL CHECK. */
+export const VALID_OBSERVATION_TYPES = [
+  "behavior",
+  "preference",
+  "feedback",
+  "context",
+  "signal",
+  "tool_usage",
+] as const;
+
+/** Canonical list of valid observation sources. */
+export const VALID_OBSERVATION_SOURCES = [
+  "cron_output",
+  "session_log",
+  "user_stated",
+  "inferred",
+  "mcp",
+  "coldstart",
+  "workspace",
+  "execution_result",
+  "auto_observe",
+  "hook_error",
+] as const;
+
+/** Generate SQL CHECK clause from VALID_OBSERVATION_TYPES. Used by migrations. */
+export function sqlTypeCheck(): string {
+  return `CHECK(type IN (${VALID_OBSERVATION_TYPES.map((t) => `'${t}'`).join(",")}))`;
+}
+
+/** Generate SQL CHECK clause from VALID_OBSERVATION_SOURCES. */
+export function sqlSourceCheck(): string {
+  return `CHECK(source IN (${VALID_OBSERVATION_SOURCES.map((s) => `'${s}'`).join(",")}))`;
+}
+
 export interface Observation {
   id: number; // auto-increment
-  type: "behavior" | "preference" | "feedback" | "context" | "signal";
+  type: (typeof VALID_OBSERVATION_TYPES)[number];
   key: string;
   value: string; // JSON payload
   confidence: number; // 1-10
-  source:
-    | "cron_output"
-    | "session_log"
-    | "user_stated"
-    | "inferred"
-    | "mcp"
-    | "coldstart"
-    | "workspace"
-    | "execution_result";
+  source: (typeof VALID_OBSERVATION_SOURCES)[number];
   provenance: string; // JSON: { origin_file, extracted_at, extractor_version }
   ts: string; // ISO 8601
 }

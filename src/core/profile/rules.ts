@@ -421,4 +421,84 @@ export const RULES: Rule[] = [
         "autonomy",
       ),
   },
+  {
+    dimension: "autonomy",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return v.tool === "Bash";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.4 + count * 0.1),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `Autopilot: ${count} Bash tool_usage signals (direct execution)`,
+    }),
+  },
+  {
+    dimension: "detail_oriented",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return v.tool === "Edit";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.1),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `Autopilot: ${count} Edit tool_usage signals (precise edits)`,
+    }),
+  },
+  {
+    dimension: "exploratory",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return ["Grep", "Glob", "WebSearch"].includes(v.tool);
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.2 + count * 0.1),
+      confidence: Math.min(10, 2 + count),
+      reasoning: `Search/exploration tool usage (${count} uses)`,
+    }),
+  },
+  {
+    dimension: "code_focus",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return ["Edit", "Write", "Read"].includes(v.tool);
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.3 + count * 0.06),
+      confidence: Math.min(10, 3 + count),
+      reasoning: `Code editing tools used ${count} times`,
+    }),
+  },
+  {
+    dimension: "planning_style",
+    match: (_key, value) => {
+      try {
+        const v = JSON.parse(value);
+        return v.tool === "TodoRead" || v.tool === "TodoWrite";
+      } catch {
+        return false;
+      }
+    },
+    derive: (count) => ({
+      value: Math.min(1.0, 0.5 + count * 0.1),
+      confidence: Math.min(10, 4 + count),
+      reasoning: `Task management usage suggests structured planning (${count} uses)`,
+    }),
+  },
 ];

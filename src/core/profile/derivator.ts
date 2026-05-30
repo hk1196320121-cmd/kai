@@ -88,7 +88,7 @@ export class Derivator {
         const trait: DerivedTrait = {
           dimension,
           value: Math.round(derived.value * 100) / 100,
-          confidence: Math.max(1, derived.confidence),
+          confidence: Math.min(10, Math.max(1, derived.confidence)),
           source: "observed",
           reasoning: derived.reasoning,
         };

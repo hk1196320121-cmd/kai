@@ -13,6 +13,15 @@ export class KaiDB {
     }
     this.db = new Database(dbPath, { create: true });
     this.db.run("PRAGMA journal_mode = WAL");
+    // Restrict DB file permissions to owner-only
+    try {
+      const { chmodSync, existsSync } = require("node:fs");
+      chmodSync(dbPath, 0o600);
+      if (existsSync(dbPath + "-wal")) chmodSync(dbPath + "-wal", 0o600);
+      if (existsSync(dbPath + "-shm")) chmodSync(dbPath + "-shm", 0o600);
+    } catch {
+      // Non-critical — permission hardening is best-effort
+    }
     this.runMigrations();
   }
 

@@ -18,12 +18,15 @@ export function registerListCommand(skills: Command): void {
       "Target platform (claude-code, hermes, gemini-cli) or 'all'",
     )
     .action((opts: { target?: string }) => {
-      const targetNames =
-        opts.target === "all"
-          ? detectPlatforms()
-          : opts.target
-            ? (validateTargetName(opts.target), [opts.target])
-            : detectPlatforms();
+      let targetNames: string[];
+      if (opts.target === "all") {
+        targetNames = detectPlatforms();
+      } else if (opts.target) {
+        validateTargetName(opts.target);
+        targetNames = [opts.target];
+      } else {
+        targetNames = detectPlatforms();
+      }
 
       if (targetNames.length === 0) {
         console.log(

@@ -14,7 +14,7 @@ Hooks solve problem 1 (SessionStart injects profile context). Workflow commands 
 
 ## Hook architecture
 
-Kai generates two hooks during `kai skills install`:
+Kai generates three hooks during `kai skills install`:
 
 ### SessionStart hook (`kai-session-start.cjs`)
 
@@ -26,15 +26,27 @@ Kai profile active (A). Top traits: early_riser=0.85, tinkerer=0.72, detail_orie
 
 This appears as a system message in the Claude Code context, giving the AI agent awareness of your behavioral profile without you doing anything.
 
-The hook reads the database in read-only mode. If the database doesn't exist or is empty, the hook silently exits — no error output to avoid disrupting session startup.
+The hook also creates a session marker in the `autopilot_sessions` table, cleans up stale orphan sessions (>1 hour old), and generates behavior-adaptive nudges based on your top traits. Nudges are short guidance messages like "User prefers direct execution; skip explanations unless blocked." that help the AI adapt its behavior to your preferences.
+
+The hook checks the minimum required schema version before executing. If the database doesn't exist or is on an old schema, it gracefully degrades to basic profile read or silently exits — no error output to avoid disrupting session startup.
 
 ### PostToolUse hook (`kai-auto-observe.cjs`)
 
-Runs after every tool call that matches `Bash|Read|Edit|Write`. Tracks tool usage counts in a state file (`~/.kai/auto-observe-state.json`). When a tool is used 5+ times in a session, the pattern is submitted as an observation to the profile database.
+Runs after every tool call that matches the allowlisted tool set (Bash, Read, Edit, Write, MultiEdit, Grep, Glob, WebSearch, WebFetch, TodoRead, TodoWrite). Captures each use as a `tool_usage` observation with the tool name, session ID, and input keys (not values — privacy protection).
 
-This is how Kai learns that you "use Edit a lot" or "prefer Read over Bash for file inspection." Over time, these observations feed into trait derivation — strengthening traits like `detail_oriented` (from heavy Read/Edit usage) or `tinkerer` (from diverse tool experimentation).
+This is how Kai learns that you "use Edit a lot" or "prefer Read over Bash for file inspection." Over time, these observations feed into trait derivation via five autopilot-specific rules — strengthening traits like `autonomy` (Bash usage), `detail_oriented` (Edit usage), or `exploratory` (search tools).
 
-The hook uses an in-memory counter with atomic JSON writes. Pattern detection resets after each threshold crossing to avoid duplicate observations. The 10-second timeout ensures the hook never blocks tool execution.
+The hook uses a tool category allowlist defined in `constants.ts` — only behaviorally meaningful tools are captured, and only input keys (not values) are recorded for privacy. Schema version gates prevent the hook from executing on un-migrated databases. The 10-second timeout ensures the hook never blocks tool execution.
+
+### Stop hook (`kai-stop.cjs`)
+
+Runs when a Claude Code session ends. Closes the session marker, counts observations from the session using the `session_id` FK, runs trait derivation via `deriveFromRulesCore`, and updates session stats.
+
+Derivation is the key action: it matches all accumulated observations against the 25 derivation rules, persists resulting traits, and records how many traits were derived. This means your profile evolves automatically between sessions without you needing to run `kai profile derive` manually.
+
+The hook also prunes observations older than 30 days to prevent unbounded database growth. If the derive module is not available (e.g., Kai was uninstalled), the hook marks the session as `skipped` rather than failing.
+
+The 30-second timeout gives derivation enough time to complete for sessions with many observations.
 
 ### Hook registration
 
@@ -50,15 +62,20 @@ Hooks are registered in `~/.claude/settings.json` (not `~/.claude.json` — thes
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write",
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|WebSearch|WebFetch|TodoRead|TodoWrite",
         "hooks": [{ "type": "command", "command": "bun \"/path/to/kai-auto-observe.cjs\"", "timeout": 10 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "bun \"/path/to/kai-stop.cjs\"", "timeout": 30 }]
       }
     ]
   }
 }
 ```
 
-The `isKaiHook()` function detects existing Kai hooks by matching the command string against `kai-session-start` or `kai-auto-observe` identifiers. This lets `kai skills install` update Kai's own hooks without touching hooks from other tools.
+The `isKaiHook()` function detects existing Kai hooks by matching the command string against `kai-session-start`, `kai-auto-observe`, or `kai-stop` identifiers. This lets `kai skills install` update Kai's own hooks without touching hooks from other tools.
 
 ## Workflow commands
 
@@ -136,19 +153,20 @@ Install (kai skills install):
   6. Register MCP server in ~/.claude.json
 
 Each session:
-  SessionStart hook → inject profile summary into context
+  SessionStart hook → inject profile summary + nudges into context, create session marker, clean orphans
   User types /kai-* → workflow command executes with baked personalization
-  PostToolUse hook → track tool patterns → submit observations when patterns emerge
-  Profile evolves → reinstall to refresh baked traits
+  PostToolUse hook → capture tool_usage observations for allowlisted tools
+  Stop hook → close session, run derivation, update session stats, prune old observations
+  Profile evolves automatically → reinstall to refresh baked traits
 ```
 
 ## Trade-offs
 
 **Static vs. dynamic personalization.** Command files are static markdown generated at install time. If your profile changes, you must reinstall to refresh the baked traits. The alternative (dynamic lookups on every command invocation) would require runtime code execution, which Claude Code slash commands don't support. The SessionStart hook provides a lightweight dynamic complement — it injects live trait values at session start.
 
-**Hook timeout constraint.** PostToolUse hooks run synchronously and must complete within their timeout (10 seconds). This is why auto-observe uses a simple in-memory counter rather than complex pattern analysis. The pattern detection threshold (5 uses) is deliberately low to catch meaningful patterns quickly without requiring extensive computation.
+**Hook timeout constraint.** PostToolUse hooks run synchronously and must complete within their timeout (10 seconds). Auto-observe writes directly to the database on each invocation rather than batching, which is fast enough for the allowlisted tool set. The Stop hook has a longer timeout (30 seconds) to accommodate derivation processing on sessions with many observations.
 
-**Observation quality vs. quantity.** The auto-observe hook only tracks tool names, not the content of tool calls. This means "user reads many files" is observable, but "user reads files about authentication specifically" is not. This is a deliberate privacy trade-off: tool content could contain sensitive data, so only the tool name is recorded.
+**Observation quality vs. quantity.** The auto-observe hook captures tool names and input keys (not values) for allowlisted tools. This means "user reads many files" is observable, but "user reads files about authentication specifically" is not. This is a deliberate privacy trade-off: tool content could contain sensitive data, so only the tool name and input key names are recorded.
 
 **Settings.json coexistence.** Kai hooks share `~/.claude/settings.json` with other tools. The `isKaiHook()` detection function ensures Kai only modifies its own hook entries. However, if you manually edit the settings file and change a Kai hook's command string, the next install will treat it as a non-Kai hook and add a duplicate. Fix: `kai skills uninstall` followed by `kai skills install`.
 

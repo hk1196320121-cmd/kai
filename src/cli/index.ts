@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { Command } from "commander";
+import { registerAutopilotCommands } from "./autopilot";
 import { setNoColor } from "./format";
+import { registerHooksCommands } from "./hooks";
 import { registerMcpCommands } from "./mcp";
 import { registerObserveCommands } from "./observe";
 import { registerProfileCommands } from "./profile";
@@ -43,6 +45,8 @@ registerWorkCommands(program);
 registerPromptCommands(program);
 registerTelemetryCommands(program);
 registerSkillsCommands(program);
+registerAutopilotCommands(program);
+registerHooksCommands(program);
 
 export { program };
 

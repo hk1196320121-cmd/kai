@@ -408,7 +408,7 @@ describe("V8 Migration idempotency", () => {
     const db2 = new KaiDB(dbPath);
     const raw = db2.getDatabase();
     const row = raw.query("SELECT MAX(version) as v FROM schema_version").get() as { v: number };
-    expect(row.v).toBe(8);
+    expect(row.v).toBeGreaterThanOrEqual(8);
     db2.close();
   });
 });
