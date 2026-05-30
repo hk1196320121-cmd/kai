@@ -12,7 +12,7 @@ describe("HookGenerator", () => {
   describe("generateSessionStartHook", () => {
     test("returns a non-empty CJS script string", () => {
       const script = generateSessionStartHook();
-      expect(script).toContain("#!/usr/bin/env node");
+      expect(script).toContain("#!/usr/bin/env bun");
       expect(script).toContain("require(");
       expect(script.length).toBeGreaterThan(200);
     });
@@ -27,15 +27,15 @@ describe("HookGenerator", () => {
   describe("generateAutoObserveHook", () => {
     test("returns a non-empty CJS script string", () => {
       const script = generateAutoObserveHook();
-      expect(script).toContain("#!/usr/bin/env node");
+      expect(script).toContain("#!/usr/bin/env bun");
       expect(script).toContain("kai-auto-observe");
       expect(script.length).toBeGreaterThan(200);
     });
 
     test("includes observation submission logic", () => {
       const script = generateAutoObserveHook();
-      expect(script).toContain("submitObservation");
       expect(script).toContain("INSERT INTO observations");
+      expect(script).toContain('"tool_usage"');
     });
 
     test("validates tool name format", () => {
@@ -43,10 +43,11 @@ describe("HookGenerator", () => {
       expect(script).toContain("/^[a-zA-Z0-9_.]+$/");
     });
 
-    test("uses atomic write for state file", () => {
+    test("uses tool category allowlist for privacy [D19]", () => {
       const script = generateAutoObserveHook();
-      expect(script).toContain("atomicWriteJson");
-      expect(script).toContain("renameSync");
+      expect(script).toContain("ALLOWED_TOOLS");
+      expect(script).toContain("Edit");
+      expect(script).toContain("Bash");
     });
   });
 

@@ -37,7 +37,7 @@ describe("writeHookScripts + getHookConfigs", () => {
   test("written hook scripts contain shebang", () => {
     writeHookScripts(tempDir);
     const content = readFileSync(join(tempDir, "kai-session-start.cjs"), "utf-8");
-    expect(content.startsWith("#!/usr/bin/env node")).toBe(true);
+    expect(content.startsWith("#!/usr/bin/env bun")).toBe(true);
   });
 
   test("getHookConfigs returns 2 configs with correct event types", () => {
