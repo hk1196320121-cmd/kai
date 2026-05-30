@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.12.1.0] - 2026-05-30
+
+### Added
+- **Autopilot hook system** — three lifecycle hooks (SessionStart, PostToolUse, Stop) that observe your work style and derive behavioral traits automatically between sessions
+- **AutopilotManager** — installs/uninstalls/hooks status for the autopilot system, writing scripts and merging settings.json
+- **`kai hooks install/uninstall/status`** — CLI commands to manage hook scripts and settings registration
+- **`kai autopilot status`** — CLI command showing session history and active session info
+- **Session tracking** — SessionStart hook creates a session marker in `autopilot_sessions` table; Stop hook closes it with derivation stats
+- **Nudge system** — SessionStart generates behavior-adaptive nudges based on top traits (autonomy, detail orientation, disliked behaviors)
+- **Stop hook derivation** — runs `deriveFromRulesCore` at session end to update traits from accumulated observations
+- **5 new derivation rules** — autonomy/Bash, detail_oriented/Edit, exploratory/Search, code_focus/Code, planning_style/Todo
+- **Orphan session cleanup** — stale pending sessions (>1 hour) auto-closed on next session start
+- **30-day observation retention** — Stop hook prunes observations older than 30 days
+- **Schema version gates** — all hooks check minimum schema version before executing, preventing errors on un-migrated databases
+- **Migration V9** — expands observations CHECK constraints, adds `session_id` FK column, creates `autopilot_sessions` table with down-migration support
+- **DB permission hardening** — database files set to 0o600 (owner-only read/write)
+- **Shared constants** — `MIN_SCHEMA_VERSION`, `ALLOWED_TOOLS`, `BUSY_TIMEOUT_MS` in single source-of-truth module
+- **12 new test files** covering autopilot lifecycle, hook runtime, migration V9, derivation, and regressions
+
+### Changed
+- **Auto-observe hook rewritten** — fixed P0 bugs (invalid `type=tool_pattern`, string confidence), added session_id FK, privacy allowlist, and schema version gate
+- **SessionStart hook upgraded** — added nudges, session tracking, cold-start detection, orphan cleanup, and profile read with identity
+- **derive-shared module** — extracted `deriveFromRulesCore` for use by both Derivator and Stop hook, with transactional trait persistence and confidence clamping
+- **PostToolUse matcher removed** — allowlist filtering now happens inside the hook script, not via settings.json matcher
+
+### Fixed
+- **P0 auto-observe regression** — `type=tool_pattern` violated CHECK constraint, `confidence=0.6` (string) violated INTEGER CHECK. Both silently failed since v0.12.0
+- **Confidence clamping** — both `derive-shared.ts` and `derivator.ts` now clamp confidence to [1, 10] preventing silent DB write failures
+- **Transactional trait persistence** — `persistTraits` now wraps all upserts in a single transaction, preventing partial writes on crash
+
 ## [0.12.0.0] - 2026-05-29
 
 ### Added
