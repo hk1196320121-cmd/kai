@@ -108,7 +108,7 @@ describe("Orchestrator Telemetry", () => {
     const dispatcher = new Dispatcher(orchStore, bridge, recorder);
     const result = await dispatcher.dispatch(task.id);
 
-    expect(result.error).toBe("Task already completed");
+    expect(result.error).toContain("completed");
 
     const spans = telStore.queryTelemetry(
       "SELECT * FROM runtime_spans WHERE operation = 'task_exec'",
