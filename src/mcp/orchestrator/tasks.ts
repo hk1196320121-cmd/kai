@@ -5,7 +5,7 @@ import { Scheduler } from "../../core/orchestrator/scheduler";
 import type { OrchestratorStore } from "../../core/orchestrator/store";
 import type { ProfileEngine } from "../../core/profile/engine";
 import type { TelemetryRecorder } from "../../core/telemetry/recorder";
-import { PlanApproveSchema, TaskExecuteSchema } from "../orchestrator-schema";
+import { PlanApproveSchema, TaskExecuteSchema, DispatchFeedbackSchema } from "../orchestrator-schema";
 import { log, textContent } from "../utils";
 import { ALLOWED_UPDATE_FIELDS, CRON_FORMAT } from "./utils";
 import { randomUUID } from "node:crypto";
@@ -128,4 +128,50 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
       });
     }
   });
+
+  // --- kai_dispatch_feedback ---
+  server.tool(
+    "kai_dispatch_feedback",
+    DispatchFeedbackSchema,
+    async ({ dispatch_id, decision, reason }) => {
+      log("kai_dispatch_feedback", { dispatch_id, decision });
+
+      try {
+        const row = store.getDispatchDecision(dispatch_id);
+        if (!row) {
+          return textContent({ error: "dispatch_not_found" });
+        }
+
+        store.updateDispatchDecision(dispatch_id, decision, reason ?? null);
+
+        // Emit feedback observation via ProfileEngine (best-effort)
+        try {
+          profileEngine.addObservation({
+            type: "feedback",
+            key: `dispatch:feedback:${dispatch_id}`,
+            value: JSON.stringify({ decision, reason }),
+            confidence: decision === "approved" ? 7 : 4,
+            source: "execution_result",
+            provenance: JSON.stringify({
+              source: "dispatch_feedback",
+              extracted_at: new Date().toISOString(),
+            }),
+          });
+        } catch {
+          // Observation emission is best-effort; don't fail the feedback response
+        }
+
+        return textContent({
+          dispatch_id,
+          decision,
+          recorded: true,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return textContent({
+          error: `INTERNAL_ERROR: ${message}`,
+        });
+      }
+    },
+  );
 }
