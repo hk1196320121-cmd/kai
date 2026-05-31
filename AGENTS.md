@@ -68,7 +68,7 @@ Trigger trait derivation from collected observations.
 
 **Returns:** Array of newly derived traits with dimensions, values, and confidence scores.
 
-## MCP Tools — Orchestrator (8)
+## MCP Tools — Orchestrator (9)
 
 ### kai_idea_submit
 
@@ -140,6 +140,17 @@ Re-plan an idea after closed-loop feedback. Used when the closed-loop engine det
 - `idea_id` (required): `string` — idea to re-plan
 
 **Returns:** New plan replacing the previous one, with updated tasks.
+
+### kai_dispatch_feedback
+
+Approve or reject a dispatch decision. Feedback flows back as profile observations, reinforcing or penalizing the traits that drove the dispatch.
+
+**Parameters:**
+- `dispatch_id` (required): `string` — ID of the dispatch decision
+- `decision` (required): `"approved"` | `"rejected"` — user verdict
+- `reason` (optional): `string` (max 2000 chars) — why the decision was made
+
+**Returns:** Updated dispatch decision with `user_decision` and `user_reason` set.
 
 ### kai_work_recommend
 
@@ -377,13 +388,15 @@ src/
     store.ts        CRUD for workspaces, tasks, and events with SQLite persistence
     event-bus.ts    Converts workspace state changes into profile observations
     types.ts        Workspace, Task, Event type definitions
-  bridge/           Bridges
+  bridge/           Bridges — agent dispatch layer
     agent-bridge.ts Agent bridge interface with Hermes file-based dispatch
-  db/               SQLite client with WAL mode and schema migrations (v1–v9)
+    claude-code.ts  ClaudeCodeBridge — subprocess dispatch via `claude --print` with timeout, output capture, concurrent pipe drain
+    composite.ts    CompositeBridge — multi-agent routing: claude → ClaudeCodeBridge, hermes → HermesBridge, auto → claude with hermes fallback
+  db/               SQLite client with WAL mode and schema migrations (v1–v10)
     client.ts       Database connection, migration runner, query helpers
     migrations/     Declarative migration registry + individual migration SQL
       index.ts      Sequential ordering + self-bumps cross-validation
-      v1–v9.ts      Individual migration definitions
+      v1–v10.ts     Individual migration definitions
   llm/              OpenAI-compatible LLM provider with retry logic
 ```
 
@@ -392,7 +405,7 @@ Data flows:
 - **CLI path**: Hermes cron → Collector (dedup) → Observations (SQLite) → Derivator (rules + LLM) → Traits → Decay → Provenance
 - **MCP path**: AI agent → stdio → MCP handlers → ProfileEngine → SQLite
 - **Workspace path**: Workspace events → Event bus → Observations → Derivator → Traits
-- **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → Agent bridge → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
+- **Orchestrator path**: Idea → Planner (LLM + profile context) → Tasks → Scheduler → Dispatcher → CompositeBridge (routes to ClaudeCodeBridge or HermesBridge) → Execution results → Observer → Profile observations → Closed-loop engine → Re-planning
 - **Prompt genome path**: Genes → Genome → Compiler (profile-aware segments) → Variant → Tournament (A/B battle) → Judge (LLM-as-judge) → Champion promotion → Evolution loop
 - **Telemetry path**: MCP tool call → withTrace wrapper → Trace + Spans + Events + State changes + Errors → SQLite telemetry tables → 30-day retention pruning. `telemetry.query`/`trace`/`explain` tools read back telemetry data
 - **Skill compiler path**: MCP tool schemas (Zod) → Compiler → Skill configs → Templates → SKILL.md files → TargetRegistry → Target adapter (Claude Code / Gemini CLI / Hermes) → Platform-appropriate install directory + MCP config (JSON or YAML)
@@ -458,13 +471,13 @@ Data flows:
 
 ## Database
 
-SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v9). Migrations run automatically on startup with transaction-safe DDL.
+SQLite with WAL mode. Default path: `~/.kai/kai.db`. Schema versioned (v1–v10). Migrations run automatically on startup with transaction-safe DDL.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun test             # Run tests (1200 across 129 files)
+bun test             # Run tests (1255 across 135 files)
 bun test --watch     # Watch mode
 bun run typecheck    # Type-check with tsc --noEmit
 bun run lint         # Lint with Biome

@@ -3,8 +3,8 @@
 ## [0.12.2.0] - 2026-05-31
 
 ### Added
-- **Claude Code bridge** — dispatch tasks to Claude Code CLI via subprocess (`claude --print`), with timeout (120s), output capture (1MB cap), and concurrent pipe drain
-- **CompositeBridge** — multi-agent routing: `claude` → ClaudeCodeBridge, `hermes` → HermesBridge, `auto` → claude with hermes fallback, `openclaw` → hermes alias
+- **Claude Code bridge** — tasks can now dispatch to Claude Code CLI (`claude --print`) as a subprocess agent with 120s timeout, 1MB output capture, and concurrent pipe drain. Set `agent: "claude"` on a task to use it
+- **CompositeBridge** — tasks route to the best available agent automatically: `claude` → ClaudeCodeBridge, `hermes` → HermesBridge, `auto` → claude with hermes fallback, `openclaw` → hermes alias
 - **Dispatch feedback loop** — `kai_dispatch_feedback` MCP tool lets users approve or reject dispatch decisions; feedback flows back as profile observations
 - **Dispatch decisions table** — v10 migration creates `dispatch_decisions` with task FK, agent, confidence, user_decision CHECK constraint, and dual indexes
 - **Structured error types** — `DispatchError` enum: `AGENT_NOT_FOUND`, `EXECUTION_FAILED`, `TIMEOUT`, `OUTPUT_TRUNCATED`, `UNKNOWN`

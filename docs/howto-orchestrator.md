@@ -206,7 +206,7 @@ These thresholds can be tuned via profile preferences:
 
 ## Related
 
-- [MCP Server Reference](reference-mcp-server.md) — complete API for all 7 orchestrator tools
+- [MCP Server Reference](reference-mcp-server.md) — complete API for all 9 orchestrator tools
 - [Tutorial: From Idea to Execution](tutorial-first-idea.md) — step-by-step walkthrough
 - [How the Orchestrator Works](explanation-orchestrator.md) — design rationale and trade-offs
 - [Confidence & Decay](explanation-confidence-and-decay.md) — how traits change over time

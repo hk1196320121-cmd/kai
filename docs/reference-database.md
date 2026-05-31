@@ -8,7 +8,7 @@ Default path: `$KAI_DB` or `~/.kai/kai.db`. Override with the `KAI_DB` environme
 
 The database uses WAL (write-ahead logging) mode for concurrent read/write safety. Foreign keys are enabled. Busy timeout is 5000ms.
 
-Migrations run automatically on startup. The schema is versioned from v1 to v9.
+Migrations run automatically on startup. The schema is versioned from v1 to v10.
 
 ## Tables
 
@@ -20,7 +20,7 @@ Tracks the current database schema version.
 |--------|------|-------------|
 | version | INTEGER | PRIMARY KEY |
 
-Always contains a single row with the highest applied migration number (currently 9).
+Always contains a single row with the highest applied migration number (currently 10).
 
 ### `identity`
 
@@ -224,6 +224,25 @@ Results from task execution.
 | completed_at | TEXT | `datetime('now')` | NOT NULL |
 
 **Index:** `idx_execution_results_task`.
+
+### `dispatch_decisions` (v10)
+
+Dispatch decisions recorded when the dispatcher sends a task to an agent bridge. Users can approve or reject these via `kai_dispatch_feedback`.
+
+| Column | Type | Default | Constraints |
+|--------|------|---------|-------------|
+| id | TEXT | — | PRIMARY KEY |
+| task_id | TEXT | — | NOT NULL, FK → planned_tasks(id) ON DELETE CASCADE |
+| agent | TEXT | — | NOT NULL |
+| confidence | REAL | — | NOT NULL |
+| reasoning | TEXT | — | NOT NULL |
+| user_decision | TEXT | `'pending'` | NOT NULL, CHECK(IN ('approved','rejected','pending')) |
+| user_reason | TEXT | NULL | Optional reason for the decision |
+| policy_version | INTEGER | 1 | NOT NULL |
+| created_at | TEXT | `datetime('now')` | NOT NULL |
+| updated_at | TEXT | `datetime('now')` | NOT NULL |
+
+**Indexes:** `idx_dispatch_decisions_task_id` on `task_id`, `idx_dispatch_decisions_user_decision` on `user_decision`.
 
 ### `prompt_genes` (v6)
 
@@ -458,6 +477,7 @@ Read-only views that expose telemetry data without internal fields. These are th
 | v7 | Add `runtime_traces`, `runtime_spans`, `runtime_events`, `runtime_state_changes`, `runtime_errors` tables with 10+ indexes. Add 5 telemetry views (`telemetry_*_v1`). Flight recorder telemetry system for full causal chain tracing |
 | v8 | Extend `workspace_events` event_type CHECK with `recommendation_shown`, `recommendation_accepted`, `recommendation_rejected`, `task_auto_executed`. Table rebuild with transaction-safe DDL |
 | v9 | Expand observations `type` CHECK to include `tool_usage`, add `source` CHECK constraint (restored), add `session_id` column for FK link to `autopilot_sessions`, create `autopilot_sessions` table with session lifecycle tracking. Down-migration drops `autopilot_sessions` and rebuilds observations without `session_id`. Table rebuild with transaction-safe DDL |
+| v10 | Add `dispatch_decisions` table for recording dispatch agent, confidence, reasoning, and user approval/rejection. Dual indexes on `task_id` and `user_decision`. Down-migration drops the table |
 
 All migrations use `PRAGMA foreign_keys = OFF` during table rebuilds, then re-enable. Transactions wrap destructive operations. `PRAGMA integrity_check` runs after each rebuild migration.
 
