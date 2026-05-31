@@ -7,6 +7,7 @@ import { MIGRATION_V6 } from "./v6";
 import { MIGRATION_V7 } from "./v7";
 import { MIGRATION_V8 } from "./v8";
 import { MIGRATION_V9, MIGRATION_V9_DOWN } from "./v9";
+import { MIGRATION_V10 } from "./v10";
 
 export interface Migration {
   version: number;
@@ -25,6 +26,7 @@ export const MIGRATIONS: Migration[] = [
   { version: 7, sql: MIGRATION_V7 },
   { version: 8, sql: MIGRATION_V8, selfBumps: true },
   { version: 9, sql: MIGRATION_V9, selfBumps: true },
+  { version: 10, sql: MIGRATION_V10, selfBumps: true },
 ];
 
 // E2: Runtime ordering assertion — versions must be sequential 1..N
