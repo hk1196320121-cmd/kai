@@ -1,6 +1,6 @@
 # MCP Server Reference
 
-Complete API reference for Kai's Model Context Protocol server. Covers all 19 tools (5 profile + 8 orchestrator + 3 prompt + 3 telemetry), 12 resources, schemas, error handling, and behavior.
+Complete API reference for Kai's Model Context Protocol server. Covers all 20 tools (5 profile + 9 orchestrator + 3 prompt + 3 telemetry), 12 resources, schemas, error handling, and behavior.
 
 ## Starting the Server
 
@@ -269,6 +269,22 @@ Get task recommendations based on the user's behavioral profile traits. The reco
 - `traitAlignment` — alignment score (0–1)
 - `explanation` — why this task fits the user's profile
 - `traitTargets` — trait dimensions used for matching and feedback loop
+
+### kai_dispatch_feedback
+
+Approve or reject a dispatch decision. When the dispatcher sends a task to an agent bridge, it records a dispatch decision with agent, confidence, and reasoning. This tool lets you approve or reject that decision, and the feedback flows back as profile observations.
+
+**Input schema:**
+
+| Parameter | Type | Required | Constraints | Description |
+|-----------|------|----------|-------------|-------------|
+| dispatch_id | `string` | Yes | — | ID of the dispatch decision |
+| decision | `"approved"` \| `"rejected"` | Yes | — | User verdict on the dispatch |
+| reason | `string` | No | Max 2000 chars | Optional reason for the decision |
+
+**Returns:** Updated dispatch decision with `user_decision` and `user_reason` fields set. If the dispatch ID doesn't exist, returns an error.
+
+**Behavior:** Approved dispatches reinforce the traits that drove the agent selection. Rejected dispatches penalize those traits. The feedback is recorded as a profile observation with source `execution_result`.
 
 ## Prompt Genome Tools (3)
 

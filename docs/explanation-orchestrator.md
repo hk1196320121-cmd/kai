@@ -92,11 +92,24 @@ The closed-loop engine compares your current traits against a snapshot:
 
 ## Agent bridge
 
-The agent bridge writes job files to `~/.hermes/cron/pending/`. Each job is a JSON file containing the task ID, prompt, and schedule.
+Kai uses a **CompositeBridge** that routes tasks to the right agent:
 
-**Why file-based instead of HTTP?** The Hermes agent reads jobs from the filesystem. This decouples Kai from Hermes — Kai doesn't need to know if Hermes is running, and Hermes doesn't need an API server. The filesystem is the message queue.
+| Agent | Bridge | Behavior |
+|-------|--------|----------|
+| `claude` | ClaudeCodeBridge | Dispatches via `claude --print` subprocess with 120s timeout, 1MB output capture, and concurrent pipe drain |
+| `hermes` | HermesBridge | Writes job files to `~/.hermes/cron/pending/` (file-based dispatch) |
+| `auto` | → ClaudeCodeBridge with HermesBridge fallback | Tries claude first; if it fails, falls back to hermes |
+| `openclaw` | → HermesBridge | Alias: routes to hermes bridge |
 
-**Trade-off:** There's no acknowledgment mechanism. Kai writes the file and assumes Hermes will pick it up. If the pending directory is full of stale jobs, there's no cleanup or backpressure (a mechanism to slow down producers when consumers can't keep up).
+**Non-retryable dispatch:** Subprocess agents (claude) skip retry on failure to avoid duplicate file edits. Failed tasks are marked `failed` immediately instead of retrying.
+
+**Dispatch decisions:** When the dispatcher sends a task, it creates a `dispatch_decisions` row recording the agent, confidence, and reasoning. Users can approve or reject these decisions via `kai_dispatch_feedback`, which flows back as profile observations.
+
+**Why file-based for Hermes?** The Hermes agent reads jobs from the filesystem. This decouples Kai from Hermes — Kai doesn't need to know if Hermes is running, and Hermes doesn't need an API server. The filesystem is the message queue.
+
+**Why subprocess for Claude?** Claude Code CLI runs as a subprocess (`claude --print`), providing direct access to the code agent without a separate daemon. Output is captured with a 1MB cap; excess data is drained to prevent child process deadlock.
+
+**Trade-off:** There's no acknowledgment mechanism for Hermes. Kai writes the file and assumes Hermes will pick it up. If the pending directory is full of stale jobs, there's no cleanup or backpressure (a mechanism to slow down producers when consumers can't keep up).
 
 ## The full data model
 
@@ -109,7 +122,7 @@ Idea
         ├── title, description, prompt
         ├── type (one_off or cron)
         ├── cron_schedule (for cron tasks)
-        ├── agent (hermes / openclaw / auto)
+        ├── agent (hermes / openclaw / auto / claude)
         ├── status (pending → scheduled → executing → completed / failed / paused)
         ├── retry_count, max_retries (default: 2)
         └── Execution Results (0+ per task)
@@ -119,7 +132,7 @@ Idea
               └── user_feedback (optional)
 ```
 
-Database tables: `ideas`, `planned_tasks`, `execution_results` (added in V5 migration).
+Database tables: `ideas`, `planned_tasks`, `execution_results` (added in V5 migration), `dispatch_decisions` (added in V10 migration).
 
 ## Alternatives considered
 

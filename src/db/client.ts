@@ -17,8 +17,8 @@ export class KaiDB {
     try {
       const { chmodSync, existsSync } = require("node:fs");
       chmodSync(dbPath, 0o600);
-      if (existsSync(dbPath + "-wal")) chmodSync(dbPath + "-wal", 0o600);
-      if (existsSync(dbPath + "-shm")) chmodSync(dbPath + "-shm", 0o600);
+      if (existsSync(`${dbPath}-wal`)) chmodSync(`${dbPath}-wal`, 0o600);
+      if (existsSync(`${dbPath}-shm`)) chmodSync(`${dbPath}-shm`, 0o600);
     } catch {
       // Non-critical — permission hardening is best-effort
     }

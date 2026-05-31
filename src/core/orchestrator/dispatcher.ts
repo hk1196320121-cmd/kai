@@ -1,17 +1,18 @@
-import type { AgentBridge } from "../../bridge/agent-bridge";
+import type { AgentBridge, DispatchResult } from "../../bridge/agent-bridge";
 import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { OrchestratorStore } from "./store";
-
-interface DispatchResult {
-  success: boolean;
-  error?: string;
-  jobId?: string;
-}
 
 export class Dispatcher {
   private store: OrchestratorStore;
   private bridge: AgentBridge;
   private telemetry: TelemetryRecorder | null;
+
+  /** Determine task status from dispatch result: sync bridges (output set) → completed, async → executing. */
+  private static statusFromResult(
+    result: DispatchResult,
+  ): "completed" | "executing" {
+    return result.output !== undefined ? "completed" : "executing";
+  }
 
   constructor(
     store: OrchestratorStore,
@@ -31,23 +32,37 @@ export class Dispatcher {
     if (!task) {
       span?.end("error");
       trace?.end("error");
-      return { success: false, error: "Task not found" };
+      return { success: false, agent: "", error: "Task not found" };
     }
-    if (task.status === "completed") {
+    if (
+      task.status === "completed" ||
+      task.status === "failed" ||
+      task.status === "paused" ||
+      task.status === "executing"
+    ) {
       span?.end("error");
       trace?.end("error");
-      return { success: false, error: "Task already completed" };
+      return {
+        success: false,
+        agent: task.agent,
+        error: `Task is ${task.status}`,
+      };
     }
     if (task.retry_count >= task.max_retries) {
       span?.end("error");
       trace?.end("error");
-      return { success: false, error: "Max retries exceeded" };
+      return {
+        success: false,
+        agent: task.agent,
+        error: "Max retries exceeded",
+      };
     }
     if (task.type === "cron") {
       span?.end("error");
       trace?.end("error");
       return {
         success: false,
+        agent: task.agent,
         error: "Cron tasks must be scheduled, not dispatched directly",
       };
     }
@@ -59,6 +74,20 @@ export class Dispatcher {
         task.prompt,
       );
       if (!result.success) {
+        // Subprocess agents (retryable=false) should not be retried —
+        // partial file edits could leave the workspace in a broken state.
+        // C4 fix: skip incrementRetryCount for non-retryable failures
+        if (result.retryable === false) {
+          // Mark task as failed so it can't be re-executed via kai_task_execute.
+          // Without this, the task keeps its original status and passes the guards above.
+          this.store.updateTaskStatus(taskId, "failed");
+          span?.end("error");
+          trace?.end("error");
+          return {
+            ...result,
+            error: `${result.error ?? "Bridge dispatch failed"} (non-retryable)`,
+          };
+        }
         this.store.incrementRetryCount(taskId);
         const refreshedTask = this.store.getTask(taskId);
         if (
@@ -71,21 +100,40 @@ export class Dispatcher {
             refreshedTask.prompt,
           );
           if (retry.success) {
-            this.store.updateTaskStatus(taskId, "executing");
+            this.store.updateTaskStatus(
+              taskId,
+              Dispatcher.statusFromResult(retry),
+            );
             span?.end("ok");
             trace?.end("completed");
-            return { success: true, jobId: retry.jobId };
+            return {
+              success: true,
+              agent: task.agent,
+              jobId: retry.jobId,
+              output: retry.output,
+            };
           }
         }
         span?.end("error");
         trace?.end("error");
-        return { success: false, error: "Bridge dispatch failed after retry" };
+        return {
+          success: false,
+          agent: task.agent,
+          error: "Bridge dispatch failed after retry",
+        };
       }
 
-      this.store.updateTaskStatus(taskId, "executing");
+      // Sync bridges (output !== undefined) completed immediately — mark completed.
+      // Async bridges (output === undefined) are still running — mark executing.
+      this.store.updateTaskStatus(taskId, Dispatcher.statusFromResult(result));
       span?.end("ok");
       trace?.end("completed");
-      return { success: true, jobId: result.jobId };
+      return {
+        success: true,
+        agent: task.agent,
+        jobId: result.jobId,
+        output: result.output,
+      };
     } catch (err) {
       span?.error(err as Error);
       span?.end("error");

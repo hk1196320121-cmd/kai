@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.12.2.0] - 2026-05-31
+
+### Added
+- **Claude Code bridge** — tasks can now dispatch to Claude Code CLI (`claude --print`) as a subprocess agent with 120s timeout, 1MB output capture, and concurrent pipe drain. Set `agent: "claude"` on a task to use it
+- **CompositeBridge** — tasks route to the best available agent automatically: `claude` → ClaudeCodeBridge, `hermes` → HermesBridge, `auto` → claude with hermes fallback, `openclaw` → hermes alias
+- **Dispatch feedback loop** — `kai_dispatch_feedback` MCP tool lets users approve or reject dispatch decisions; feedback flows back as profile observations
+- **Dispatch decisions table** — v10 migration creates `dispatch_decisions` with task FK, agent, confidence, user_decision CHECK constraint, and dual indexes
+- **Structured error types** — `DispatchError` enum: `AGENT_NOT_FOUND`, `EXECUTION_FAILED`, `TIMEOUT`, `OUTPUT_TRUNCATED`, `UNKNOWN`
+- **Non-retryable dispatch** — subprocess agents (claude) skip retry on failure to avoid duplicate file edits; tasks marked `failed` immediately
+
+### Changed
+- **Dispatcher unified** — `DispatchResult` extended with `error`, `retryable`, `output` fields; sync bridges (output present) auto-complete, async bridges stay `executing`
+- **Status guards expanded** — dispatcher now blocks `completed`, `failed`, `paused`, and `executing` tasks from re-dispatch
+- **Dispatch decisions gated** — `dispatch_decisions` rows only created for successful dispatches, preventing orphan approval targets
+- **Scheduler one-off fix** — `scheduleTasks` marks `one_off` tasks as `scheduled` without calling `dispatchOneOff`, preventing fork-bomb on plan approval
+
+### Fixed
+- **26 review findings resolved** — timer leak, unbounded output, orphan decisions, spurious retry, enum gaps, double-vote, error leak, dry violations, magic numbers
+- **OOM pipe drain** — output exceeding 1MB now drains remaining pipe data to prevent child process deadlock
+- **Non-retryable task status** — failed non-retryable tasks now marked `failed` in DB so they can't be re-executed
+
 ## [0.12.1] - 2026-05-30
 
 ### Added

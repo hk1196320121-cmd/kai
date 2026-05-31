@@ -126,11 +126,11 @@ describe("Migration v9", () => {
 		kai.close();
 	});
 
-	test("schema_version is 9", () => {
+	test("schema_version is at least 9", () => {
 		const kai = new KaiDB(dbPath);
 		const db = kai.getDatabase();
 		const row = db.query("SELECT MAX(version) as v FROM schema_version").get() as { v: number };
-		expect(row.v).toBe(9);
+		expect(row.v).toBeGreaterThanOrEqual(9);
 		kai.close();
 	});
 

@@ -10,7 +10,7 @@ MCP server that builds and serves a behavioral profile from observations. AI age
 Kai watches what you do (cron outputs, daily patterns, explicit preferences) and builds a living user profile: identity, behavioral traits, and preferences. Other AI tools can then ask Kai "who is this person?" and get a rich, evidence-based answer.
 
 Core capabilities:
-- **MCP Server** — Model Context Protocol server via stdio. 19 tools (5 profile + 8 orchestrator + 3 prompt + 3 telemetry) and 12 resources (`kai://profile/*`, `kai://prompt/*`, `kai://telemetry/*`, `kai://system/health`)
+- **MCP Server** — Model Context Protocol server via stdio. 20 tools (5 profile + 9 orchestrator + 3 prompt + 3 telemetry) and 12 resources (`kai://profile/*`, `kai://prompt/*`, `kai://telemetry/*`, `kai://system/health`)
 - **Orchestrator** — idea-to-execution engine with LLM-powered planning, scheduling, dispatching, observation, and closed-loop re-planning
 - **Prompt Genome** — evolutionary prompt optimization with genes, genomes, tournaments, and LLM-as-judge. Prompts improve over time through automated A/B testing
 - **Cold Start** — `kai work start` bootstraps a profile from a 10-question interview + git history scan, with task recommendations and auto-execution
@@ -169,7 +169,7 @@ kai mcp serve
 | `observe.batch` | Submit multiple observations at once |
 | `derive.trigger` | Trigger trait derivation (rules, LLM, or both) |
 
-#### MCP Tools — Orchestrator (8)
+#### MCP Tools — Orchestrator (9)
 
 | Tool | Description |
 |------|-------------|
@@ -180,6 +180,7 @@ kai mcp serve
 | `kai_idea_pause` | Pause an active idea and its tasks |
 | `kai_execution_status` | Check execution status for an idea |
 | `kai_replan` | Re-plan an idea (after closed-loop feedback) |
+| `kai_dispatch_feedback` | Approve or reject a dispatch decision; feedback becomes profile observations |
 | `kai_work_recommend` | Get task recommendations based on profile traits |
 
 #### MCP Tools — Telemetry (3)
@@ -222,7 +223,7 @@ src/
   core/telemetry/ Flight recorder — store, recorder, stats, explain, sanitizer, types
   workspace/      Workspace/task/event CRUD + event bus for observation collection
   mcp/            MCP server — handlers, resources, schema, stdio transport
-  bridge/         Hermes bridge (file system reads) + agent bridge (task dispatch)
+  bridge/         Agent bridges — HermesBridge (file-based dispatch), ClaudeCodeBridge (subprocess `claude --print`), CompositeBridge (multi-agent routing)
   db/             SQLite client with WAL mode and schema migrations (declarative registry in db/migrations/)
   llm/            OpenAI-compatible LLM provider with transient-error retry
 dist/              Compiled output (tsc), created by bun run build
@@ -237,7 +238,7 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | Document | Type | Description |
 |----------|------|-------------|
 | [AGENTS.md](AGENTS.md) | Reference | Quick reference for AI agents connecting to Kai |
-| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 19 tools and 12 resources |
+| [MCP Server Reference](docs/reference-mcp-server.md) | Reference | Complete API for all 20 tools and 12 resources |
 | [Connect an AI Agent](docs/howto-connect-mcp-server.md) | How-to | Connect Claude Desktop, Cursor, or custom clients |
 | [First Profile Tutorial](docs/tutorial-first-profile.md) | Tutorial | From zero to first derived trait in 5 minutes |
 | [Cold Start Tutorial](docs/tutorial-cold-start.md) | Tutorial | Build a profile from 10-question interview + git history in 5 minutes |
@@ -247,6 +248,8 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
 | [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
 | [How to Use the Orchestrator](docs/howto-orchestrator.md) | How-to | Submitting ideas, approving plans, executing tasks, re-planning |
+| [How to Use Agent Bridges](docs/howto-agent-bridges.md) | How-to | Choosing agents (claude, hermes, auto), dispatch behavior, troubleshooting |
+| [How to Provide Dispatch Feedback](docs/howto-dispatch-feedback.md) | How-to | Approving or rejecting dispatch decisions to improve agent routing |
 | [How to Run Prompt Evolution](docs/howto-prompt-evolution.md) | How-to | Running evolution rounds, managing champions, troubleshooting |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
 | [How the Prompt Genome Works](docs/explanation-prompt-genome.md) | Explanation | Genes, segments, tournaments, judge criteria, design trade-offs |

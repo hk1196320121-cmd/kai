@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HermesAgentBridge } from "../../bridge/agent-bridge";
+import type { AgentBridge } from "../../bridge/agent-bridge";
 import { IdeaClusterer } from "../../core/orchestrator/clustering";
 import { Planner } from "../../core/orchestrator/planner";
 import { Scheduler } from "../../core/orchestrator/scheduler";
@@ -22,7 +22,7 @@ interface IdeaDeps {
   workspaceStore: WorkspaceStore;
   profileEngine: ProfileEngine;
   llmProvider: LLMProvider;
-  bridge: HermesAgentBridge;
+  bridge: AgentBridge;
   promptCompiler: PromptCompiler;
   telemetry: TelemetryRecorder | null;
 }

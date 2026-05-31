@@ -40,6 +40,7 @@ describe("MCP Tools", () => {
     expect(names).toContain("kai_idea_pause");
     expect(names).toContain("kai_execution_status");
     expect(names).toContain("kai_replan");
+    expect(names).toContain("kai_dispatch_feedback");
     // Prompt genome tools
     expect(names).toContain("prompt.compile");
     expect(names).toContain("prompt.champion");
@@ -50,7 +51,7 @@ describe("MCP Tools", () => {
     expect(names).toContain("telemetry.explain");
     // Work recommendation tool
     expect(names).toContain("kai_work_recommend");
-    expect(names.length).toBe(19);
+    expect(names.length).toBe(20);
   });
 
   test("each tool has a handler function", () => {

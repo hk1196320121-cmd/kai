@@ -71,3 +71,15 @@ export const ExecutionStatusSchema = {
 export const ReplanSchema = {
   idea_id: z.string().describe("ID of the idea to re-plan"),
 };
+
+export const DispatchFeedbackSchema = {
+  dispatch_id: z.string().describe("ID of the dispatch decision"),
+  decision: z
+    .enum(["approved", "rejected"])
+    .describe("User decision on the dispatch"),
+  reason: z
+    .string()
+    .max(2000)
+    .optional()
+    .describe("Optional reason for the decision"),
+};

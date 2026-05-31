@@ -13,6 +13,10 @@ export interface DispatchResult {
   success: boolean;
   agent: string;
   jobId?: string;
+  error?: string;
+  retryable?: boolean;
+  /** Captured stdout for synchronous bridges (e.g. ClaudeCodeBridge). Undefined for async bridges (HermesAgentBridge). */
+  output?: string;
 }
 
 export interface AgentBridge {
