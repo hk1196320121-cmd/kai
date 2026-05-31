@@ -129,4 +129,88 @@ describe("Dispatcher", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("Bridge dispatch failed");
   });
+
+  test("skips retry when retryable=false (subprocess agent)", async () => {
+    let calls = 0;
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {
+        calls++;
+        return { success: false, agent, error: "EXECUTION_FAILED: something went wrong", retryable: false };
+      },
+      scheduleCron: async () => ({ success: true, agent: "claude" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "claude", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("non-retryable");
+    // Bridge was called only ONCE — no retry
+    expect(calls).toBe(1);
+  });
+
+  test("retries when retryable is undefined (async bridge)", async () => {
+    let calls = 0;
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {
+        calls++;
+        return { success: false, agent, error: "temp failure" };
+      },
+      scheduleCron: async () => ({ success: true, agent: "hermes" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    // Bridge was called TWICE — initial + retry
+    expect(calls).toBe(2);
+  });
+
+  test("marks completed for sync bridge with output", async () => {
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {
+        return { success: true, agent, jobId: taskId, output: "result text" };
+      },
+      scheduleCron: async () => ({ success: true, agent: "claude" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "claude", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(true);
+    expect(result.output).toBe("result text");
+    const updated = store.getTask(task.id);
+    // Sync bridge with output should mark as completed
+    expect(updated?.status).toBe("completed");
+  });
+
+  test("marks executing for async bridge without output", async () => {
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {
+        return { success: true, agent, jobId: taskId };
+      },
+      scheduleCron: async () => ({ success: true, agent: "hermes" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(true);
+    const updated = store.getTask(task.id);
+    // Async bridge without output should mark as executing
+    expect(updated?.status).toBe("executing");
+  });
 });

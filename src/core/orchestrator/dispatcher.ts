@@ -1,12 +1,6 @@
-import type { AgentBridge } from "../../bridge/agent-bridge";
+import type { AgentBridge, DispatchResult } from "../../bridge/agent-bridge";
 import type { TelemetryRecorder } from "../telemetry/recorder";
 import type { OrchestratorStore } from "./store";
-
-interface DispatchResult {
-  success: boolean;
-  error?: string;
-  jobId?: string;
-}
 
 export class Dispatcher {
   private store: OrchestratorStore;
@@ -31,23 +25,24 @@ export class Dispatcher {
     if (!task) {
       span?.end("error");
       trace?.end("error");
-      return { success: false, error: "Task not found" };
+      return { success: false, agent: "", error: "Task not found" };
     }
     if (task.status === "completed") {
       span?.end("error");
       trace?.end("error");
-      return { success: false, error: "Task already completed" };
+      return { success: false, agent: task.agent, error: "Task already completed" };
     }
     if (task.retry_count >= task.max_retries) {
       span?.end("error");
       trace?.end("error");
-      return { success: false, error: "Max retries exceeded" };
+      return { success: false, agent: task.agent, error: "Max retries exceeded" };
     }
     if (task.type === "cron") {
       span?.end("error");
       trace?.end("error");
       return {
         success: false,
+        agent: task.agent,
         error: "Cron tasks must be scheduled, not dispatched directly",
       };
     }
@@ -60,6 +55,13 @@ export class Dispatcher {
       );
       if (!result.success) {
         this.store.incrementRetryCount(taskId);
+        // Subprocess agents (retryable=false) should not be retried —
+        // partial file edits could leave the workspace in a broken state.
+        if (result.retryable === false) {
+          span?.end("error");
+          trace?.end("error");
+          return { ...result, error: `${result.error ?? "Bridge dispatch failed"} (non-retryable)` };
+        }
         const refreshedTask = this.store.getTask(taskId);
         if (
           refreshedTask &&
@@ -71,21 +73,26 @@ export class Dispatcher {
             refreshedTask.prompt,
           );
           if (retry.success) {
-            this.store.updateTaskStatus(taskId, "executing");
+            // Sync bridges (output !== undefined) are already done — mark completed
+            const status = retry.output !== undefined ? "completed" : "executing";
+            this.store.updateTaskStatus(taskId, status);
             span?.end("ok");
             trace?.end("completed");
-            return { success: true, jobId: retry.jobId };
+            return { success: true, agent: task.agent, jobId: retry.jobId, output: retry.output };
           }
         }
         span?.end("error");
         trace?.end("error");
-        return { success: false, error: "Bridge dispatch failed after retry" };
+        return { success: false, agent: task.agent, error: "Bridge dispatch failed after retry" };
       }
 
-      this.store.updateTaskStatus(taskId, "executing");
+      // Sync bridges (output !== undefined) completed immediately — mark completed.
+      // Async bridges (output === undefined) are still running — mark executing.
+      const status = result.output !== undefined ? "completed" : "executing";
+      this.store.updateTaskStatus(taskId, status);
       span?.end("ok");
       trace?.end("completed");
-      return { success: true, jobId: result.jobId };
+      return { success: true, agent: task.agent, jobId: result.jobId, output: result.output };
     } catch (err) {
       span?.error(err as Error);
       span?.end("error");
