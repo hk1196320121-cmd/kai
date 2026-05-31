@@ -248,6 +248,8 @@ Profile data is stored in `~/.kai/kai.db` (SQLite with WAL mode).
 | [How to Manage Workspaces](docs/howto-workspace.md) | How-to | Listing, tracking, and understanding workspaces and tasks |
 | [How Source Precedence Works](docs/howto-source-precedence.md) | How-to | Protecting explicit traits from derivation overwrites |
 | [How to Use the Orchestrator](docs/howto-orchestrator.md) | How-to | Submitting ideas, approving plans, executing tasks, re-planning |
+| [How to Use Agent Bridges](docs/howto-agent-bridges.md) | How-to | Choosing agents (claude, hermes, auto), dispatch behavior, troubleshooting |
+| [How to Provide Dispatch Feedback](docs/howto-dispatch-feedback.md) | How-to | Approving or rejecting dispatch decisions to improve agent routing |
 | [How to Run Prompt Evolution](docs/howto-prompt-evolution.md) | How-to | Running evolution rounds, managing champions, troubleshooting |
 | [Confidence & Decay](docs/explanation-confidence-and-decay.md) | Explanation | Why two scales, why decay, how corrections persist |
 | [How the Prompt Genome Works](docs/explanation-prompt-genome.md) | Explanation | Genes, segments, tournaments, judge criteria, design trade-offs |
