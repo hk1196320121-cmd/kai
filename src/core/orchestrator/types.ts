@@ -20,7 +20,16 @@ export type TaskStatus =
   | "completed"
   | "failed"
   | "paused";
-type AgentType = "hermes" | "openclaw" | "auto";
+export type AgentType = "hermes" | "openclaw" | "auto" | "claude";
+
+export const DispatchError = {
+  AGENT_NOT_FOUND: "AGENT_NOT_FOUND",
+  EXECUTION_FAILED: "EXECUTION_FAILED",
+  TIMEOUT: "TIMEOUT",
+  OUTPUT_TRUNCATED: "OUTPUT_TRUNCATED",
+  UNKNOWN: "UNKNOWN",
+} as const;
+export type DispatchError = (typeof DispatchError)[keyof typeof DispatchError];
 
 export interface Idea {
   id: string;
