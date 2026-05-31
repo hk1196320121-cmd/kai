@@ -73,6 +73,9 @@ export class Dispatcher {
         // partial file edits could leave the workspace in a broken state.
         // C4 fix: skip incrementRetryCount for non-retryable failures
         if (result.retryable === false) {
+          // Mark task as failed so it can't be re-executed via kai_task_execute.
+          // Without this, the task keeps its original status and passes the guards above.
+          this.store.updateTaskStatus(taskId, "failed");
           span?.end("error");
           trace?.end("error");
           return {

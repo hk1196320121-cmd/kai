@@ -186,11 +186,17 @@ export class ClaudeCodeBridge implements AgentBridge {
       const { done, value } = await reader.read();
       if (done) break;
       totalBytes += value.length;
-      // C2 fix: cap output to prevent OOM from unbounded subprocess output
+      // C2 fix: cap output to prevent OOM from unbounded subprocess output.
+      // Keep draining the pipe (discard bytes) so the child doesn't block on write.
       if (totalBytes > MAX_OUTPUT_BYTES) {
         chunks.push(
           value.slice(0, MAX_OUTPUT_BYTES - (totalBytes - value.length)),
         );
+        // Drain remaining data without buffering to prevent pipe deadlock
+        for (;;) {
+          const drain = await reader.read();
+          if (drain.done) break;
+        }
         break;
       }
       chunks.push(value);

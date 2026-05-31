@@ -88,8 +88,10 @@ export class CompositeBridge implements AgentBridge {
     return this.bridges.get(name) ?? null;
   }
 
-  /** Normalize agent name. "auto" defaults to "claude" in Phase 1. */
+  /** Normalize agent name. "auto" defaults to "claude" in Phase 1. "openclaw" routes to "hermes". */
   private resolveAgentName(agent: string): string {
-    return agent === "auto" ? "claude" : agent;
+    if (agent === "auto") return "claude";
+    if (agent === "openclaw") return "hermes";
+    return agent;
   }
 }
