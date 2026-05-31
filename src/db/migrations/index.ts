@@ -6,7 +6,7 @@ import { MIGRATION_V5 } from "./v5";
 import { MIGRATION_V6 } from "./v6";
 import { MIGRATION_V7 } from "./v7";
 import { MIGRATION_V8 } from "./v8";
-import { MIGRATION_V9, MIGRATION_V9_DOWN } from "./v9";
+import { MIGRATION_V9 } from "./v9";
 import { MIGRATION_V10 } from "./v10";
 
 export interface Migration {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AgentBridge } from "../../bridge/agent-bridge";
 import { Dispatcher } from "../../core/orchestrator/dispatcher";
@@ -5,10 +6,13 @@ import { Scheduler } from "../../core/orchestrator/scheduler";
 import type { OrchestratorStore } from "../../core/orchestrator/store";
 import type { ProfileEngine } from "../../core/profile/engine";
 import type { TelemetryRecorder } from "../../core/telemetry/recorder";
-import { PlanApproveSchema, TaskExecuteSchema, DispatchFeedbackSchema } from "../orchestrator-schema";
+import {
+  DispatchFeedbackSchema,
+  PlanApproveSchema,
+  TaskExecuteSchema,
+} from "../orchestrator-schema";
 import { log, textContent } from "../utils";
 import { ALLOWED_UPDATE_FIELDS, CRON_FORMAT } from "./utils";
-import { randomUUID } from "node:crypto";
 
 interface TaskDeps {
   store: OrchestratorStore;
@@ -96,7 +100,11 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
     try {
       const task = store.getTask(task_id);
       if (!task) {
-        return textContent({ success: false, task_id, error: "Task not found" });
+        return textContent({
+          success: false,
+          task_id,
+          error: "Task not found",
+        });
       }
 
       // Record dispatch decision before executing

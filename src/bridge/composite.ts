@@ -35,7 +35,11 @@ export class CompositeBridge implements AgentBridge {
     const result = await resolved.dispatchOneOff(taskId, resolvedName, prompt);
 
     // auto route falls back to hermes if claude returns AGENT_NOT_FOUND
-    if (agent === "auto" && !result.success && result.error?.includes("AGENT_NOT_FOUND")) {
+    if (
+      agent === "auto" &&
+      !result.success &&
+      result.error?.includes("AGENT_NOT_FOUND")
+    ) {
       const hermes = this.bridges.get("hermes");
       if (hermes) {
         return hermes.dispatchOneOff(taskId, "hermes", prompt);
@@ -71,9 +75,14 @@ export class CompositeBridge implements AgentBridge {
   async listPending(): Promise<
     Array<{ id: string; type: string; schedule?: string; prompt: string }>
   > {
-    const all: Array<{ id: string; type: string; schedule?: string; prompt: string }> = [];
+    const all: Array<{
+      id: string;
+      type: string;
+      schedule?: string;
+      prompt: string;
+    }> = [];
     for (const bridge of this.bridges.values()) {
-      all.push(...await bridge.listPending());
+      all.push(...(await bridge.listPending()));
     }
     return all;
   }

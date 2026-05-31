@@ -1,5 +1,5 @@
-import type { AgentBridge, DispatchResult } from "./agent-bridge";
 import { DispatchError } from "../core/orchestrator/types";
+import type { AgentBridge, DispatchResult } from "./agent-bridge";
 
 /** Default timeout for claude subprocess execution (ms) */
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -154,7 +154,9 @@ export class ClaudeCodeBridge implements AgentBridge {
         try {
           proc.kill("SIGTERM");
           setTimeout(() => {
-            try { proc.kill("SIGKILL"); } catch {}
+            try {
+              proc.kill("SIGKILL");
+            } catch {}
           }, this.graceMs);
         } catch {}
         reject(new Error("TIMEOUT: claude subprocess exceeded timeout"));
@@ -162,7 +164,9 @@ export class ClaudeCodeBridge implements AgentBridge {
     });
   }
 
-  private async readStream(stream: ReadableStream<Uint8Array>): Promise<string> {
+  private async readStream(
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<string> {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     for (;;) {
