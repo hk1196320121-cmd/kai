@@ -1,4 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ClaudeCodeBridge } from "../bridge/claude-code";
+import { CompositeBridge } from "../bridge/composite";
 import { HermesAgentBridge } from "../bridge/agent-bridge";
 import { ClosedLoopEngine } from "../core/orchestrator/closed-loop";
 import { OrchestratorStore } from "../core/orchestrator/store";
@@ -22,7 +24,9 @@ export function registerOrchestratorHandlers(
   const store = new OrchestratorStore(db);
   const workspaceStore = new WorkspaceStore(db);
   const llmProvider = new LLMProvider();
-  const bridge = new HermesAgentBridge();
+  const claudeBridge = new ClaudeCodeBridge({ cwd: process.cwd() });
+  const hermesBridge = new HermesAgentBridge();
+  const bridge = new CompositeBridge({ claude: claudeBridge, hermes: hermesBridge });
   const _closedLoopEngine = new ClosedLoopEngine(profileEngine, store);
   const geneStore = new GeneStore(db);
   const promptCompiler = new PromptCompiler(geneStore);

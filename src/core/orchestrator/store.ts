@@ -299,4 +299,45 @@ export class OrchestratorStore {
       .query("UPDATE execution_results SET user_feedback = $fb WHERE id = $id")
       .run({ $id: resultId, $fb: feedback });
   }
+
+  // --- Dispatch decision methods ---
+
+  createDispatchDecision(input: {
+    id: string;
+    task_id: string;
+    agent: string;
+    confidence: number;
+    reasoning: string;
+  }): void {
+    this.db
+      .query(
+        `INSERT INTO dispatch_decisions (id, task_id, agent, confidence, reasoning)
+         VALUES ($id, $taskId, $agent, $confidence, $reasoning)`,
+      )
+      .run({
+        $id: input.id,
+        $taskId: input.task_id,
+        $agent: input.agent,
+        $confidence: input.confidence,
+        $reasoning: input.reasoning,
+      });
+  }
+
+  getDispatchDecision(id: string): Record<string, unknown> | null {
+    return this.db
+      .query("SELECT * FROM dispatch_decisions WHERE id = $id")
+      .get({ $id: id }) as Record<string, unknown> | null;
+  }
+
+  updateDispatchDecision(
+    id: string,
+    decision: string,
+    reason: string | null,
+  ): void {
+    this.db
+      .query(
+        `UPDATE dispatch_decisions SET user_decision = $decision, user_reason = $reason WHERE id = $id`,
+      )
+      .run({ $id: id, $decision: decision, $reason: reason });
+  }
 }

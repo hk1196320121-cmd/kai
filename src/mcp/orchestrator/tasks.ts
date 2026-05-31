@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HermesAgentBridge } from "../../bridge/agent-bridge";
+import type { AgentBridge } from "../../bridge/agent-bridge";
 import { Dispatcher } from "../../core/orchestrator/dispatcher";
 import { Scheduler } from "../../core/orchestrator/scheduler";
 import type { OrchestratorStore } from "../../core/orchestrator/store";
@@ -8,11 +8,12 @@ import type { TelemetryRecorder } from "../../core/telemetry/recorder";
 import { PlanApproveSchema, TaskExecuteSchema } from "../orchestrator-schema";
 import { log, textContent } from "../utils";
 import { ALLOWED_UPDATE_FIELDS, CRON_FORMAT } from "./utils";
+import { randomUUID } from "node:crypto";
 
 interface TaskDeps {
   store: OrchestratorStore;
   profileEngine: ProfileEngine;
-  bridge: HermesAgentBridge;
+  bridge: AgentBridge;
   telemetry: TelemetryRecorder | null;
 }
 
@@ -92,13 +93,39 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
   // --- kai_task_execute ---
   server.tool("kai_task_execute", TaskExecuteSchema, async ({ task_id }) => {
     log("kai_task_execute", { task_id });
-    const dispatcher = new Dispatcher(store, bridge, telemetry);
-    const result = await dispatcher.dispatch(task_id);
-    return textContent({
-      success: result.success,
-      task_id,
-      agent: "hermes",
-      error: result.error,
-    });
+    try {
+      const task = store.getTask(task_id);
+      if (!task) {
+        return textContent({ success: false, task_id, error: "Task not found" });
+      }
+
+      // Record dispatch decision before executing
+      const dispatchId = randomUUID();
+      store.createDispatchDecision({
+        id: dispatchId,
+        task_id,
+        agent: task.agent,
+        confidence: 0.8,
+        reasoning: "Phase 1 default routing",
+      });
+
+      const dispatcher = new Dispatcher(store, bridge, telemetry);
+      const result = await dispatcher.dispatch(task_id);
+
+      return textContent({
+        success: result.success,
+        task_id,
+        dispatch_id: dispatchId,
+        error: result.error,
+        output: result.output,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return textContent({
+        success: false,
+        task_id,
+        error: `INTERNAL_ERROR: ${message}`,
+      });
+    }
   });
 }

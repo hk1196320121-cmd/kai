@@ -264,7 +264,6 @@ describe("Orchestrator MCP Handlers", () => {
 
     expect(parsed.success).toBe(true);
     expect(parsed.task_id).toBe(task.id);
-    expect(parsed.agent).toBe("hermes");
     expect(parsed.error).toBeUndefined();
   });
 
