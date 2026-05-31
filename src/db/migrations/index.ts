@@ -6,14 +6,16 @@ import { MIGRATION_V5 } from "./v5";
 import { MIGRATION_V6 } from "./v6";
 import { MIGRATION_V7 } from "./v7";
 import { MIGRATION_V8 } from "./v8";
-import { MIGRATION_V9 } from "./v9";
-import { MIGRATION_V10 } from "./v10";
+import { MIGRATION_V9, MIGRATION_V9_DOWN } from "./v9";
+import { MIGRATION_V10, MIGRATION_V10_DOWN } from "./v10";
 
 export interface Migration {
   version: number;
   sql: string;
   /** If true, the migration SQL self-bumps schema_version (skip code-level bump). */
   selfBumps?: boolean;
+  /** Optional rollback SQL for this migration. */
+  downSql?: string;
 }
 
 export const MIGRATIONS: Migration[] = [
@@ -25,8 +27,18 @@ export const MIGRATIONS: Migration[] = [
   { version: 6, sql: MIGRATION_V6 },
   { version: 7, sql: MIGRATION_V7 },
   { version: 8, sql: MIGRATION_V8, selfBumps: true },
-  { version: 9, sql: MIGRATION_V9, selfBumps: true },
-  { version: 10, sql: MIGRATION_V10, selfBumps: true },
+  {
+    version: 9,
+    sql: MIGRATION_V9,
+    selfBumps: true,
+    downSql: MIGRATION_V9_DOWN,
+  },
+  {
+    version: 10,
+    sql: MIGRATION_V10,
+    selfBumps: true,
+    downSql: MIGRATION_V10_DOWN,
+  },
 ];
 
 // E2: Runtime ordering assertion — versions must be sequential 1..N

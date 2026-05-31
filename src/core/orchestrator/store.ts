@@ -336,7 +336,7 @@ export class OrchestratorStore {
   ): void {
     this.db
       .query(
-        `UPDATE dispatch_decisions SET user_decision = $decision, user_reason = $reason WHERE id = $id`,
+        `UPDATE dispatch_decisions SET user_decision = $decision, user_reason = $reason, updated_at = datetime('now') WHERE id = $id`,
       )
       .run({ $id: id, $decision: decision, $reason: reason });
   }

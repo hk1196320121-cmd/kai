@@ -95,4 +95,28 @@ describe("ClaudeCodeBridge", () => {
     const pending = await bridge.listPending();
     expect(pending).toEqual([]);
   });
+
+  test("dispatchOneOff returns empty string output on exit 0 with no stdout", async () => {
+    mockClaude("exit 0");
+    const bridge = new ClaudeCodeBridge({ cwd: MOCK_DIR, bin: MOCK_BIN });
+    const result = await bridge.dispatchOneOff("task-1", "claude", "Do nothing");
+    expect(result.success).toBe(true);
+    expect(result.output).toBe("");
+  });
+
+  test("dispatchOneOff returns partial output alongside stderr on non-zero exit", async () => {
+    mockClaude('echo -n "partial stdout"\necho "stderr msg" >&2\nexit 1');
+    const bridge = new ClaudeCodeBridge({ cwd: MOCK_DIR, bin: MOCK_BIN });
+    const result = await bridge.dispatchOneOff("task-1", "claude", "Fail with output");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("stderr msg");
+    expect(result.output).toContain("partial stdout");
+  });
+
+  test("dispatchOneOff rejects whitespace-only prompt", async () => {
+    const bridge = new ClaudeCodeBridge();
+    const result = await bridge.dispatchOneOff("task-1", "claude", "   \t\n");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("empty");
+  });
 });

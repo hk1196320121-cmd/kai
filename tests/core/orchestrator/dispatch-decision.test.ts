@@ -88,4 +88,44 @@ describe("OrchestratorStore dispatch decisions", () => {
     const row = store.getDispatchDecision("nonexistent");
     expect(row).toBeNull();
   });
+
+  test("updateDispatchDecision throws for invalid decision value", () => {
+    const taskId = createTaskForIdea();
+    const id = randomUUID();
+    store.createDispatchDecision({
+      id,
+      task_id: taskId,
+      agent: "claude",
+      confidence: 0.7,
+      reasoning: "test invalid",
+    });
+
+    // "maybe" is not in the CHECK constraint ('approved', 'rejected', 'pending')
+    expect(() => {
+      store.updateDispatchDecision(id, "maybe", "testing check");
+    }).toThrow();
+  });
+
+  test("updateDispatchDecision updates updated_at timestamp", () => {
+    const taskId = createTaskForIdea();
+    const id = randomUUID();
+    store.createDispatchDecision({
+      id,
+      task_id: taskId,
+      agent: "claude",
+      confidence: 0.6,
+      reasoning: "test timestamp",
+    });
+
+    const before = store.getDispatchDecision(id);
+    expect(before!.updated_at).toBeDefined();
+
+    store.updateDispatchDecision(id, "approved", "timestamp check");
+
+    const after = store.getDispatchDecision(id);
+    expect(after!.updated_at).toBeDefined();
+    // updated_at should be a non-empty string after the update
+    expect(typeof after!.updated_at).toBe("string");
+    expect((after!.updated_at as string).length).toBeGreaterThan(0);
+  });
 });

@@ -1,4 +1,4 @@
-import type { IdeaDomain } from "./types";
+import type { AgentType, IdeaDomain } from "./types";
 
 export interface TaskTemplate {
   id: string;
@@ -6,7 +6,7 @@ export interface TaskTemplate {
   description: string;
   prompt: string;
   domain: IdeaDomain;
-  agent: "hermes" | "openclaw" | "auto";
+  agent: AgentType;
   trait_targets: Record<string, number>;
 }
 

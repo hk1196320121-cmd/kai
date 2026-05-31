@@ -194,6 +194,46 @@ describe("Dispatcher", () => {
     expect(updated?.status).toBe("completed");
   });
 
+  test("retries when retryable is explicitly true", async () => {
+    let calls = 0;
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {
+        calls++;
+        return { success: false, agent, error: "retry me", retryable: true };
+      },
+      scheduleCron: async () => ({ success: true, agent: "hermes" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    // Bridge was called TWICE — initial + retry
+    expect(calls).toBe(2);
+  });
+
+  test("non-retryable failure does not increment retry count", async () => {
+    const bridge: AgentBridge = {
+      dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {
+        return { success: false, agent, error: "fail", retryable: false };
+      },
+      scheduleCron: async () => ({ success: true, agent: "hermes" }),
+      cancelCron: async () => true,
+      listPending: async () => [],
+    };
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    // retry_count must remain 0 because the failure was non-retryable
+    expect(store.getTask(task.id)!.retry_count).toBe(0);
+  });
+
   test("marks executing for async bridge without output", async () => {
     const bridge: AgentBridge = {
       dispatchOneOff: async (taskId: string, agent: string, _prompt: string): Promise<DispatchResult> => {

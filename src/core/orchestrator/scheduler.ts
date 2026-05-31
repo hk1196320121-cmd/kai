@@ -41,11 +41,9 @@ export class Scheduler {
             task.cron_prompt ?? task.prompt,
           );
         } else {
-          result = await this.bridge.dispatchOneOff(
-            task.id,
-            task.agent,
-            task.prompt,
-          );
+          // C8 fix: one_off tasks should be marked scheduled without executing.
+          // Actual execution happens via kai_task_execute, not during plan approval.
+          result = { success: true, agent: task.agent };
         }
         if (result.success) {
           this.store.updateTaskStatus(task.id, "scheduled");

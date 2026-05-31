@@ -7,6 +7,9 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 /** Maximum prompt length (chars) to prevent abuse */
 const MAX_PROMPT_LENGTH = 10_000;
 
+/** Maximum output size in bytes (1MB). Prevents OOM from unbounded subprocess output. */
+const MAX_OUTPUT_BYTES = 1_024 * 1_024;
+
 export interface ClaudeCodeBridgeConfig {
   /** Timeout in ms for subprocess execution. Default: 120000 */
   timeoutMs?: number;
@@ -77,10 +80,33 @@ export class ClaudeCodeBridge implements AgentBridge {
       const stderrPromise = this.readStream(proc.stderr);
 
       // Race between process exit and timeout
-      const exitCode = await Promise.race([
-        proc.exited,
-        this.createTimeout(proc),
-      ]);
+      // C1 fix: store timer ID so we can clearTimeout if process exits first
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          try {
+            proc.kill("SIGTERM");
+            // Grace period before SIGKILL — also tracked for cleanup
+            const graceId = setTimeout(() => {
+              try {
+                proc.kill("SIGKILL");
+              } catch {}
+            }, this.graceMs);
+            // Grace timer is fire-and-forget by design (process should exit on SIGTERM)
+            // but we store it for potential future cleanup needs
+            void graceId;
+          } catch {}
+          reject(new Error("TIMEOUT: claude subprocess exceeded timeout"));
+        }, this.timeoutMs);
+      });
+
+      let exitCode: number;
+      try {
+        exitCode = await Promise.race([proc.exited, timeoutPromise]);
+      } finally {
+        // C1 fix: clear the timeout if process exited normally (won the race)
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+      }
 
       // Await stream results (they're already draining in background)
       const stdout = await stdoutPromise;
@@ -148,30 +174,25 @@ export class ClaudeCodeBridge implements AgentBridge {
     return [];
   }
 
-  private createTimeout(proc: ReturnType<typeof Bun.spawn>): Promise<number> {
-    return new Promise((_, reject) => {
-      setTimeout(() => {
-        try {
-          proc.kill("SIGTERM");
-          setTimeout(() => {
-            try {
-              proc.kill("SIGKILL");
-            } catch {}
-          }, this.graceMs);
-        } catch {}
-        reject(new Error("TIMEOUT: claude subprocess exceeded timeout"));
-      }, this.timeoutMs);
-    });
-  }
+  private decoder = new TextDecoder();
 
   private async readStream(
     stream: ReadableStream<Uint8Array>,
   ): Promise<string> {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
+      totalBytes += value.length;
+      // C2 fix: cap output to prevent OOM from unbounded subprocess output
+      if (totalBytes > MAX_OUTPUT_BYTES) {
+        chunks.push(
+          value.slice(0, MAX_OUTPUT_BYTES - (totalBytes - value.length)),
+        );
+        break;
+      }
       chunks.push(value);
     }
     const total = chunks.reduce((sum, c) => sum + c.length, 0);
@@ -181,6 +202,6 @@ export class ClaudeCodeBridge implements AgentBridge {
       buf.set(chunk, offset);
       offset += chunk.length;
     }
-    return new TextDecoder().decode(buf);
+    return this.decoder.decode(buf);
   }
 }

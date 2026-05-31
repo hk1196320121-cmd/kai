@@ -7,6 +7,13 @@ export class Dispatcher {
   private bridge: AgentBridge;
   private telemetry: TelemetryRecorder | null;
 
+  /** Determine task status from dispatch result: sync bridges (output set) → completed, async → executing. */
+  private static statusFromResult(
+    result: DispatchResult,
+  ): "completed" | "executing" {
+    return result.output !== undefined ? "completed" : "executing";
+  }
+
   constructor(
     store: OrchestratorStore,
     bridge: AgentBridge,
@@ -62,9 +69,9 @@ export class Dispatcher {
         task.prompt,
       );
       if (!result.success) {
-        this.store.incrementRetryCount(taskId);
         // Subprocess agents (retryable=false) should not be retried —
         // partial file edits could leave the workspace in a broken state.
+        // C4 fix: skip incrementRetryCount for non-retryable failures
         if (result.retryable === false) {
           span?.end("error");
           trace?.end("error");
@@ -73,6 +80,7 @@ export class Dispatcher {
             error: `${result.error ?? "Bridge dispatch failed"} (non-retryable)`,
           };
         }
+        this.store.incrementRetryCount(taskId);
         const refreshedTask = this.store.getTask(taskId);
         if (
           refreshedTask &&
@@ -84,10 +92,10 @@ export class Dispatcher {
             refreshedTask.prompt,
           );
           if (retry.success) {
-            // Sync bridges (output !== undefined) are already done — mark completed
-            const status =
-              retry.output !== undefined ? "completed" : "executing";
-            this.store.updateTaskStatus(taskId, status);
+            this.store.updateTaskStatus(
+              taskId,
+              Dispatcher.statusFromResult(retry),
+            );
             span?.end("ok");
             trace?.end("completed");
             return {
@@ -109,8 +117,7 @@ export class Dispatcher {
 
       // Sync bridges (output !== undefined) completed immediately — mark completed.
       // Async bridges (output === undefined) are still running — mark executing.
-      const status = result.output !== undefined ? "completed" : "executing";
-      this.store.updateTaskStatus(taskId, status);
+      this.store.updateTaskStatus(taskId, Dispatcher.statusFromResult(result));
       span?.end("ok");
       trace?.end("completed");
       return {

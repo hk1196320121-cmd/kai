@@ -19,21 +19,6 @@ function parseResult(result: any): any {
   return JSON.parse(result.content[0].text);
 }
 
-/**
- * Helper: create a real task in the DB so dispatch_decisions FK passes,
- * then insert a dispatch decision row for it.
- */
-function createDispatchForTask(store: OrchestratorStore): {
-  dispatchId: string;
-  taskId: string;
-} {
-  const wsStore = new WorkspaceStore(store["_db"] as any);
-  // We need a KaiDB to make WorkspaceStore — but OrchestratorStore only
-  // exposes the raw Database. Instead, reuse the same DB by going through
-  // the full OrchestratorStore + WorkspaceStore chain (see tests below).
-  throw new Error("Use createTaskAndDispatch helper instead");
-}
-
 describe("kai_dispatch_feedback", () => {
   let db: KaiDB;
   let dbPath: string;
@@ -179,6 +164,67 @@ describe("kai_dispatch_feedback", () => {
 
     const row = store.getDispatchDecision(dispatchId);
     expect(row!.user_decision).toBe("rejected");
+  });
+
+  // ------------------------------------------------------------------ //
+  // prevents double-vote on already decided dispatch
+  // ------------------------------------------------------------------ //
+
+  test("prevents double-vote on already decided dispatch", async () => {
+    const store = new OrchestratorStore(db);
+    const wsStore = new WorkspaceStore(db);
+    const ws = wsStore.createWorkspace({ name: "WS" });
+    const idea = store.createIdea({
+      title: "T",
+      description: "D",
+      domain: "general",
+      priority: "medium",
+      workspace_id: ws.id,
+    });
+    const task = store.createTask({
+      idea_id: idea.id,
+      workspace_id: ws.id,
+      title: "Task for dispatch",
+      description: "A task",
+      type: "one_off",
+      agent: "claude",
+      prompt: "Do it",
+      decomposition_rationale: "Test",
+      scheduling_rationale: "Test",
+    });
+
+    const dispatchId = randomUUID();
+    store.createDispatchDecision({
+      id: dispatchId,
+      task_id: task.id,
+      agent: "claude",
+      confidence: 0.8,
+      reasoning: "cold start default",
+    });
+
+    // First call: approve — should succeed
+    const first = await registered["kai_dispatch_feedback"].handler({
+      dispatch_id: dispatchId,
+      decision: "approved",
+      reason: "Looks good",
+    });
+    const firstParsed = parseResult(first);
+    expect(firstParsed.recorded).toBe(true);
+    expect(firstParsed.decision).toBe("approved");
+
+    // Second call: reject — should be blocked
+    const second = await registered["kai_dispatch_feedback"].handler({
+      dispatch_id: dispatchId,
+      decision: "rejected",
+      reason: "Changed my mind",
+    });
+    const secondParsed = parseResult(second);
+    expect(secondParsed.error).toBe("dispatch_already_decided");
+
+    // Verify the original decision was preserved
+    const row = store.getDispatchDecision(dispatchId);
+    expect(row!.user_decision).toBe("approved");
+    expect(row!.user_reason).toBe("Looks good");
   });
 
   // ------------------------------------------------------------------ //

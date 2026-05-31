@@ -1,3 +1,4 @@
+import { DispatchError } from "../core/orchestrator/types";
 import type { AgentBridge, DispatchResult } from "./agent-bridge";
 
 export interface CompositeBridgeBridges {
@@ -25,13 +26,13 @@ export class CompositeBridge implements AgentBridge {
       return {
         success: false,
         agent,
-        error: `AGENT_NOT_FOUND: no bridge configured for agent "${agent}"`,
+        error: `${DispatchError.AGENT_NOT_FOUND}: no bridge configured for agent "${agent}"`,
         retryable: false,
       };
     }
 
-    // Pass the RESOLVED agent name to the bridge (not the original "auto")
-    const resolvedName = agent === "auto" ? "claude" : agent;
+    // Resolve agent name using the same logic as resolveAgent
+    const resolvedName = this.resolveAgentName(agent);
     const result = await resolved.dispatchOneOff(taskId, resolvedName, prompt);
 
     // auto route falls back to hermes if claude returns AGENT_NOT_FOUND
@@ -59,7 +60,7 @@ export class CompositeBridge implements AgentBridge {
       return {
         success: false,
         agent: "hermes",
-        error: "AGENT_NOT_FOUND: hermes bridge not configured",
+        error: `${DispatchError.AGENT_NOT_FOUND}: hermes bridge not configured`,
         retryable: false,
       };
     }
@@ -75,21 +76,20 @@ export class CompositeBridge implements AgentBridge {
   async listPending(): Promise<
     Array<{ id: string; type: string; schedule?: string; prompt: string }>
   > {
-    const all: Array<{
-      id: string;
-      type: string;
-      schedule?: string;
-      prompt: string;
-    }> = [];
-    for (const bridge of this.bridges.values()) {
-      all.push(...(await bridge.listPending()));
-    }
-    return all;
+    const results = await Promise.all(
+      [...this.bridges.values()].map((b) => b.listPending()),
+    );
+    return results.flat();
   }
 
   /** Resolve agent name to bridge instance. "auto" defaults to claude in Phase 1. */
   private resolveAgent(agent: string): AgentBridge | null {
-    const name = agent === "auto" ? "claude" : agent;
+    const name = this.resolveAgentName(agent);
     return this.bridges.get(name) ?? null;
+  }
+
+  /** Normalize agent name. "auto" defaults to "claude" in Phase 1. */
+  private resolveAgentName(agent: string): string {
+    return agent === "auto" ? "claude" : agent;
   }
 }

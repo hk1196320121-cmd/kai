@@ -26,6 +26,7 @@ export const DispatchError = {
   AGENT_NOT_FOUND: "AGENT_NOT_FOUND",
   EXECUTION_FAILED: "EXECUTION_FAILED",
   TIMEOUT: "TIMEOUT",
+  // OUTPUT_TRUNCATED and UNKNOWN reserved for future use
   OUTPUT_TRUNCATED: "OUTPUT_TRUNCATED",
   UNKNOWN: "UNKNOWN",
 } as const;

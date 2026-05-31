@@ -73,7 +73,7 @@ describe("Scheduler", () => {
     expect(hour).toBeLessThanOrEqual(9);
   });
 
-  test("scheduleTasks catches bridge exception and counts error", async () => {
+  test("scheduleTasks catches cron bridge exception and counts error", async () => {
     const bridge: AgentBridge = {
       dispatchOneOff: async () => { throw new Error("bridge crashed"); },
       scheduleCron: async () => { throw new Error("bridge crashed"); },
@@ -82,7 +82,8 @@ describe("Scheduler", () => {
     };
     const scheduler = new Scheduler(store, bridge);
     const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
-    store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    // Cron task — bridge.scheduleCron is called for cron tasks
+    store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "cron", agent: "hermes", prompt: "P", cron_schedule: "0 9 * * *", cron_prompt: "daily", decomposition_rationale: "R", scheduling_rationale: "R" });
 
     const result = await scheduler.scheduleTasks(idea.id, []);
     expect(result.errors).toBe(1);

@@ -14,6 +14,11 @@ import {
 import { log, textContent } from "../utils";
 import { ALLOWED_UPDATE_FIELDS, CRON_FORMAT } from "./utils";
 
+/** Default confidence for Phase 1 dispatch routing decisions. */
+const DEFAULT_DISPATCH_CONFIDENCE = 0.8;
+/** Default reasoning for Phase 1 dispatch routing decisions. */
+const DEFAULT_ROUTING_REASONING = "Phase 1 default routing";
+
 interface TaskDeps {
   store: OrchestratorStore;
   profileEngine: ProfileEngine;
@@ -107,32 +112,34 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
         });
       }
 
-      // Record dispatch decision before executing
+      const dispatcher = new Dispatcher(store, bridge, telemetry);
+      const result = await dispatcher.dispatch(task_id);
+
+      // C3 fix: record dispatch decision AFTER dispatch completes (not before)
+      // to avoid orphan rows for tasks that fail validation (completed, max retries, cron)
       const dispatchId = randomUUID();
       store.createDispatchDecision({
         id: dispatchId,
         task_id,
         agent: task.agent,
-        confidence: 0.8,
-        reasoning: "Phase 1 default routing",
+        confidence: DEFAULT_DISPATCH_CONFIDENCE,
+        reasoning: DEFAULT_ROUTING_REASONING,
       });
-
-      const dispatcher = new Dispatcher(store, bridge, telemetry);
-      const result = await dispatcher.dispatch(task_id);
 
       return textContent({
         success: result.success,
         task_id,
         dispatch_id: dispatchId,
+        agent: result.agent,
         error: result.error,
         output: result.output,
       });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+    } catch {
+      // C10 fix: return generic error, don't leak internal details
       return textContent({
         success: false,
         task_id,
-        error: `INTERNAL_ERROR: ${message}`,
+        error: "INTERNAL_ERROR: request failed",
       });
     }
   });
@@ -147,7 +154,15 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
       try {
         const row = store.getDispatchDecision(dispatch_id);
         if (!row) {
-          return textContent({ error: "dispatch_not_found" });
+          return textContent({ success: false, error: "dispatch_not_found" });
+        }
+
+        // C9 fix: prevent double-vote — only pending decisions can be updated
+        if (row.user_decision !== "pending") {
+          return textContent({
+            success: false,
+            error: "dispatch_already_decided",
+          });
         }
 
         store.updateDispatchDecision(dispatch_id, decision, reason ?? null);
@@ -174,10 +189,10 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
           decision,
           recorded: true,
         });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+      } catch {
         return textContent({
-          error: `INTERNAL_ERROR: ${message}`,
+          success: false,
+          error: "INTERNAL_ERROR: request failed",
         });
       }
     },

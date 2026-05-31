@@ -91,4 +91,38 @@ describe("CompositeBridge", () => {
     const result = await bridge.scheduleCron("t1", "0 9 * * *", "Daily");
     expect(result.success).toBe(true);
   });
+
+  test("listPending aggregates from all bridges", async () => {
+    const claudeItem = { id: "c1", type: "one_off", prompt: "claude task" };
+    const hermesItem = { id: "h1", type: "cron", schedule: "0 9 * * *", prompt: "hermes task" };
+
+    class ClaudeMockBridge extends MockBridge {
+      override async listPending() { return [claudeItem]; }
+    }
+    class HermesMockBridge extends MockBridge {
+      override async listPending() { return [hermesItem]; }
+    }
+
+    const claudeMock = new ClaudeMockBridge({ success: true, agent: "claude" });
+    const hermesMock = new HermesMockBridge({ success: true, agent: "hermes" });
+    const bridge = new CompositeBridge({ claude: claudeMock, hermes: hermesMock });
+
+    const result = await bridge.listPending();
+    expect(result).toHaveLength(2);
+    expect(result).toContainEqual(claudeItem);
+    expect(result).toContainEqual(hermesItem);
+  });
+
+  test("cancelCron returns true for hermes bridge", async () => {
+    class CancelMockBridge extends MockBridge {
+      override async cancelCron() { return true; }
+    }
+
+    const claudeMock = new CancelMockBridge({ success: true, agent: "claude" });
+    const hermesMock = new CancelMockBridge({ success: true, agent: "hermes" });
+    const bridge = new CompositeBridge({ claude: claudeMock, hermes: hermesMock });
+
+    const result = await bridge.cancelCron("t1");
+    expect(result).toBe(true);
+  });
 });
