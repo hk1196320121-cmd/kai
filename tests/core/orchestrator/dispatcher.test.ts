@@ -88,7 +88,31 @@ describe("Dispatcher", () => {
 
     const result = await dispatcher.dispatch(task.id);
     expect(result.success).toBe(false);
-    expect(result.error).toContain("already completed");
+    expect(result.error).toContain("completed");
+  });
+
+  test("dispatch returns error for failed task", async () => {
+    const bridge = createMockBridge();
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTaskStatus(task.id, "failed");
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("failed");
+  });
+
+  test("dispatch returns error for paused task", async () => {
+    const bridge = createMockBridge();
+    const dispatcher = new Dispatcher(store, bridge);
+    const idea = store.createIdea({ title: "T", description: "D", domain: "general", priority: "medium", workspace_id: "ws-1" });
+    const task = store.createTask({ idea_id: idea.id, workspace_id: "ws-1", title: "T1", description: "D", type: "one_off", agent: "hermes", prompt: "P", decomposition_rationale: "R", scheduling_rationale: "R" });
+    store.updateTaskStatus(task.id, "paused");
+
+    const result = await dispatcher.dispatch(task.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("paused");
   });
 
   test("dispatch returns error when max retries exceeded", async () => {

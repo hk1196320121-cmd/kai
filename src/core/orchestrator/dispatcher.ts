@@ -34,13 +34,18 @@ export class Dispatcher {
       trace?.end("error");
       return { success: false, agent: "", error: "Task not found" };
     }
-    if (task.status === "completed") {
+    if (
+      task.status === "completed" ||
+      task.status === "failed" ||
+      task.status === "paused" ||
+      task.status === "executing"
+    ) {
       span?.end("error");
       trace?.end("error");
       return {
         success: false,
         agent: task.agent,
-        error: "Task already completed",
+        error: `Task is ${task.status}`,
       };
     }
     if (task.retry_count >= task.max_retries) {

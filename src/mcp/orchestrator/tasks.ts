@@ -115,21 +115,29 @@ export function registerTaskHandlers(server: McpServer, deps: TaskDeps): void {
       const dispatcher = new Dispatcher(store, bridge, telemetry);
       const result = await dispatcher.dispatch(task_id);
 
-      // C3 fix: record dispatch decision AFTER dispatch completes (not before)
-      // to avoid orphan rows for tasks that fail validation (completed, max retries, cron)
+      // C3 fix: only create dispatch decision for actual bridge dispatches,
+      // not for validation guards (completed, failed, paused, max retries, cron).
+      // Avoids orphan rows that users could approve for dispatches that never ran.
       const dispatchId = randomUUID();
-      store.createDispatchDecision({
-        id: dispatchId,
-        task_id,
-        agent: task.agent,
-        confidence: DEFAULT_DISPATCH_CONFIDENCE,
-        reasoning: DEFAULT_ROUTING_REASONING,
-      });
+      if (result.success) {
+        try {
+          store.createDispatchDecision({
+            id: dispatchId,
+            task_id,
+            agent: task.agent,
+            confidence: DEFAULT_DISPATCH_CONFIDENCE,
+            reasoning: DEFAULT_ROUTING_REASONING,
+          });
+        } catch {
+          // Decision row write failed — dispatch already ran, don't lose the result.
+          // Return success without dispatch_id so the caller knows the task ran.
+        }
+      }
 
       return textContent({
         success: result.success,
         task_id,
-        dispatch_id: dispatchId,
+        dispatch_id: result.success ? dispatchId : undefined,
         agent: result.agent,
         error: result.error,
         output: result.output,
